@@ -1,6 +1,7 @@
-import os, json, termcolor, datetime, argparse, functools, pycoingecko, math
+import json, datetime, argparse, pycoingecko
+from trader_factory import TraderFactory
+from trader import Trader
 from pandas.core.frame import DataFrame
-import pandas as pd
 
 
 coin_ids=[
@@ -21,7 +22,7 @@ base_price ={
 }
 
 
-quota_usd = 200
+quota_usd = 50
 
 liquidity_pairs = {
     "ethereum": "polyzap",
@@ -96,31 +97,36 @@ def accumulate(qty: float):
         coin_has_liquidity_pair = coin in liquidity_pairs.keys()
 
         quota_coin = get_quota(coin) if not qty else qty
-        price = th.get_current_price(coin)
         qty_factor = th.get_qty_weight(coin)
         daily_qty = round(quota_coin * qty_factor)
         if coin_has_liquidity_pair:
             daily_qty = daily_qty / 2
-        a.append({
-            'coin': coin,
-            'price': price,
-            'qty_factor': qty_factor,
-            'daily_qty': daily_qty,
-        })
-        db.add(coin, daily_qty, price)
+
+        trader: Trader = TraderFactory.create_trader(coin)
+        if trader:
+            actual_price = trader.buy_market(daily_qty)
+            a.append({
+                'coin': coin,
+                'price': actual_price,
+                'qty_factor': qty_factor,
+                'daily_qty': daily_qty,
+            })
+            db.add(coin, daily_qty, actual_price)
 
         # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
         if coin_has_liquidity_pair:
-            liquidity_pair_coin = liquidity_pairs[coin]
-            price_liquidity_pair_coin = th.get_current_price(liquidity_pair_coin)
-            a.append({
-                'coin': liquidity_pair_coin,
-                'price': price_liquidity_pair_coin,
-                'qty_factor': 1,
-                'daily_qty': daily_qty,
-            })
-            db.add(liquidity_pair_coin, daily_qty, price_liquidity_pair_coin)
-    df = pd.DataFrame.from_dict(a)
+            coin2 = liquidity_pairs[coin]
+            trader: Trader = TraderFactory.create_trader(coin2)
+            if trader:
+                actual_price2 = trader.buy_market(daily_qty)
+                a.append({
+                    'coin': coin2,
+                    'price': actual_price2,
+                    'qty_factor': 1,
+                    'daily_qty': daily_qty,
+                })
+                db.add(coin2, daily_qty, actual_price2)
+    df = DataFrame.from_dict(a)
     print(df.to_string(index=False))
 
 
@@ -130,9 +136,9 @@ def stats():
     syms = db.get_syms()
     a= list()
     for coin in syms:
-        (qty_usd,qty_coin,) = db.get_sym_trades(coin)
-        sum_qty_usd = functools.reduce(lambda x,y:x+y, qty_usd)
-        sum_qty_coin = functools.reduce(lambda x,y:x+y, qty_coin)
+        qty_usd_list, qty_coin_list = db.get_sym_trades(coin)
+        sum_qty_usd = sum(qty_usd_list)
+        sum_qty_coin = sum(qty_coin_list)
         avg_price  = sum_qty_usd / sum_qty_coin
         pnl = (th.get_current_price(coin) - avg_price) / avg_price
         a.append({
@@ -142,7 +148,7 @@ def stats():
             'avg_price': avg_price,
             'pnl': pnl,
         })
-    df = pd.DataFrame.from_dict(a)
+    df = DataFrame.from_dict(a)
     print(df.to_string(index=False))
 
 

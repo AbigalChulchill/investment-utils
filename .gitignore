@@ -1,2 +1,4 @@
+__pycache__
 /*.db
 /cache*.json
+poloniex_config.py
