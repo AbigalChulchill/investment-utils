@@ -1,11 +1,12 @@
 import trader
-import poloniex_trader
+from poloniex_trader import PoloniexTrader
+from dummy_trader import DummyTrader
 
 
 class TraderFactory:
     @staticmethod
     def create_trader(sym: str) -> trader.Trader:
-        if poloniex_trader.PoloniexTrader.handles_sym(sym):
-            return poloniex_trader.PoloniexTrader(sym)
+        if PoloniexTrader.handles_sym(sym):
+            return PoloniexTrader(sym)
         else:
-            return None
+            return DummyTrader(sym)

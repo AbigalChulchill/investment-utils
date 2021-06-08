@@ -1,5 +1,6 @@
-import json, datetime, argparse, pycoingecko
+import json, datetime, argparse
 from trader_factory import TraderFactory
+from market_price import MarketPrice
 from trader import Trader
 from pandas.core.frame import DataFrame
 
@@ -22,7 +23,7 @@ base_price ={
 }
 
 
-quota_usd = 50
+quota_usd = 200
 
 liquidity_pairs = {
     "ethereum": "polyzap",
@@ -42,14 +43,13 @@ def weight_function(base_price: float, price: float):
 
 class TradeHelper:
     def __init__(self):
-        cg = pycoingecko.CoinGeckoAPI()
-        self.price_data = cg.get_price(ids=coin_ids+list(liquidity_pairs.values()), vs_currencies='usd')
+        self.market_price = MarketPrice(coin_ids+list(liquidity_pairs.values()))
 
-    def get_current_price(self, coin: str) -> float:
-        return float(self.price_data[coin]['usd'])
+    def get_market_price(self, coin: str) -> float:
+        return self.market_price.get_market_price(coin)
 
     def get_qty_weight(self, coin: str) -> float:
-        return weight_function(base_price[coin], self.get_current_price(coin))
+        return weight_function(base_price[coin], self.get_market_price(coin))
 
 
 class Db:
@@ -126,8 +126,11 @@ def accumulate(qty: float):
                     'daily_qty': daily_qty,
                 })
                 db.add(coin2, daily_qty, actual_price2)
-    df = DataFrame.from_dict(a)
-    print(df.to_string(index=False))
+    if len(a):
+        df = DataFrame.from_dict(a)
+        print(df.to_string(index=False))
+    else:
+        print('nothing was added.')
 
 
 def stats():
@@ -140,7 +143,7 @@ def stats():
         sum_qty_usd = sum(qty_usd_list)
         sum_qty_coin = sum(qty_coin_list)
         avg_price  = sum_qty_usd / sum_qty_coin
-        pnl = (th.get_current_price(coin) - avg_price) / avg_price
+        pnl = (th.get_market_price(coin) - avg_price) / avg_price
         a.append({
             'coin': coin,
             'sum_qty_usd': sum_qty_usd,
