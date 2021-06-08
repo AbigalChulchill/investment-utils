@@ -1,5 +1,4 @@
 import random
-import math
 
 def weight_function(min_price: float, price: float):
     w = min_price / price
@@ -20,17 +19,14 @@ def make_buy_order(position_quota: float, price: float, min_price: float) -> tup
 def main():
     num_positions = 10000
     position_quota = 100
-    price_spread = (1, 4)
+    price_spread = (1, 8)
 
-    total_order_usd = 0
-    total_order_btc = 0
-    for i in range(num_positions):
-        price = random.triangular(price_spread[0], price_spread[1])
-        qty_order_usd, qty_order_btc = make_buy_order(position_quota, price, price_spread[0])
-        #print(f"price {price}")
-        total_order_usd = total_order_usd + qty_order_usd
-        total_order_btc = total_order_btc + qty_order_btc
-    avg_price = total_order_usd/total_order_btc
+
+    order_usd_it, orer_btc_it = zip(*[ make_buy_order(position_quota, random.triangular(price_spread[0], price_spread[1]), price_spread[0]) for i in range(num_positions) ])
+    total_order_usd = sum(order_usd_it)
+    total_order_btc = sum(orer_btc_it)
+    avg_price = total_order_usd / total_order_btc
+
     print(f"average price: {avg_price:.2f}")
 
 
