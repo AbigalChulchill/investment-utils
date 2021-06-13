@@ -6,24 +6,31 @@ from pandas.core.frame import DataFrame
 
 
 coin_ids=[
-    "bitcoin",
-    "dogecoin",
+    #"bitcoin",
+    #"dogecoin",
     "binancecoin",
     "ethereum",
     "matic-network"
 ]
 
+coin_exchg={
+    "bitcoin":          "poloniex",
+    "dogecoin":         "poloniex",
+}
+def create_trader(coin: str) -> Trader:
+    return TraderFactory.create_trader(coin, coin_exchg[coin] if coin in coin_exchg.keys() else "dummy")
+
 
 base_price ={
-    "bitcoin": 15000,
-    "ethereum": 600,
-    "matic-network": 0.3,
-    "binancecoin": 50,
-    "dogecoin": 0.05
+    "bitcoin":          15000,
+    "ethereum":         600,
+    "matic-network":    0.3,
+    "binancecoin":      50,
+    "dogecoin":         0.05
 }
 
 
-quota_usd = 200
+quota_usd = 100
 
 liquidity_pairs = {
     "ethereum": "polyzap",
@@ -38,7 +45,8 @@ def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
 
 def weight_function(base_price: float, price: float):
-    return base_price/price
+    #return base_price/price
+    return 1
 
 
 class TradeHelper:
@@ -102,7 +110,7 @@ def accumulate(qty: float):
         if coin_has_liquidity_pair:
             daily_qty = daily_qty / 2
 
-        trader: Trader = TraderFactory.create_trader(coin)
+        trader: Trader = create_trader(coin)
         if trader:
             actual_price = trader.buy_market(daily_qty)
             a.append({
@@ -116,7 +124,7 @@ def accumulate(qty: float):
         # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
         if coin_has_liquidity_pair:
             coin2 = liquidity_pairs[coin]
-            trader: Trader = TraderFactory.create_trader(coin2)
+            trader: Trader = create_trader(coin2)
             if trader:
                 actual_price2 = trader.buy_market(daily_qty)
                 a.append({
