@@ -2,8 +2,13 @@ from trader import Trader
 import poloniex_api, poloniex_config
 
 sym_to_pair={
-    'bitcoin': 'USDT_BTC',
-    'dogecoin': 'USDT_DOGE',
+    'bitcoin':          'USDT_BTC',
+    'dogecoin':         'USDT_DOGE',
+    'ethereum':         'USDT_ETH',
+    'matic-network':    'USDT_MATIC',
+    'ripple':           'USDT_XRP',
+    'gitcoin':          'USDT_GTC',
+    'shiba-inu':        'USDT_SHIB',
 }
 
 class PoloniexTrader(Trader):

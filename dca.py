@@ -4,39 +4,68 @@ from market_price import MarketPrice
 from trader import Trader
 from pandas.core.frame import DataFrame
 
-
-coin_ids=[
-    #"bitcoin",
-    #"dogecoin",
+# list of known coin ids
+coin_ids = [
+    "bitcoin",
+    "dogecoin",
     "binancecoin",
     "ethereum",
-    "matic-network"
+    "matic-network",
+    "solana",
+    "gitcoin",
+    "ripple",
+    "symbol",
+    "shiba-inu",
+    "hoge-finance",
 ]
 
-coin_exchg={
+# list of coins NOT to be accumulated when using --add with no additional parameters
+auto_accumulate_black_list = [
+    "gitcoin",
+    "binancecoin",
+    "symbol",
+    "hoge-finance",
+]
+
+coins_auto_accumulate = [c for c in coin_ids if c not in auto_accumulate_black_list]
+
+
+# map coin id to exchange
+coin_exchg = {
     "bitcoin":          "poloniex",
     "dogecoin":         "poloniex",
+    "ethereum":         "poloniex",
+    "matic-network":    "poloniex",
+    "ripple":           "poloniex",
+    "gitcoin":          "poloniex",
+    "shiba-inu":        "poloniex",
 }
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, coin_exchg[coin] if coin in coin_exchg.keys() else "dummy")
 
-
-base_price ={
+# base price for quota calculations
+base_price = {
     "bitcoin":          15000,
-    "ethereum":         600,
+    "ethereum":         1200,
     "matic-network":    0.3,
     "binancecoin":      50,
-    "dogecoin":         0.05
+    "dogecoin":         0.05,
+    "solana":           20,
+    "ripple":           0.24,
+    "gitcoin":          4,
+    "shiba-inu":        0.000001,
 }
 
+# base quota used if price == base_price
+quota_usd = 200
 
-quota_usd = 100
-
+# extra coins to be purchased to match the amount of base coin
 liquidity_pairs = {
     "ethereum": "polyzap",
     "matic-network": "polyzap",
     "binancecoin": "lien",
 }
+
 
 def get_quota(coin: str):
     return quota_usd
@@ -45,8 +74,7 @@ def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
 
 def weight_function(base_price: float, price: float):
-    #return base_price/price
-    return 1
+    return base_price/price
 
 
 class TradeHelper:
@@ -84,23 +112,22 @@ class Db:
 
     def get_sym_trades(self, sym: str) -> tuple:
         #
-        # tuple(list(qty_usd), list(qty_coin))
+        # returns list [ ( [+-]coin_qty, price ) ]
         #
         cur = self.con.cursor()
-        qty_usd = list()
-        qty_coin = list()
-        for row in cur.execute(f"SELECT qty,price FROM dca WHERE sym = '{sym}'"):
-            qty_usd.append(row[0])
-            qty_coin.append(row[0]/row[1])
+        trades = list()
+        for row in cur.execute(f"SELECT qty,price FROM dca WHERE sym = '{sym}' ORDER BY date"):
+            entry =(row[0], row[1], )
+            trades.append(entry)
         #print(trades)
-        return (qty_usd,qty_coin,)
+        return trades
 
 
-def accumulate(qty: float):
+def accumulate(qty: float, coins: list[str], dry_run: bool):
     th = TradeHelper()
     db = Db()
     a= list()
-    for coin in coin_ids:
+    for coin in coins:
 
         coin_has_liquidity_pair = coin in liquidity_pairs.keys()
 
@@ -112,28 +139,36 @@ def accumulate(qty: float):
 
         trader: Trader = create_trader(coin)
         if trader:
-            actual_price = trader.buy_market(daily_qty)
+            if dry_run:
+                actual_price = th.get_market_price(coin)
+            else:
+                actual_price = trader.buy_market(daily_qty)
             a.append({
                 'coin': coin,
                 'price': actual_price,
                 'qty_factor': qty_factor,
                 'daily_qty': daily_qty,
             })
-            db.add(coin, daily_qty, actual_price)
+            if not dry_run:
+                db.add(coin, daily_qty / actual_price, actual_price)
 
         # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
         if coin_has_liquidity_pair:
             coin2 = liquidity_pairs[coin]
             trader: Trader = create_trader(coin2)
             if trader:
-                actual_price2 = trader.buy_market(daily_qty)
+                if dry_run:
+                    actual_price2 = th.get_market_price(coin2)
+                else:
+                    actual_price2 = trader.buy_market(daily_qty)
                 a.append({
                     'coin': coin2,
                     'price': actual_price2,
                     'qty_factor': 1,
                     'daily_qty': daily_qty,
                 })
-                db.add(coin2, daily_qty, actual_price2)
+                if not dry_run:
+                    db.add(coin2, daily_qty / actual_price2, actual_price2)
     if len(a):
         df = DataFrame.from_dict(a)
         print(df.to_string(index=False))
@@ -147,16 +182,30 @@ def stats():
     syms = db.get_syms()
     a= list()
     for coin in syms:
-        qty_usd_list, qty_coin_list = db.get_sym_trades(coin)
-        sum_qty_usd = sum(qty_usd_list)
-        sum_qty_coin = sum(qty_coin_list)
-        avg_price  = sum_qty_usd / sum_qty_coin
-        pnl = (th.get_market_price(coin) - avg_price) / avg_price
+        trades = db.get_sym_trades(coin)
+
+        buys = list()
+        sells = list()
+        for i in trades:
+            if i[0] < 0:
+                sells.append((-i[0], i[1],))
+            else:
+                buys.append(i)
+        total_buys_value = sum( [ x[0] * x[1] for x in buys] )
+        total_buys_qty = sum( [ x[0] for x in buys] )
+        total_sells_value = sum( [ x[0] * x[1] for x in sells] )
+        total_sells_qty = sum( [ x[0] for x in sells] )
+
+        unrealized_sells_value = (total_buys_qty - total_sells_qty) * th.get_market_price(coin)
+        pnl = total_sells_value + unrealized_sells_value - total_buys_value
+
         a.append({
             'coin': coin,
-            'sum_qty_usd': sum_qty_usd,
-            'sum_qty_coin': sum_qty_coin,
-            'avg_price': avg_price,
+            'total_buys_value': total_buys_value,
+            'total_buys_qty': total_buys_qty,
+            'total_sells_value': total_sells_value,
+            'total_sells_qty': total_sells_qty,
+            'unrealized_sells_value': unrealized_sells_value,
             'pnl': pnl,
         })
     df = DataFrame.from_dict(a)
@@ -165,13 +214,15 @@ def stats():
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dry', action='store_const', const='True',  help='Just print actions, do not write to database or buy anything')
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
+    parser.add_argument('--coin', nargs=1, type=str,  help='Used with --add. Only add position for specified coin')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
     args = parser.parse_args()
 
     if args.add:
-        accumulate(args.qty[0] if args.qty else None)
+        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate, dry_run=args.dry)
     if args.stats:
         stats()
 
