@@ -4,6 +4,12 @@ from market_price import MarketPrice
 from trader import Trader
 from pandas.core.frame import DataFrame
 
+from termcolor import cprint
+
+def title(name: str):
+    cprint(f"\n{name}\n", 'red', attrs=['bold'])
+
+
 # list of known coin ids
 coin_ids = [
     "bitcoin",
@@ -180,7 +186,7 @@ def stats():
     th = TradeHelper()
     db = Db()
     syms = db.get_syms()
-    a= list()
+    stats_data = list()
     for coin in syms:
         trades = db.get_sym_trades(coin)
 
@@ -198,8 +204,9 @@ def stats():
 
         unrealized_sells_value = (total_buys_qty - total_sells_qty) * th.get_market_price(coin)
         pnl = total_sells_value + unrealized_sells_value - total_buys_value
+        pnl_percent = round(pnl / total_buys_value * 100, 1)
 
-        a.append({
+        stats_data.append({
             'coin': coin,
             'total_buys_value': total_buys_value,
             'total_buys_qty': total_buys_qty,
@@ -207,9 +214,17 @@ def stats():
             'total_sells_qty': total_sells_qty,
             'unrealized_sells_value': unrealized_sells_value,
             'pnl': pnl,
+            'pnl %': pnl_percent,
         })
-    df = DataFrame.from_dict(a)
-    print(df.to_string(index=False))
+    title("PnL")
+    df_pnl = DataFrame.from_dict(stats_data)
+    df_pnl = df_pnl.sort_values('pnl %', ascending=False)
+    print(df_pnl.to_string(index=False,formatters={'total_buys_qty':lambda x: f'{x:8.8f}'}))
+    title("Portfolio Structure")
+    df_pf_structure = df_pnl
+    df_pf_structure['%'] = round(df_pf_structure['unrealized_sells_value'] / sum(df_pf_structure['unrealized_sells_value']) * 100, 1)
+    df_pf_structure = df_pf_structure.sort_values('%', ascending=False)
+    print(df_pf_structure.to_string(index=False, columns=['coin', '%']))
 
 
 def main():
