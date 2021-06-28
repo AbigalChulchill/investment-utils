@@ -7,6 +7,7 @@ sym_to_pair={
     'ethereum':         'USDT_ETH',
     'matic-network':    'USDT_MATIC',
     'ripple':           'USDT_XRP',
+    'cardano':          'USDT_ADA',
     'gitcoin':          'USDT_GTC',
     'shiba-inu':        'USDT_SHIB',
 }
@@ -30,5 +31,4 @@ class PoloniexTrader(Trader):
         total_qty_coin = sum( [float(x['amount']) for x in trades] )
         total_qty_usd = sum( [float(x['total']) for x in trades] )
         fill_price = total_qty_usd / total_qty_coin
-        #print(f'fill price {fill_price}, market price {market_price}')
-        return fill_price
+        return [fill_price, total_qty_coin]

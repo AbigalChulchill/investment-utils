@@ -16,7 +16,8 @@ coin_ids = [
     "dogecoin",
     "binancecoin",
     "ethereum",
-    "matic-network",
+    "matic-network"
+    "cardano",
     "solana",
     "gitcoin",
     "ripple",
@@ -27,6 +28,7 @@ coin_ids = [
 
 # list of coins NOT to be accumulated when using --add with no additional parameters
 auto_accumulate_black_list = [
+    "cardano"
     "gitcoin",
     "binancecoin",
     "symbol",
@@ -42,9 +44,11 @@ coin_exchg = {
     "dogecoin":         "poloniex",
     "ethereum":         "poloniex",
     "matic-network":    "poloniex",
+    "cardano":          "poloniex",
     "ripple":           "poloniex",
     "gitcoin":          "poloniex",
     "shiba-inu":        "poloniex",
+    "solana":           "ftx",
 }
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, coin_exchg[coin] if coin in coin_exchg.keys() else "dummy")
@@ -54,6 +58,7 @@ base_price = {
     "bitcoin":          15000,
     "ethereum":         1200,
     "matic-network":    0.3,
+    "cardano":          1.0,
     "binancecoin":      50,
     "dogecoin":         0.05,
     "solana":           20,
@@ -148,15 +153,16 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
             if dry_run:
                 actual_price = th.get_market_price(coin)
             else:
-                actual_price = trader.buy_market(daily_qty)
+                actual_price, coin_qty = trader.buy_market(daily_qty)
             a.append({
                 'coin': coin,
                 'price': actual_price,
                 'qty_factor': qty_factor,
-                'daily_qty': daily_qty,
+                'usd': coin_qty*actual_price,
+                'coins': coin_qty,
             })
             if not dry_run:
-                db.add(coin, daily_qty / actual_price, actual_price)
+                db.add(coin, coin_qty, actual_price)
 
         # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
         if coin_has_liquidity_pair:
@@ -166,15 +172,16 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
                 if dry_run:
                     actual_price2 = th.get_market_price(coin2)
                 else:
-                    actual_price2 = trader.buy_market(daily_qty)
+                    actual_price2, coin_qty2 = trader.buy_market(daily_qty)
                 a.append({
                     'coin': coin2,
                     'price': actual_price2,
                     'qty_factor': 1,
-                    'daily_qty': daily_qty,
+                    'usd': coin_qty2*actual_price2,
+                    'coins': coin_qty2,
                 })
                 if not dry_run:
-                    db.add(coin2, daily_qty / actual_price2, actual_price2)
+                    db.add(coin2, coin_qty2, actual_price2)
     if len(a):
         df = DataFrame.from_dict(a)
         print(df.to_string(index=False))

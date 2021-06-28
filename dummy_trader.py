@@ -14,4 +14,4 @@ class DummyTrader(Trader):
         mp = MarketPrice(self.sym)
         market_price = mp.get_market_price(self.sym)
         print(f"Now you must go ahead and buy manually {self.sym} for ${qty_usd} at price {market_price}")
-        return market_price
+        return [market_price, qty_usd / market_price]
