@@ -16,7 +16,7 @@ coin_ids = [
     "dogecoin",
     "binancecoin",
     "ethereum",
-    "matic-network"
+    "matic-network",
     "cardano",
     "solana",
     "gitcoin",
