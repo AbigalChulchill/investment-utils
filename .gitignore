@@ -3,3 +3,4 @@ __pycache__
 /cache*.json
 poloniex_config.py
 ftx_config.py
+binance_config.py

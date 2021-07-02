@@ -1,6 +1,7 @@
 import trader
 from poloniex_trader import PoloniexTrader
 from ftx_trader import FtxTrader
+from binance_trader import BinanceTrader
 from dummy_trader import DummyTrader
 
 
@@ -13,5 +14,7 @@ class TraderFactory:
         elif exch == 'ftx':
             if FtxTrader.handles_sym(sym):
                 return FtxTrader(sym)
-
+        elif exch == 'binance':
+            if BinanceTrader.handles_sym(sym):
+                return BinanceTrader(sym)
         return DummyTrader(sym)

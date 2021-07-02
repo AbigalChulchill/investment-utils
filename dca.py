@@ -24,15 +24,18 @@ coin_ids = [
     "symbol",
     "shiba-inu",
     "hoge-finance",
+    "polyzap",
+    "lien",
 ]
 
 # list of coins NOT to be accumulated when using --add with no additional parameters
 auto_accumulate_black_list = [
-    "cardano"
-    "gitcoin",
+    "cardano",
     "binancecoin",
     "symbol",
     "hoge-finance",
+    "polyzap",
+    "lien",
 ]
 
 coins_auto_accumulate = [c for c in coin_ids if c not in auto_accumulate_black_list]
@@ -46,7 +49,7 @@ coin_exchg = {
     "matic-network":    "poloniex",
     "cardano":          "poloniex",
     "ripple":           "poloniex",
-    "gitcoin":          "poloniex",
+    "gitcoin":          "binance",
     "shiba-inu":        "poloniex",
     "solana":           "ftx",
 }
@@ -72,8 +75,8 @@ quota_usd = 200
 
 # extra coins to be purchased to match the amount of base coin
 liquidity_pairs = {
-    "ethereum": "polyzap",
-    "matic-network": "polyzap",
+#    "ethereum": "polyzap",
+#    "matic-network": "polyzap",
     "binancecoin": "lien",
 }
 
