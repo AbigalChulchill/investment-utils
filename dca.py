@@ -3,86 +3,28 @@ from trader_factory import TraderFactory
 from market_price import MarketPrice
 from trader import Trader
 from pandas.core.frame import DataFrame
-
 from termcolor import cprint
+import dca_settings as ds
+
+
 
 def title(name: str):
     cprint(f"\n{name}\n", 'red', attrs=['bold'])
 
+def err(msg: str):
+    cprint(f"error: {msg}", 'red')
 
-# list of known coin ids
-coin_ids = [
-    "bitcoin",
-    "dogecoin",
-    "binancecoin",
-    "ethereum",
-    "matic-network",
-    "cardano",
-    "solana",
-    "gitcoin",
-    "ripple",
-    "symbol",
-    "shiba-inu",
-    "hoge-finance",
-    "polyzap",
-    "lien",
-]
+def msg_accumulate(coin: str):
+    cprint(f"buying : {coin}", 'green')
 
-# list of coins NOT to be accumulated when using --add with no additional parameters
-auto_accumulate_black_list = [
-    "cardano",
-    "binancecoin",
-    "symbol",
-    "hoge-finance",
-    "polyzap",
-    "lien",
-]
+coins_auto_accumulate = [c for c in ds.coin_ids if c not in ds.auto_accumulate_black_list]
 
-coins_auto_accumulate = [c for c in coin_ids if c not in auto_accumulate_black_list]
-
-
-# map coin id to exchange
-coin_exchg = {
-    "bitcoin":          "poloniex",
-    "dogecoin":         "poloniex",
-    "ethereum":         "poloniex",
-    "matic-network":    "poloniex",
-    "cardano":          "poloniex",
-    "ripple":           "poloniex",
-    "gitcoin":          "binance",
-    "shiba-inu":        "poloniex",
-    "solana":           "ftx",
-}
 def create_trader(coin: str) -> Trader:
-    return TraderFactory.create_trader(coin, coin_exchg[coin] if coin in coin_exchg.keys() else "dummy")
-
-# base price for quota calculations
-base_price = {
-    "bitcoin":          15000,
-    "ethereum":         1200,
-    "matic-network":    0.3,
-    "cardano":          1.0,
-    "binancecoin":      50,
-    "dogecoin":         0.05,
-    "solana":           20,
-    "ripple":           0.24,
-    "gitcoin":          4,
-    "shiba-inu":        0.000001,
-}
-
-# base quota used if price == base_price
-quota_usd = 200
-
-# extra coins to be purchased to match the amount of base coin
-liquidity_pairs = {
-#    "ethereum": "polyzap",
-#    "matic-network": "polyzap",
-    "binancecoin": "lien",
-}
-
+    return TraderFactory.create_trader(coin, ds.coin_exchg[coin] if coin in ds.coin_exchg.keys() else "dummy")
 
 def get_quota(coin: str):
-    return quota_usd
+    mult = ds.quota_multiplier[coin] if coin in ds.quota_multiplier.keys() else 1
+    return ds.quota_usd * mult
 
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
@@ -93,13 +35,13 @@ def weight_function(base_price: float, price: float):
 
 class TradeHelper:
     def __init__(self):
-        self.market_price = MarketPrice(coin_ids+list(liquidity_pairs.values()))
+        self.market_price = MarketPrice(ds.coin_ids+list(ds.liquidity_pairs.values()))
 
     def get_market_price(self, coin: str) -> float:
         return self.market_price.get_market_price(coin)
 
     def get_qty_weight(self, coin: str) -> float:
-        return weight_function(base_price[coin], self.get_market_price(coin))
+        return weight_function(ds.base_price[coin], self.get_market_price(coin))
 
 
 class Db:
@@ -143,13 +85,16 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
     a= list()
     for coin in coins:
 
-        coin_has_liquidity_pair = coin in liquidity_pairs.keys()
+        msg_accumulate(coin)
+
+        try:
+            coin_has_liquidity_pair = coin in ds.liquidity_pairs.keys()
 
         quota_coin = get_quota(coin) if not qty else qty
         qty_factor = th.get_qty_weight(coin)
         daily_qty = round(quota_coin * qty_factor)
-        if coin_has_liquidity_pair:
-            daily_qty = daily_qty / 2
+            # if coin_has_liquidity_pair:
+            #     daily_qty = daily_qty / 2
 
         trader: Trader = create_trader(coin)
         if trader:
@@ -169,7 +114,7 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
 
         # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
         if coin_has_liquidity_pair:
-            coin2 = liquidity_pairs[coin]
+                coin2 = ds.liquidity_pairs[coin]
             trader: Trader = create_trader(coin2)
             if trader:
                 if dry_run:
@@ -185,6 +130,9 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
                 })
                 if not dry_run:
                     db.add(coin2, coin_qty2, actual_price2)
+        except Exception as e:
+            err(f"coin={coin} exc={str(e)}")
+
     if len(a):
         df = DataFrame.from_dict(a)
         print(df.to_string(index=False))

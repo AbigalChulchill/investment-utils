@@ -10,6 +10,10 @@ sym_to_pair={
     'cardano':          'USDT_ADA',
     'gitcoin':          'USDT_GTC',
     'shiba-inu':        'USDT_SHIB',
+    "curve-dao-token":  "USDT_CRV",
+    "aave":             "USDT_AAVE",
+    "0x":               "USDT_ZRX",
+    "synthetix-network-token": "USDT_SNX",
 }
 
 class PoloniexTrader(Trader):
