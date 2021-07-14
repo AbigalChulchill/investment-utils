@@ -53,11 +53,12 @@ coin_exchg = {
 # base quota used if price == base_price
 quota_usd = 200
 
+# applied to base quota to selectively limit quota
 quota_multiplier = {
     "gitcoin": 0.25
 }
 
-# base price for quota calculations
+# for current quota weight function, base price is the price when quota weight is 1
 base_price = {
     "bitcoin":          15000,
     "ethereum":         1200,
@@ -76,7 +77,14 @@ base_price = {
     "synthetix-network-token": 4,
 }
 
-# extra coins to be purchased to match the amount of base coin
+# quota weight is another multiplier applied to quota
+def get_quota_weight(coin: str, price: float):
+    # As price goes up, weight decreases.
+    # When price approaches base_price weight approaches 1.
+    return min(1, base_price[coin] / price)
+
+
+# extra coins to be purchased to match the amount of main coin
 liquidity_pairs = {
 #    "ethereum": "polyzap",
     "matic-network": "polycat-finance",

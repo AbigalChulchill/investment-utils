@@ -30,9 +30,6 @@ def get_quota(coin: str):
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
 
-def weight_function(base_price: float, price: float):
-    return base_price/price
-
 
 class TradeHelper:
     def __init__(self):
@@ -42,7 +39,7 @@ class TradeHelper:
         return self.market_price.get_market_price(coin)
 
     def get_qty_weight(self, coin: str) -> float:
-        return weight_function(ds.base_price[coin], self.get_market_price(coin))
+        return ds.get_quota_weight(coin, self.get_market_price(coin))
 
 
 class Db:
