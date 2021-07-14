@@ -29,8 +29,8 @@ class PoloniexTrader(Trader):
 
 
     def buy_market(self, qty_usd: float) -> float:
-        market_price = float(self.api.returnTicker(self.pair))
-        response = self.api.buy(self.pair, market_price*1.01, qty_usd / market_price, {'fillOrKill': True})
+        market_price = float(self.api.returnOrderBook(self.pair)['asks'][0][0])
+        response = self.api.buy(self.pair, market_price, qty_usd / market_price, {'fillOrKill': True})
         trades = response['resultingTrades']
         total_qty_coin = sum( [float(x['amount']) for x in trades] )
         total_qty_usd = sum( [float(x['total']) for x in trades] )
