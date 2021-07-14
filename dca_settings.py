@@ -18,7 +18,7 @@ coin_ids = [
     "curve-dao-token",
     "aave",
     "0x",
-    "synthetix-network-token",
+    "havven",
 ]
 
 # list of coins NOT to be accumulated when using --add with no additional parameters
@@ -46,16 +46,18 @@ coin_exchg = {
     "curve-dao-token":  "poloniex",
     "aave":             "poloniex",
     "0x":               "poloniex",
-    "synthetix-network-token": "poloniex",
+    "havven":           "poloniex",
 }
 
 
 # base quota used if price == base_price
-quota_usd = 200
+quota_usd = 100
 
 # applied to base quota to selectively limit quota
 quota_multiplier = {
-    "gitcoin": 0.25
+    "gitcoin":          0.25,
+    "shiba-inu":        0.25,
+    "solana":           0.5,
 }
 
 # for current quota weight function, base price is the price when quota weight is 1
@@ -74,7 +76,7 @@ base_price = {
     "curve-dao-token":  0.64,
     "aave":             87,
     "0x":               0.3,
-    "synthetix-network-token": 4,
+    "havven":           4,
 }
 
 # quota weight is another multiplier applied to quota
@@ -87,6 +89,6 @@ def get_quota_weight(coin: str, price: float):
 # extra coins to be purchased to match the amount of main coin
 liquidity_pairs = {
 #    "ethereum": "polyzap",
-    "matic-network": "polycat-finance",
-    "binancecoin": "lien",
+#    "matic-network": "polycat-finance",
+#    "binancecoin": "lien",
 }
