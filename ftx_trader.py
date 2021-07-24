@@ -3,6 +3,7 @@ import ftx_api, ftx_config
 
 sym_to_market={
     'solana':          'SOL/USD',
+    'bitcoin':         'WBTC/USD',
 }
 
 class FtxTrader(Trader):
