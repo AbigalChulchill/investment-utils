@@ -46,31 +46,30 @@ class Db:
     def __init__(self):
         import sqlite3
         self.con = sqlite3.connect('dca.db')
-        cur = self.con.cursor()
-        cur.execute('''CREATE TABLE IF NOT EXISTS dca (date text, sym text, qty real, price real)''')
+        self.con.execute('''CREATE TABLE IF NOT EXISTS dca (date text, sym text, qty real, price real)''')
         self.con.commit()
 
     def add(self, sym: str, qty: float, price: float ):
-        cur = self.con.cursor()
         now = datetime.datetime.now()
-        cur.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, qty, price))
+        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, qty, price))
+        self.con.commit()
+
+    def remove(self, sym: str):
+        self.con.execute("DELETE FROM dca WHERE sym = ?", (sym))
         self.con.commit()
 
     def get_syms(self) -> list:
-        cur = self.con.cursor()
         syms = list()
-        for row in cur.execute(f"SELECT sym FROM dca"):
+        for row in self.con.execute(f"SELECT sym FROM dca"):
             syms.append(row[0])
         return set(syms)
-
 
     def get_sym_trades(self, sym: str) -> tuple:
         #
         # returns list [ ( [+-]coin_qty, price ) ]
         #
-        cur = self.con.cursor()
         trades = list()
-        for row in cur.execute(f"SELECT qty,price FROM dca WHERE sym = '{sym}' ORDER BY date"):
+        for row in self.con.execute(f"SELECT qty,price FROM dca WHERE sym = '{sym}' ORDER BY date"):
             entry =(row[0], row[1], )
             trades.append(entry)
         #print(trades)
@@ -138,6 +137,12 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
         print('nothing was added.')
 
 
+def close(coin: str):
+    db = Db()
+    db.remove(coin)
+    print(f"{coin} position has been closed")
+
+
 def stats():
     th = TradeHelper()
     db = Db()
@@ -193,14 +198,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dry', action='store_const', const='True',  help='Just print actions, do not write to database or buy anything')
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
-    parser.add_argument('--coin', nargs=1, type=str,  help='Used with --add. Only add position for specified coin')
+    parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
+    parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add and --close.')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
     args = parser.parse_args()
 
     if args.add:
         accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate, dry_run=args.dry)
-    if args.stats:
+    elif args.close:
+        if args.coin:
+            close(coin=args.coin)
+        else:
+            print("close: missing --coin argument")
+    elif args.stats:
         stats()
 
 
