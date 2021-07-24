@@ -30,6 +30,7 @@ auto_accumulate_black_list = [
     "polyzap",
     "lien",
     "polycat-finance",
+    "havven",
 ]
 
 # map coin id to exchange
