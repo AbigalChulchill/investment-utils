@@ -56,6 +56,7 @@ quota_usd = 100
 # applied to base quota to selectively limit quota
 quota_multiplier = {
     "gitcoin":          0.25,
+    "dogecoin":         0.25,
     "shiba-inu":        0.25,
     "solana":           0.5,
 }
