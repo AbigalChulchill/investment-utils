@@ -1,4 +1,4 @@
-import json, datetime, argparse
+import json, datetime, argparse, re
 from trader_factory import TraderFactory
 from market_price import MarketPrice
 from trader import Trader
@@ -17,6 +17,10 @@ def err(msg: str):
 
 def msg_accumulate(coin: str):
     cprint(f"buying : {coin}", 'green')
+
+def msg_remove(coin: str):
+    cprint(f"selling : {coin}", 'green')
+
 
 coins_auto_accumulate = [c for c in ds.coin_ids if c not in ds.auto_accumulate_black_list]
 
@@ -54,7 +58,12 @@ class Db:
         self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, qty, price))
         self.con.commit()
 
-    def remove(self, sym: str):
+    def remove(self, sym: str, qty: float, price: float ):
+        now = datetime.datetime.now()
+        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, -qty, price))
+        self.con.commit()
+
+    def delete_all(self, sym: str):
         self.con.execute("DELETE FROM dca WHERE sym = ?", (sym))
         self.con.commit()
 
@@ -64,7 +73,7 @@ class Db:
             syms.append(row[0])
         return set(syms)
 
-    def get_sym_trades(self, sym: str) -> tuple:
+    def _get_sym_trades(self, sym: str) -> tuple:
         #
         # returns list [ ( [+-]coin_qty, price ) ]
         #
@@ -75,8 +84,25 @@ class Db:
         #print(trades)
         return trades
 
+    def get_sym_cumulative_trades(self, sym:str) -> tuple:
+        trades = self._get_sym_trades(sym)
 
-def accumulate(qty: float, coins: list[str], dry_run: bool):
+        buys = list()
+        sells = list()
+        for i in trades:
+            if i[0] < 0:
+                sells.append((-i[0], i[1],))
+            else:
+                buys.append(i)
+
+        total_buy_value = sum( [ x[0] * x[1] for x in buys] )
+        total_buy_qty = sum( [ x[0] for x in buys] )
+        total_sell_value = sum( [ x[0] * x[1] for x in sells] )
+        total_sell_qty = sum( [ x[0] for x in sells] )
+        return total_buy_value,total_buy_qty,total_sell_value,total_sell_qty
+
+
+def accumulate(qty: float, coins: list[str]):
     th = TradeHelper()
     db = Db()
     a= list()
@@ -95,10 +121,7 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
 
             trader: Trader = create_trader(coin)
             if trader:
-                if dry_run:
-                    actual_price = th.get_market_price(coin)
-                else:
-                    actual_price, coin_qty = trader.buy_market(daily_qty)
+                actual_price, coin_qty = trader.buy_market(daily_qty)
                 a.append({
                     'coin': coin,
                     'price': actual_price,
@@ -106,18 +129,14 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
                     'usd': coin_qty*actual_price,
                     'coins': coin_qty,
                 })
-                if not dry_run:
-                    db.add(coin, coin_qty, actual_price)
+                db.add(coin, coin_qty, actual_price)
 
             # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
             if coin_has_liquidity_pair:
                 coin2 = ds.liquidity_pairs[coin]
                 trader: Trader = create_trader(coin2)
                 if trader:
-                    if dry_run:
-                        actual_price2 = th.get_market_price(coin2)
-                    else:
-                        actual_price2, coin_qty2 = trader.buy_market(daily_qty)
+                    actual_price2, coin_qty2 = trader.buy_market(daily_qty)
                     a.append({
                         'coin': coin2,
                         'price': actual_price2,
@@ -125,8 +144,7 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
                         'usd': coin_qty2*actual_price2,
                         'coins': coin_qty2,
                     })
-                    if not dry_run:
-                        db.add(coin2, coin_qty2, actual_price2)
+                    db.add(coin2, coin_qty2, actual_price2)
         except Exception as e:
             err(f"coin={coin} exc={str(e)}")
 
@@ -137,9 +155,45 @@ def accumulate(qty: float, coins: list[str], dry_run: bool):
         print('nothing was added.')
 
 
+def remove(coin: str, qty: str):
+    th = TradeHelper()
+    db = Db()
+    a= list()
+
+    msg_remove(coin)
+
+    total_buy_value,total_buy_qty,total_sell_value,total_sell_qty = db.get_sym_cumulative_trades(coin)
+    available_sell_qty = total_buy_qty - total_sell_qty
+    actual_sell_qty = 0
+    m = re.match(r"([0-9]+)%", qty)
+    if m:
+        actual_sell_qty = available_sell_qty * float(m[1]) / 100
+    else:
+        actual_sell_qty = min(available_sell_qty, float(qty))
+
+    trader: Trader = create_trader(coin)
+    if trader:
+        actual_price, actual_qty = trader.sell_market(actual_sell_qty)
+        a.append({
+            'coin': coin,
+            'price': actual_price,
+            'coins sold': actual_qty,
+            'usd sold': actual_qty*actual_price,
+            'coins avail': available_sell_qty - actual_qty,
+            'usd avail': (available_sell_qty - actual_qty)*actual_price,
+        })
+        db.remove(coin, actual_qty, actual_price)
+
+    if len(a):
+        df = DataFrame.from_dict(a)
+        print(df.to_string(index=False))
+    else:
+        print('not removed.')
+
+
 def close(coin: str):
     db = Db()
-    db.remove(coin)
+    db.delete_all(coin)
     print(f"{coin} position has been closed")
 
 
@@ -149,20 +203,7 @@ def stats():
     syms = db.get_syms()
     stats_data = list()
     for coin in syms:
-        trades = db.get_sym_trades(coin)
-
-        buys = list()
-        sells = list()
-        for i in trades:
-            if i[0] < 0:
-                sells.append((-i[0], i[1],))
-            else:
-                buys.append(i)
-
-        total_buy_value = sum( [ x[0] * x[1] for x in buys] )
-        total_buy_qty = sum( [ x[0] for x in buys] )
-        total_sell_value = sum( [ x[0] * x[1] for x in sells] )
-        total_sell_qty = sum( [ x[0] for x in sells] )
+        total_buy_value,total_buy_qty,total_sell_value,total_sell_qty = db.get_sym_cumulative_trades(coin)
 
         market_price = th.get_market_price(coin)
         pnl_data = calculate_pnl(total_buy_value, total_buy_qty, total_sell_value, total_sell_qty, market_price)
@@ -196,21 +237,26 @@ def stats():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dry', action='store_const', const='True',  help='Just print actions, do not write to database or buy anything')
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
+    parser.add_argument('--remove', nargs=1, type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
-    parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add and --close.')
-    parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
+    parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
+    parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     args = parser.parse_args()
 
     if args.add:
-        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate, dry_run=args.dry)
+        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate)
+    elif args.remove:
+        if args.coin:
+            remove(coin=args.coin[0], qty=args.remove[0])
+        else:
+            print("remove: requires --coin")
     elif args.close:
         if args.coin:
-            close(coin=args.coin)
+            close(coin=args.coin[0])
         else:
-            print("close: missing --coin argument")
+            print("close: requires --coin")
     elif args.stats:
         stats()
 
