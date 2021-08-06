@@ -30,7 +30,6 @@ auto_accumulate_black_list = [
     "polyzap",
     "lien",
     "polycat-finance",
-    "havven",
 ]
 
 # map coin id to exchange
@@ -41,7 +40,7 @@ coin_exchg = {
     "matic-network":    "poloniex",
     "cardano":          "poloniex",
     "ripple":           "poloniex",
-    "gitcoin":          "binance",
+    "gitcoin":          "poloniex",
     "shiba-inu":        "poloniex",
     "solana":           "ftx",
     "curve-dao-token":  "poloniex",
