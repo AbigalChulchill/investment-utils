@@ -64,7 +64,7 @@ class Db:
         self.con.commit()
 
     def delete_all(self, sym: str):
-        self.con.execute("DELETE FROM dca WHERE sym = ?", (sym))
+        self.con.execute("DELETE FROM dca WHERE sym = ?", (sym,))
         self.con.commit()
 
     def get_syms(self) -> list:
