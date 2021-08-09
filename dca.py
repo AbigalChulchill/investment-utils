@@ -197,7 +197,7 @@ def close(coin: str):
     print(f"{coin} position has been closed")
 
 
-def stats():
+def stats(hide_private_data: bool):
     th = TradeHelper()
     db = Db()
     syms = db.get_syms()
@@ -225,8 +225,7 @@ def stats():
     title("PnL")
     df_pnl = DataFrame.from_dict(stats_data)
     df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
-    #columns=["coin", "r pnl %", "u pnl %"]
-    columns=None
+    columns=["coin", "average_price", "current_price", "u pnl %"] if hide_private_data else None
     print(df_pnl.to_string(index=False,formatters={'total_buy_qty':lambda x: f'{x:8.8f}'},columns=columns))
     title("Portfolio Structure")
     df_pf_structure = df_pnl
@@ -243,6 +242,7 @@ def main():
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
     parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
+    parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
     args = parser.parse_args()
 
     if args.add:
@@ -258,7 +258,7 @@ def main():
         else:
             print("close: requires --coin")
     elif args.stats:
-        stats()
+        stats(args.hide_private_data)
 
 
 if __name__ == '__main__':
