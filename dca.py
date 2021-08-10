@@ -15,6 +15,9 @@ def title(name: str):
 def err(msg: str):
     cprint(f"error: {msg}", 'red')
 
+def warn(msg: str):
+    cprint(f"warning: {msg}", 'yellow')
+
 def msg_accumulate(coin: str):
     cprint(f"buying : {coin}", 'green')
 
@@ -110,43 +113,50 @@ def accumulate(qty: float, coins: list[str]):
 
         msg_accumulate(coin)
 
-        try:
-            coin_has_liquidity_pair = coin in ds.liquidity_pairs.keys()
+        retries = 3
 
-            quota_coin = get_quota(coin) if not qty else qty
-            qty_factor = th.get_qty_weight(coin)
-            daily_qty = round(quota_coin * qty_factor)
-            # if coin_has_liquidity_pair:
-            #     daily_qty = daily_qty / 2
+        while retries > 0:
+            try:
+                coin_has_liquidity_pair = coin in ds.liquidity_pairs.keys()
 
-            trader: Trader = create_trader(coin)
-            if trader:
-                actual_price, coin_qty = trader.buy_market(daily_qty)
-                a.append({
-                    'coin': coin,
-                    'price': actual_price,
-                    'qty_factor': qty_factor,
-                    'usd': coin_qty*actual_price,
-                    'coins': coin_qty,
-                })
-                db.add(coin, coin_qty, actual_price)
+                quota_coin = get_quota(coin) if not qty else qty
+                qty_factor = th.get_qty_weight(coin)
+                daily_qty = round(quota_coin * qty_factor)
+                # if coin_has_liquidity_pair:
+                #     daily_qty = daily_qty / 2
 
-            # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
-            if coin_has_liquidity_pair:
-                coin2 = ds.liquidity_pairs[coin]
-                trader: Trader = create_trader(coin2)
+                trader: Trader = create_trader(coin)
                 if trader:
-                    actual_price2, coin_qty2 = trader.buy_market(daily_qty)
+                    actual_price, coin_qty = trader.buy_market(daily_qty)
                     a.append({
-                        'coin': coin2,
-                        'price': actual_price2,
-                        'qty_factor': 1,
-                        'usd': coin_qty2*actual_price2,
-                        'coins': coin_qty2,
+                        'coin': coin,
+                        'price': actual_price,
+                        'qty_factor': qty_factor,
+                        'usd': coin_qty*actual_price,
+                        'coins': coin_qty,
                     })
-                    db.add(coin2, coin_qty2, actual_price2)
-        except Exception as e:
-            err(f"coin={coin} exc={str(e)}")
+                    db.add(coin, coin_qty, actual_price)
+
+                # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
+                if coin_has_liquidity_pair:
+                    coin2 = ds.liquidity_pairs[coin]
+                    trader: Trader = create_trader(coin2)
+                    if trader:
+                        actual_price2, coin_qty2 = trader.buy_market(daily_qty)
+                        a.append({
+                            'coin': coin2,
+                            'price': actual_price2,
+                            'qty_factor': 1,
+                            'usd': coin_qty2*actual_price2,
+                            'coins': coin_qty2,
+                        })
+                        db.add(coin2, coin_qty2, actual_price2)
+                retries = 0
+            except Exception as e:
+                retries = retries - 1
+                err(f"coin={coin} exc={str(e)}")
+                warn(f"retrying ({retries} attempts left)")
+
 
     if len(a):
         df = DataFrame.from_dict(a)
