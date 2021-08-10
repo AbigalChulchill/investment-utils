@@ -1,6 +1,6 @@
 import json, datetime, argparse, re
 from trader_factory import TraderFactory
-from market_price import MarketPrice
+from market_data import MarketData
 from trader import Trader
 from pnl import calculate_pnl
 from pandas.core.frame import DataFrame
@@ -40,10 +40,13 @@ def pretty_json(s):
 
 class TradeHelper:
     def __init__(self):
-        self.market_price = MarketPrice(ds.coin_ids+list(ds.liquidity_pairs.values()))
+        self.market_data = MarketData()
 
     def get_market_price(self, coin: str) -> float:
-        return self.market_price.get_market_price(coin)
+        return self.market_data.get_market_price(coin)
+
+    def get_market_cap(self, coin: str) -> float:
+        return self.market_data.get_norm_market_cap(coin)
 
     def get_qty_weight(self, coin: str) -> float:
         return ds.get_quota_weight(coin, self.get_market_price(coin))
