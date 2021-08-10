@@ -24,12 +24,14 @@ coin_ids = [
 # list of coins NOT to be accumulated when using --add with no additional parameters
 auto_accumulate_black_list = [
     "cardano",
+    "matic-network",
     "binancecoin",
     "symbol",
     "hoge-finance",
     "polyzap",
     "lien",
     "polycat-finance",
+    "shiba-inu",
 ]
 
 # map coin id to exchange
@@ -55,23 +57,21 @@ quota_usd = 100
 
 # applied to base quota to selectively limit quota
 quota_multiplier = {
-    "gitcoin":          0.25,
     "dogecoin":         0.25,
-    "shiba-inu":        0.25,
     "solana":           0.5,
 }
 
 # for current quota weight function, base price is the price when quota weight is 1
 base_price = {
-    "bitcoin":          15000,
-    "ethereum":         1200,
+    "bitcoin":          30000,
+    "ethereum":         1800,
     "matic-network":    0.3,
     "cardano":          1.0,
     "binancecoin":      50,
     "dogecoin":         0.05,
     "solana":           20,
     "ripple":           0.24,
-    "gitcoin":          4,
+    "gitcoin":          5,
     "shiba-inu":        0.000001,
     "polycat-finance":  12,
     "curve-dao-token":  0.64,
