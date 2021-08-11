@@ -19,6 +19,9 @@ coin_ids = [
     "aave",
     "0x",
     "havven",
+    "ethereum-classic",
+    "ftx-token",
+    "decentraland",
 ]
 
 # list of coins NOT to be accumulated when using --add with no additional parameters
@@ -42,21 +45,25 @@ coin_exchg = {
     "matic-network":    "poloniex",
     "cardano":          "poloniex",
     "ripple":           "poloniex",
-    "gitcoin":          "poloniex",
+    "gitcoin":          "binance",
     "shiba-inu":        "poloniex",
     "solana":           "ftx",
     "curve-dao-token":  "poloniex",
     "aave":             "poloniex",
     "0x":               "poloniex",
     "havven":           "poloniex",
+    "ethereum-classic": "poloniex",
+    "ftx-token":        "ftx",
+    "decentraland":     "binance",
 }
 
 
-# base quota used if price == base_price
-quota_usd = 100
+# base quota, before any reduction
+quota_usd = 50
 
 # applied to base quota to selectively limit quota
 quota_multiplier = {
+    "gitcoin":          0.25,
     "dogecoin":         0.25,
     "solana":           0.5,
 }

@@ -3,9 +3,11 @@ import binance_api, binance_config
 
 sym_to_pair={
     'gitcoin':          'GTCUSDT',
+    'decentraland':     'MANAUSDT',
 }
 sym_round_decimals={
     'gitcoin':          2,
+    'decentraland':     2,
 }
 
 class BinanceTrader(Trader):

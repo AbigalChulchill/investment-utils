@@ -2,6 +2,7 @@ from trader import Trader
 import ftx_api, ftx_config
 
 sym_to_market={
+    'ftx-token':       'FTT/USD',
     'solana':          'SOL/USD',
     'bitcoin':         'WBTC/USD',
 }

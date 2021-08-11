@@ -14,6 +14,7 @@ sym_to_pair={
     "aave":             "USDT_AAVE",
     "0x":               "USDT_ZRX",
     "havven":           "USDT_SNX",
+    "ethereum-classic": "USDT_ETC",
 }
 
 class PoloniexTrader(Trader):
