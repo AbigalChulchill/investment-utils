@@ -1,12 +1,12 @@
-import json, datetime, argparse, re
+import os, json, datetime, argparse, re, yaml
 from trader_factory import TraderFactory
 from market_data import MarketData
 from trader import Trader
 from pnl import calculate_pnl
 from pandas.core.frame import DataFrame
 from termcolor import cprint
-import dca_settings as ds
 
+ds = dict()
 
 
 def title(name: str):
@@ -25,18 +25,16 @@ def msg_remove(coin: str):
     cprint(f"selling : {coin}", 'green')
 
 
-coins_auto_accumulate = [c for c in ds.coin_ids if c not in ds.auto_accumulate_black_list]
-
 def create_trader(coin: str) -> Trader:
-    return TraderFactory.create_trader(coin, ds.coin_exchg[coin] if coin in ds.coin_exchg.keys() else "dummy")
+    return TraderFactory.create_trader(coin, ds['coin_exchg'][coin] if coin in ds['coin_exchg'].keys() else "dummy")
 
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, "dummy")
 
 
 def get_quota(coin: str):
-    mult = ds.quota_multiplier[coin] if coin in ds.quota_multiplier.keys() else 1
-    return ds.quota_usd * mult
+    mult = ds['quota_multiplier'][coin] if coin in ds['quota_multiplier'].keys() else 1
+    return ds['quota_usd'] * mult
 
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
@@ -44,7 +42,7 @@ def pretty_json(s):
 
 class TradeHelper:
     def __init__(self):
-        self.market_data = MarketData(ds.coin_ids+list(ds.liquidity_pairs.values()))
+        self.market_data = MarketData(ds['coin_ids'])
 
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
@@ -133,8 +131,6 @@ def accumulate(qty: float, coins: list[str]):
 
         while retries > 0:
             try:
-                coin_has_liquidity_pair = coin in ds.liquidity_pairs.keys()
-
                 quota_coin = get_quota(coin) if not qty else qty
                 qty_factor = 1
                 avg_price_last_10_trades = db.get_sym_average_price_n_last_trades(coin, 10)
@@ -161,20 +157,6 @@ def accumulate(qty: float, coins: list[str]):
                     })
                     db.add(coin, coin_qty, actual_price)
 
-                # if coin has an associated liquidity pair coin,  buy exactly same USD qty of the paired coin
-                if coin_has_liquidity_pair:
-                    coin2 = ds.liquidity_pairs[coin]
-                    trader: Trader = create_trader(coin2)
-                    if trader:
-                        actual_price2, coin_qty2 = trader.buy_market(daily_qty)
-                        a.append({
-                            'coin': coin2,
-                            'price': actual_price2,
-                            'qty_factor': 1,
-                            'usd': coin_qty2*actual_price2,
-                            'coins': coin_qty2,
-                        })
-                        db.add(coin2, coin_qty2, actual_price2)
                 retries = 0
             except Exception as e:
                 retries = retries - 1
@@ -268,7 +250,21 @@ def stats(hide_private_data: bool):
     print(df_pf_structure.to_string(index=False, columns=['coin', '%']))
 
 
+def read_settings() -> dict:
+    ds =dict ()
+    with open('dca_settings_default.yml', 'r') as file:
+        ds = yaml.safe_load(file)
+
+    if os.path.exists('dca_settings_override.yml'):
+        with open('dca_settings_override.yml', 'r') as file:
+            ds = ds | yaml.safe_load(file)
+    return ds
+
+
 def main():
+    global ds
+    ds = read_settings()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
     parser.add_argument('--remove', nargs=1, type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
@@ -280,6 +276,7 @@ def main():
     args = parser.parse_args()
 
     if args.add:
+        coins_auto_accumulate = [c for c in ds['coin_ids'] if c not in ds['auto_accumulate_black_list']]
         accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate)
     elif args.remove:
         if args.coin:
