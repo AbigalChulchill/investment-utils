@@ -11,7 +11,7 @@ class DummyTrader(Trader):
         self.sym = sym
 
     def buy_market(self, qty_usd: float) -> float:
-        market_data = MarketData()
+        market_data = MarketData(self.sym)
         market_price = market_data.get_market_price(self.sym)
         print(f"Now you must go ahead and buy manually {self.sym} for ${qty_usd} at price {market_price}")
         return [market_price, qty_usd / market_price]

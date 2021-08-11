@@ -30,6 +30,10 @@ coins_auto_accumulate = [c for c in ds.coin_ids if c not in ds.auto_accumulate_b
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, ds.coin_exchg[coin] if coin in ds.coin_exchg.keys() else "dummy")
 
+def create_dummy_trader(coin: str) -> Trader:
+    return TraderFactory.create_trader(coin, "dummy")
+
+
 def get_quota(coin: str):
     mult = ds.quota_multiplier[coin] if coin in ds.quota_multiplier.keys() else 1
     return ds.quota_usd * mult
@@ -40,16 +44,13 @@ def pretty_json(s):
 
 class TradeHelper:
     def __init__(self):
-        self.market_data = MarketData()
+        self.market_data = MarketData(ds.coin_ids+list(ds.liquidity_pairs.values()))
 
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
 
     def get_market_cap(self, coin: str) -> float:
         return self.market_data.get_norm_market_cap(coin)
-
-    def get_qty_weight(self, coin: str) -> float:
-        return ds.get_quota_weight(coin, self.get_market_price(coin))
 
 
 class Db:
@@ -107,6 +108,18 @@ class Db:
         total_sell_qty = sum( [ x[0] for x in sells] )
         return total_buy_value,total_buy_qty,total_sell_value,total_sell_qty
 
+    def get_sym_average_price_n_last_trades(self, sym:str, n: int) -> float:
+        trades = self._get_sym_trades(sym)
+        buys = [x for x in trades if x[0] > 0]
+        n = min(n, len(buys))
+        if n > 0:
+            avg_price = sum([x[1] for x in buys[-n:]]) / n
+        else:
+            avg_price = None
+        print(f"sym {sym} avgprice {n} = {avg_price}")
+        return avg_price
+
+
 
 def accumulate(qty: float, coins: list[str]):
     th = TradeHelper()
@@ -123,7 +136,15 @@ def accumulate(qty: float, coins: list[str]):
                 coin_has_liquidity_pair = coin in ds.liquidity_pairs.keys()
 
                 quota_coin = get_quota(coin) if not qty else qty
-                qty_factor = th.get_qty_weight(coin)
+                qty_factor = 1
+                avg_price_last_10_trades = db.get_sym_average_price_n_last_trades(coin, 10)
+                current_price = th.get_market_price(coin)
+                if avg_price_last_10_trades:
+                    r = abs(current_price - avg_price_last_10_trades) / current_price
+                    if current_price > avg_price_last_10_trades:
+                        qty_factor = max(0.5, 1 - r)
+                    else:
+                        qty_factor = min(1.5, 1 + r)
                 daily_qty = round(quota_coin * qty_factor)
                 # if coin_has_liquidity_pair:
                 #     daily_qty = daily_qty / 2
