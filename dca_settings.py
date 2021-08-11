@@ -22,6 +22,7 @@ coin_ids = [
     "ethereum-classic",
     "ftx-token",
     "decentraland",
+    "pancakeswap-token",
 ]
 
 # list of coins NOT to be accumulated when using --add with no additional parameters
@@ -55,6 +56,7 @@ coin_exchg = {
     "ethereum-classic": "poloniex",
     "ftx-token":        "ftx",
     "decentraland":     "binance",
+    "pancakeswap-token":"binance",
 }
 
 

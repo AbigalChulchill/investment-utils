@@ -2,12 +2,14 @@ from trader import Trader
 import binance_api, binance_config
 
 sym_to_pair={
-    'gitcoin':          'GTCUSDT',
-    'decentraland':     'MANAUSDT',
+    'gitcoin':              'GTCUSDT',
+    'decentraland':         'MANAUSDT',
+    'pancakeswap-token':    'CAKEUSDT',
 }
 sym_round_decimals={
-    'gitcoin':          2,
-    'decentraland':     2,
+    'gitcoin':              2,
+    'decentraland':         2,
+    'pancakeswap-token':    2,
 }
 
 class BinanceTrader(Trader):

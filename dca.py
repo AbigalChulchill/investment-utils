@@ -116,7 +116,7 @@ class Db:
             avg_price = sum([x[1] for x in buys[-n:]]) / n
         else:
             avg_price = None
-        print(f"sym {sym} avgprice {n} = {avg_price}")
+        #print(f"sym {sym} avgprice {n} = {avg_price}")
         return avg_price
 
 
