@@ -68,8 +68,8 @@ class Ftx:
         return self._get(f"/markets/{market}/orderbook")
 
 
-    def place_order(self, market: str, side: str, price: float, limit_or_market: str, size: float, reduce_only: bool = False, ioc: bool = False, post_only: bool = False) -> dict:
-        return self._post("/orders", {
+    def place_order(self, market: str, side: str, price: float, limit_or_market: str, size: float, reduce_only: bool = False, ioc: bool = False, post_only: bool = False) -> int:
+        response = self._post("/orders", {
             "market": market,
             "side": side,
             'price': price,
@@ -79,7 +79,10 @@ class Ftx:
             'ioc': ioc,
             'postOnly': post_only
         })
+        return int(response['id'])
 
+    def get_order_status(self, order_id: int) -> dict:
+        return self._get(f"/orders/{order_id}")
 
     def get_subaccounts(self) -> dict:
         return self._get("/subaccounts")

@@ -1,5 +1,6 @@
 from trader import Trader
 import ftx_api, ftx_config
+import time
 
 sym_to_market={
     'ftx-token':       'FTT/USD',
@@ -21,7 +22,31 @@ class FtxTrader(Trader):
 
     def buy_market(self, qty_usd: float) -> float:
         market_price = self.api.get_orderbook(self.market)['asks'][0][0]
-        response = self.api.place_order(market=self.market, side="buy", price=0, limit_or_market="market", size= qty_usd / market_price, ioc=True)
-        #fill_price = float(response['price'])
-        fill_price = market_price
-        return [fill_price, float(response['size'])]
+        order_id = self.api.place_order(market=self.market, side="buy", price=0, limit_or_market="market", size= qty_usd / market_price, ioc=False)
+        retries = 5
+        while retries > 0:
+            time.sleep(1)
+            response = self.api.get_order_status(order_id)
+            fill_qty = float(response['filledSize'])
+            req_qty = float(response['size'])
+            fill_price  = float(response['avgFillPrice'])
+            if (fill_qty - req_qty) < 0.001:
+                return [fill_price, fill_qty]
+            retries = retries - 1
+        raise Exception("not filled")
+
+    def sell_market(self, qty_tokens: float) -> float:
+        market_price = self.api.get_orderbook(self.market)['bids'][0][0]
+        order_id = self.api.place_order(market=self.market, side="sell", price=0, limit_or_market="market", size=qty_tokens, ioc=False)
+        retries = 5
+        while retries > 0:
+            time.sleep(1)
+            response = self.api.get_order_status(order_id)
+            fill_qty = float(response['filledSize'])
+            req_qty = float(response['size'])
+            fill_price  = float(response['avgFillPrice'])
+            if (fill_qty - req_qty) < 0.001:
+                return [fill_price, fill_qty]
+            retries = retries - 1
+        raise Exception("not filled")
+
