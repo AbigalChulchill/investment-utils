@@ -10,7 +10,6 @@
 coin_ids:
   - bitcoin
   - dogecoin
-  - binancecoin
   - ethereum
   - matic-network
   - cardano
@@ -20,9 +19,6 @@ coin_ids:
   - symbol
   - shiba-inu
   - hoge-finance
-  - polyzap
-  - lien
-  - polycat-finance
   - curve-dao-token
   - aave
   - 0x
@@ -36,12 +32,8 @@ coin_ids:
 auto_accumulate_black_list:
   - cardano
   - matic-network
-  - binancecoin
   - symbol
   - hoge-finance
-  - polyzap
-  - lien
-  - polycat-finance
   - shiba-inu
 
 # map coin id to exchange
