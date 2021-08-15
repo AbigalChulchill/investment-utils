@@ -127,7 +127,7 @@ def accumulate(qty: float, coins: list[str]):
 
         msg_accumulate(coin)
 
-        retries = 3
+        retries = ds['accumulate_retries'] + 1
 
         while retries > 0:
             try:
@@ -142,8 +142,6 @@ def accumulate(qty: float, coins: list[str]):
                     else:
                         qty_factor = min(1.5, 1 + r)
                 daily_qty = round(quota_coin * qty_factor)
-                # if coin_has_liquidity_pair:
-                #     daily_qty = daily_qty / 2
 
                 trader: Trader = create_trader(coin)
                 if trader:
@@ -156,13 +154,14 @@ def accumulate(qty: float, coins: list[str]):
                         'coins': coin_qty,
                     })
                     db.add(coin, coin_qty, actual_price)
-
-                retries = 0
+                break
             except Exception as e:
                 retries = retries - 1
-                err(f"coin={coin} exc={str(e)}")
-                warn(f"retrying ({retries} attempts left)")
-                time.sleep(1)
+                if retries > 0:
+                    print(f"retrying, {retries} attempts left")
+                    time.sleep(1)
+                else:
+                    err(f"could not add {coin}, last exc was '{str(e)}'")
 
 
     if len(a):
