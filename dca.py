@@ -1,4 +1,4 @@
-import os, json, datetime, argparse, re, yaml
+import os, json, datetime, argparse, re, yaml, time
 from trader_factory import TraderFactory
 from market_data import MarketData
 from trader import Trader
@@ -162,6 +162,7 @@ def accumulate(qty: float, coins: list[str]):
                 retries = retries - 1
                 err(f"coin={coin} exc={str(e)}")
                 warn(f"retrying ({retries} attempts left)")
+                time.sleep(1)
 
 
     if len(a):
