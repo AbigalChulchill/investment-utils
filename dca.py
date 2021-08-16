@@ -33,8 +33,8 @@ def create_dummy_trader(coin: str) -> Trader:
 
 
 def get_quota(coin: str):
-    mult = ds['quota_multiplier'][coin] if coin in ds['quota_multiplier'].keys() else 1
-    return ds['quota_usd'] * mult
+    #mult = ds['quota_multiplier'][coin] if coin in ds['quota_multiplier'].keys() else 1
+    return ds['quota_usd']# * mult
 
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
@@ -127,42 +127,35 @@ def accumulate(qty: float, coins: list[str]):
 
         msg_accumulate(coin)
 
-        retries = ds['accumulate_retries'] + 1
-
-        while retries > 0:
-            try:
-                quota_coin = get_quota(coin) if not qty else qty
-                qty_factor = 1
-                avg_price_last_10_trades = db.get_sym_average_price_n_last_trades(coin, 10)
+        try:
+            qty_factor = 1
+            if qty:
+                daily_qty = qty
+            else:
+                quota_coin = get_quota(coin)
+                avg_price_last_n_trades = db.get_sym_average_price_n_last_trades(coin, ds['qty_factor_average_days'])
                 current_price = th.get_market_price(coin)
-                if avg_price_last_10_trades:
-                    r = abs(current_price - avg_price_last_10_trades) / current_price
-                    if current_price > avg_price_last_10_trades:
-                        qty_factor = max(0.5, 1 - r)
+                if avg_price_last_n_trades:
+                    r = abs(current_price - avg_price_last_n_trades) / current_price
+                    if current_price > avg_price_last_n_trades:
+                        qty_factor = max(1 - ds['qty_factor_max_deviation'], 1 - r)
                     else:
-                        qty_factor = min(1.5, 1 + r)
+                        qty_factor = min(1 + ds['qty_factor_max_deviation'], 1 + r)
                 daily_qty = round(quota_coin * qty_factor)
 
-                trader: Trader = create_trader(coin)
-                if trader:
-                    actual_price, coin_qty = trader.buy_market(daily_qty)
-                    a.append({
-                        'coin': coin,
-                        'price': actual_price,
-                        'qty_factor': qty_factor,
-                        'usd': coin_qty*actual_price,
-                        'coins': coin_qty,
-                    })
-                    db.add(coin, coin_qty, actual_price)
-                break
-            except Exception as e:
-                retries = retries - 1
-                if retries > 0:
-                    print(f"retrying, {retries} attempts left")
-                    time.sleep(1)
-                else:
-                    err(f"could not add {coin}, last exc was '{str(e)}'")
-
+            trader: Trader = create_trader(coin)
+            if trader:
+                actual_price, coin_qty = trader.buy_market(daily_qty)
+                a.append({
+                    'coin': coin,
+                    'price': actual_price,
+                    'qty_factor': qty_factor,
+                    'usd': coin_qty*actual_price,
+                    'coins': coin_qty,
+                })
+                db.add(coin, coin_qty, actual_price)
+        except Exception as e:
+            err(f"{coin} : was not added, exc was '{str(e)}'")
 
     if len(a):
         df = DataFrame.from_dict(a)
@@ -226,12 +219,13 @@ def stats(hide_private_data: bool):
 
         stats_data.append({
             'coin': coin,
-            'total_buy_value': total_buy_value,
-            'total_buy_qty': total_buy_qty,
+            'buy_value': total_buy_value,
+            'buy_qty': total_buy_qty,
             'average_price': total_buy_value / total_buy_qty,
             'current_price': market_price,
-            'total_sell_value': total_sell_value,
-            'total_sell_qty': total_sell_qty,
+            'sell_value': total_sell_value,
+            'sell_qty': total_sell_qty,
+            'available_qty': total_buy_qty - total_sell_qty,
             'unrealized_sell_value': pnl_data.unrealized_sell_value,
             'r pnl': pnl_data.realized_pnl,
             'r pnl %': pnl_data.realized_pnl_percent,
@@ -242,7 +236,7 @@ def stats(hide_private_data: bool):
     df_pnl = DataFrame.from_dict(stats_data)
     df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
     columns=["coin", "average_price", "current_price", "u pnl %"] if hide_private_data else None
-    print(df_pnl.to_string(index=False,formatters={'total_buy_qty':lambda x: f'{x:8.8f}'},columns=columns))
+    print(df_pnl.to_string(index=False,formatters={'buy_qty':lambda x: f'{x:8.8f}', 'available_qty':lambda x: f'{x:8.8f}'},columns=columns))
     title("Portfolio Structure")
     df_pf_structure = df_pnl
     df_pf_structure['%'] = round(df_pf_structure['unrealized_sell_value'] / sum(df_pf_structure['unrealized_sell_value']) * 100, 1)

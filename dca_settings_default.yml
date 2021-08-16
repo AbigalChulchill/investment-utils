@@ -59,9 +59,6 @@ coin_exchg:
 # base quota, before any reduction
 quota_usd: 100
 
-# multiplier applied to base quota
-quota_multiplier:
-  gitcoin:          1
+qty_factor_average_days: 10
 
-# accumulate(): max number of order retries, per coin
-accumulate_retries: 1
+qty_factor_max_deviation: 0.8
