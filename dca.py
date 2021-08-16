@@ -68,6 +68,11 @@ class Db:
         self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, -qty, price))
         self.con.commit()
 
+    def burn(self, sym: str, qty: float):
+        now = datetime.datetime.now()
+        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, -qty, 0))
+        self.con.commit()
+
     def delete_all(self, sym: str):
         self.con.execute("DELETE FROM dca WHERE sym = ?", (sym,))
         self.con.commit()
@@ -200,6 +205,12 @@ def remove(coin: str, qty: str):
         print('not removed.')
 
 
+def burn(coin: str, qty: float):
+    db = Db()
+    db.burn(coin, qty)
+    print(f"burned {qty} {coin}")
+
+
 def close(coin: str):
     db = Db()
     db.delete_all(coin)
@@ -262,6 +273,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
     parser.add_argument('--remove', nargs=1, type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
+    parser.add_argument('--burn', nargs=1, type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
     parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
@@ -282,6 +294,11 @@ def main():
             close(coin=args.coin[0])
         else:
             print("close: requires --coin")
+    elif args.burn:
+        if args.coin:
+            burn(coin=args.coin[0], qty=args.burn[0])
+        else:
+            print("burn: requires --coin")
     elif args.stats:
         stats(args.hide_private_data)
 
