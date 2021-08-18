@@ -31,18 +31,23 @@ def create_trader(coin: str) -> Trader:
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, "dummy")
 
+def get_quota_fixed_multiplier(coin: str):
+    param = 'quota_fixed_multiplier'
+    if param in ds.keys():
+        if coin in ds[param].keys():
+            return ds[param][coin]
+    return 1
 
 def get_quota(coin: str):
-    #mult = ds['quota_multiplier'][coin] if coin in ds['quota_multiplier'].keys() else 1
-    return ds['quota_usd']# * mult
+    return ds['quota_usd'] * get_quota_fixed_multiplier(coin)
 
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
 
 
 class TradeHelper:
-    def __init__(self):
-        self.market_data = MarketData(ds['coin_ids'])
+    def __init__(self, ids: list):
+        self.market_data = MarketData(list(set(ids + list(ds['coin_exchg'].keys()))))
 
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
@@ -81,7 +86,7 @@ class Db:
         syms = list()
         for row in self.con.execute(f"SELECT sym FROM dca"):
             syms.append(row[0])
-        return set(syms)
+        return list(set(syms))
 
     def _get_sym_trades(self, sym: str) -> tuple:
         #
@@ -125,28 +130,28 @@ class Db:
 
 
 def accumulate(qty: float, coins: list[str]):
-    th = TradeHelper()
     db = Db()
+    th = TradeHelper(db.get_syms())
     a= list()
     for coin in coins:
 
         msg_accumulate(coin)
 
         try:
-            qty_factor = 1
+            quota_mul = 1
             if qty:
                 daily_qty = qty
             else:
                 quota_coin = get_quota(coin)
-                avg_price_last_n_trades = db.get_sym_average_price_n_last_trades(coin, ds['qty_factor_average_days'])
+                avg_price_last_n_trades = db.get_sym_average_price_n_last_trades(coin, ds['quota_multiplier_average_days'])
                 current_price = th.get_market_price(coin)
                 if avg_price_last_n_trades:
                     r = abs(current_price - avg_price_last_n_trades) / current_price
                     if current_price > avg_price_last_n_trades:
-                        qty_factor = max(1 - ds['qty_factor_max_deviation'], 1 - r)
+                        quota_mul = max(1 - ds['quota_multiplier_max_deviation'], 1 - r)
                     else:
-                        qty_factor = min(1 + ds['qty_factor_max_deviation'], 1 + r)
-                daily_qty = round(quota_coin * qty_factor)
+                        quota_mul = min(1 + ds['quota_multiplier_max_deviation'], 1 + r)
+                daily_qty = round(quota_coin * quota_mul)
 
             trader: Trader = create_trader(coin)
             if trader:
@@ -154,7 +159,7 @@ def accumulate(qty: float, coins: list[str]):
                 a.append({
                     'coin': coin,
                     'price': actual_price,
-                    'qty_factor': qty_factor,
+                    'qty_factor': quota_mul,
                     'usd': coin_qty*actual_price,
                     'coins': coin_qty,
                 })
@@ -170,8 +175,8 @@ def accumulate(qty: float, coins: list[str]):
 
 
 def remove(coin: str, qty: str):
-    th = TradeHelper()
     db = Db()
+    th = TradeHelper(db.get_syms())
     a= list()
 
     msg_remove(coin)
@@ -218,8 +223,8 @@ def close(coin: str):
 
 
 def stats(hide_private_data: bool):
-    th = TradeHelper()
     db = Db()
+    th = TradeHelper(db.get_syms())
     syms = db.get_syms()
     stats_data = list()
     for coin in syms:
@@ -257,12 +262,12 @@ def stats(hide_private_data: bool):
 
 def read_settings() -> dict:
     ds =dict ()
-    with open('dca_settings_default.yml', 'r') as file:
-        ds = yaml.safe_load(file)
-
-    if os.path.exists('dca_settings_override.yml'):
-        with open('dca_settings_override.yml', 'r') as file:
-            ds = ds | yaml.safe_load(file)
+    names = ['dca_settings.yml', 'dca_settings_default.yml']
+    for n in names:
+        if os.path.exists(n):
+            with open(n, 'r') as file:
+                ds = yaml.safe_load(file)
+                break
     return ds
 
 
@@ -282,8 +287,7 @@ def main():
     args = parser.parse_args()
 
     if args.add:
-        coins_auto_accumulate = [c for c in ds['coin_ids'] if c not in ds['auto_accumulate_black_list']]
-        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else coins_auto_accumulate)
+        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else ds['auto_accumulate_list'])
     elif args.remove:
         if args.coin:
             remove(coin=args.coin[0], qty=args.remove[0])

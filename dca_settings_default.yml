@@ -1,41 +1,5 @@
 ---
 
-#
-# note:
-# to temporarily override settings put them in dca_settings_override.yml
-#
-
-# list of known coin ids. By default all coins from this list get accumulated
-# when using --add with no additional parameters
-coin_ids:
-  - bitcoin
-  - dogecoin
-  - ethereum
-  - matic-network
-  - cardano
-  - ripple
-  - solana
-  - gitcoin
-  - symbol
-  - shiba-inu
-  - hoge-finance
-  - curve-dao-token
-  - aave
-  - 0x
-  - havven
-  - ethereum-classic
-  - ftx-token
-  - decentraland
-  - pancakeswap-token
-
-# list of coins NOT to be accumulated when using --add with no additional parameters
-auto_accumulate_black_list:
-  - cardano
-  - matic-network
-  - symbol
-  - hoge-finance
-  - shiba-inu
-
 # map coin id to exchange
 coin_exchg:
   bitcoin:            poloniex
@@ -56,9 +20,36 @@ coin_exchg:
   decentraland:       binance
   pancakeswap-token:  binance
 
-# base quota, before any reduction
-quota_usd: 100
 
-qty_factor_average_days: 10
+# list of coins to be accumulated when using --add with no additional parameters
+auto_accumulate_list:
+  - bitcoin
+  - dogecoin
+  - ethereum
+  - ripple
+  - solana
+  - gitcoin
+  - curve-dao-token
+  - aave
+  - 0x
+  - havven
+  - ethereum-classic
+  - ftx-token
+  - decentraland
+  - pancakeswap-token
 
-qty_factor_max_deviation: 0.8
+
+# default quota for --add per coin if --qty is not specified
+quota_usd: 30
+
+
+# quota_fixed_multiplier:
+#   bitcoin: 0.3
+
+
+# moving average period to calculate average price to compare current price to
+quota_multiplier_average_days: 10
+
+
+# quota multiplier is limited to 1 +- max_deviation
+quota_multiplier_max_deviation: 0.5

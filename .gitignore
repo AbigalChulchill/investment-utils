@@ -4,4 +4,4 @@ __pycache__
 poloniex_config.py
 ftx_config.py
 binance_config.py
-dca_settings_override.yml
+dca_settings.yml
