@@ -8,7 +8,6 @@ from termcolor import cprint
 
 ds = dict()
 
-
 def title(name: str):
     cprint(f"\n{name}\n", 'red', attrs=['bold'])
 
@@ -129,7 +128,7 @@ class Db:
 
 
 
-def accumulate(qty: float, coins: list[str]):
+def accumulate(qty: float, coins: list[str], dry: bool):
     db = Db()
     th = TradeHelper(db.get_syms())
     a= list()
@@ -155,7 +154,12 @@ def accumulate(qty: float, coins: list[str]):
 
             trader: Trader = create_trader(coin)
             if trader:
-                actual_price, coin_qty = trader.buy_market(daily_qty)
+                if dry:
+                    actual_price = th.get_market_price(coin)
+                    coin_qty = daily_qty / actual_price
+                else:
+                    actual_price, coin_qty = trader.buy_market(daily_qty)
+                    db.add(coin, coin_qty, actual_price)
                 a.append({
                     'coin': coin,
                     'price': actual_price,
@@ -163,7 +167,6 @@ def accumulate(qty: float, coins: list[str]):
                     'usd': coin_qty*actual_price,
                     'coins': coin_qty,
                 })
-                db.add(coin, coin_qty, actual_price)
         except Exception as e:
             err(f"{coin} : was not added, exc was '{str(e)}'")
 
@@ -174,25 +177,31 @@ def accumulate(qty: float, coins: list[str]):
         print('nothing was added.')
 
 
-def remove(coin: str, qty: str):
+def remove(coin: str, qty: str, dry: bool):
     db = Db()
     th = TradeHelper(db.get_syms())
     a= list()
 
     msg_remove(coin)
 
+    market_price = th.get_market_price(coin)
     total_buy_value,total_buy_qty,total_sell_value,total_sell_qty = db.get_sym_cumulative_trades(coin)
     available_sell_qty = total_buy_qty - total_sell_qty
-    actual_sell_qty = 0
+    sell_qty = 0
     m = re.match(r"([0-9]+)%", qty)
     if m:
-        actual_sell_qty = available_sell_qty * float(m[1]) / 100
+        sell_qty = available_sell_qty * float(m[1]) / 100
     else:
-        actual_sell_qty = min(available_sell_qty, float(qty))
+        sell_qty = min(available_sell_qty, float(qty) / market_price)
 
     trader: Trader = create_trader(coin)
     if trader:
-        actual_price, actual_qty = trader.sell_market(actual_sell_qty)
+        if dry:
+            actual_price = th.get_market_price(coin)
+            actual_qty = sell_qty
+        else:
+            actual_price, actual_qty = trader.sell_market(sell_qty)
+            db.remove(coin, actual_qty, actual_price)
         a.append({
             'coin': coin,
             'price': actual_price,
@@ -201,7 +210,6 @@ def remove(coin: str, qty: str):
             'coins avail': available_sell_qty - actual_qty,
             'usd avail': (available_sell_qty - actual_qty)*actual_price,
         })
-        db.remove(coin, actual_qty, actual_price)
 
     if len(a):
         df = DataFrame.from_dict(a)
@@ -284,10 +292,11 @@ def main():
     parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
+    parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     args = parser.parse_args()
 
     if args.add:
-        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else ds['auto_accumulate_list'])
+        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else ds['auto_accumulate_list'], dry=args.dry)
     elif args.remove:
         if args.coin:
             remove(coin=args.coin[0], qty=args.remove[0])
