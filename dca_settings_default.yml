@@ -17,7 +17,7 @@ coin_exchg:
   havven:             poloniex
   ethereum-classic:   poloniex
   ftx-token:          ftx
-  decentraland:       binance
+  decentraland:       okex
   pancakeswap-token:  binance
 
 
@@ -28,7 +28,7 @@ auto_accumulate_list:
   - ethereum
   - ripple
   - solana
-  - gitcoin
+#  - gitcoin
   - curve-dao-token
   - aave
   - 0x
@@ -36,7 +36,7 @@ auto_accumulate_list:
   - ethereum-classic
   - ftx-token
   - decentraland
-  - pancakeswap-token
+#  - pancakeswap-token
 
 
 # default quota for --add per coin if --qty is not specified

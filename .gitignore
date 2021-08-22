@@ -4,4 +4,5 @@ __pycache__
 poloniex_config.py
 ftx_config.py
 binance_config.py
+okex_config.py
 dca_settings.yml
