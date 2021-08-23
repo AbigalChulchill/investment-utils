@@ -48,15 +48,9 @@ class Bitrue:
         request.params['signature'] = hmac.new(self._secret.encode('utf-8'), signature_payload, 'sha256').hexdigest()
 
     def _process_response(self, response: requests.Response) -> Any:
-        try:
-            data = response.json()
-        except ValueError:
-            response.raise_for_status()
-            raise
-        else:
-            if response.status_code != 200:
-                raise BitrueQueryError(status_code=response.status_code, data=response.json())
-            return response.json()
+        if response.status_code != 200:
+            raise BitrueQueryError(status_code=response.status_code, data=response.json())
+        return response.json()
 
     def get_orderbook(self, symbol: str) -> dict:
         return self._get("/api/v1/depth", {
