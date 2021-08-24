@@ -1,24 +1,50 @@
 import collections
+from typing import List
 
-PnL = collections.namedtuple('PnL', ['realized_pnl', 'realized_pnl_percent', 'unrealized_sell_value', 'unrealized_pnl', 'unrealized_pnl_percent'])
+PnL = collections.namedtuple('PnL', ['realized_pnl', 'realized_pnl_percent', 'break_even_price', 'unrealized_sell_value', 'unrealized_pnl', 'unrealized_pnl_percent'])
+INVALID_PERCENT = "~"
 
-def calculate_pnl(buy_value: float, buy_qty: float, sell_value: float, sell_qty: float, market_price_now: float) -> PnL:
-    average_buying_rate = buy_value / buy_qty
+Order = collections.namedtuple('Order', ['side', 'value', 'qty'])
 
-    sold_tokens_buy_value = sell_qty * average_buying_rate
-    realized_pnl = sell_value - sold_tokens_buy_value
-    realized_pnl_percent = round(realized_pnl / sold_tokens_buy_value * 100, 1) if sold_tokens_buy_value > 0 else '~'
+def calculate_inc_pnl(orders: List[Order], market_price_now: float) -> PnL:
 
-    unrealized_sell_value = (buy_qty - sell_qty) * market_price_now
-    unrealized_sold_tokens_buy_value = (buy_qty - sell_qty) * average_buying_rate
-    unrealized_pnl = unrealized_sell_value - unrealized_sold_tokens_buy_value
-    unrealized_pnl_percent = round(unrealized_pnl / unrealized_sold_tokens_buy_value * 100, 1) if unrealized_sold_tokens_buy_value > 0 else '~'
+    position_qty = 0
+    average_buying_rate = None
+
+    cumulative_initial_buy_value = 0
+    cumulative_sell_value = 0
+
+    for o in orders:
+        if o.side == "BUY":
+
+            if average_buying_rate:
+                average_buying_rate = (average_buying_rate * position_qty + o.value)  / (position_qty + o.qty)
+            else:
+                average_buying_rate = o.value / o.qty
+            position_qty += o.qty
+
+        elif o.side == "SELL":
+            initial_buy_value = o.qty * average_buying_rate
+            cumulative_initial_buy_value += initial_buy_value
+            cumulative_sell_value += o.value
+            position_qty -= o.qty
+
+
+    unrealized_sell_value = position_qty * market_price_now
+    average_buying_value = position_qty * average_buying_rate if average_buying_rate else 0
+    unrealized_pnl = unrealized_sell_value - average_buying_value
+    unrealized_pnl_percent = unrealized_pnl / average_buying_value * 100 if average_buying_value > 0 else INVALID_PERCENT
+
+    realized_pnl = cumulative_sell_value - cumulative_initial_buy_value
+    realized_pnl_percent = realized_pnl / cumulative_initial_buy_value * 100 if cumulative_initial_buy_value > 0 else INVALID_PERCENT
 
     return PnL(
         realized_pnl,
         realized_pnl_percent,
+        average_buying_rate,
         unrealized_sell_value,
         unrealized_pnl,
         unrealized_pnl_percent
     )
+
 

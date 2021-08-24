@@ -2,10 +2,11 @@ import os, json, datetime, argparse, re, yaml, traceback
 from trader_factory import TraderFactory
 from market_data import MarketData
 from trader import Trader
-from pnl import calculate_pnl
+import pnl
 from pandas.core.frame import DataFrame
 from termcolor import cprint
 from msg import err
+from typing import List
 
 ds = dict()
 
@@ -109,6 +110,20 @@ class Db:
         total_sell_qty = sum( [ x[0] for x in sells] )
         return total_buy_value,total_buy_qty,total_sell_value,total_sell_qty
 
+    def get_sym_available_qty(self, sym:str) -> float:
+        trades = self._get_sym_trades(sym)
+        return sum([i[0] for i in trades])
+
+    def get_sym_trades_for_pnl(self, sym:str) -> List[pnl.Order]:
+        trades = self._get_sym_trades(sym)
+        orders = []
+        for i in trades:
+            if i[0] < 0:
+                orders.append(pnl.Order("SELL", -i[0]*i[1], -i[0]))
+            else:
+                orders.append(pnl.Order("BUY", i[0]*i[1], i[0]))
+        return orders
+
     def get_sym_average_price_n_last_trades(self, sym:str, n: int) -> float:
         trades = self._get_sym_trades(sym)
         buys = [x for x in trades if x[0] > 0]
@@ -180,8 +195,7 @@ def remove(coin: str, qty: str, dry: bool):
     msg_remove(coin)
 
     market_price = th.get_market_price(coin)
-    total_buy_value,total_buy_qty,total_sell_value,total_sell_qty = db.get_sym_cumulative_trades(coin)
-    available_sell_qty = total_buy_qty - total_sell_qty
+    available_sell_qty = db.get_sym_available_qty(coin)
     sell_qty = 0
     m = re.match(r"([0-9]+)%", qty)
     if m:
@@ -231,31 +245,31 @@ def stats(hide_private_data: bool):
     syms = db.get_syms()
     stats_data = list()
     for coin in syms:
-        total_buy_value,total_buy_qty,total_sell_value,total_sell_qty = db.get_sym_cumulative_trades(coin)
 
         market_price = th.get_market_price(coin)
-        pnl_data = calculate_pnl(total_buy_value, total_buy_qty, total_sell_value, total_sell_qty, market_price)
+        available_qty = db.get_sym_available_qty(coin)
+        pnl_data = pnl.calculate_inc_pnl(db.get_sym_trades_for_pnl(coin), market_price)
 
         stats_data.append({
             'coin': coin,
-            'buy_value': total_buy_value,
-            'buy_qty': total_buy_qty,
-            'average_price': total_buy_value / total_buy_qty,
+            'available_qty': available_qty,
+            'break_even_price': pnl_data.break_even_price,
             'current_price': market_price,
-            'sell_value': total_sell_value,
-            'sell_qty': total_sell_qty,
-            'available_qty': total_buy_qty - total_sell_qty,
-            'unrealized_sell_value': pnl_data.unrealized_sell_value,
-            'r pnl': pnl_data.realized_pnl,
-            'r pnl %': pnl_data.realized_pnl_percent,
-            'u pnl': pnl_data.unrealized_pnl,
-            'u pnl %': pnl_data.unrealized_pnl_percent,
+            'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
+            'r pnl': round(pnl_data.realized_pnl,1),
+            'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            'u pnl': round(pnl_data.unrealized_pnl,1),
+            'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
         })
     title("PnL")
     df_pnl = DataFrame.from_dict(stats_data)
     df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
-    columns=["coin", "average_price", "current_price", "u pnl %"] if hide_private_data else None
-    print(df_pnl.to_string(index=False,formatters={'buy_qty':lambda x: f'{x:8.8f}', 'available_qty':lambda x: f'{x:8.8f}'},columns=columns))
+    columns=["coin", "break_even_price", "current_price", "u pnl %"] if hide_private_data else None
+    formatters={
+        'buy_qty':          lambda x: f'{x:8.8f}',
+        'available_qty':    lambda x: f'{x:8.8f}',
+    }
+    print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
     title("Portfolio Structure")
     df_pf_structure = df_pnl
     df_pf_structure['%'] = round(df_pf_structure['unrealized_sell_value'] / sum(df_pf_structure['unrealized_sell_value']) * 100, 1)
