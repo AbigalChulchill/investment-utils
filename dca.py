@@ -1,28 +1,22 @@
-import os, json, datetime, argparse, re, yaml, time
+import os, json, datetime, argparse, re, yaml, traceback
 from trader_factory import TraderFactory
 from market_data import MarketData
 from trader import Trader
 from pnl import calculate_pnl
 from pandas.core.frame import DataFrame
 from termcolor import cprint
+from msg import err
 
 ds = dict()
 
 def title(name: str):
     cprint(f"\n{name}\n", 'red', attrs=['bold'])
 
-def err(msg: str):
-    cprint(f"error: {msg}", 'red')
-
-def warn(msg: str):
-    cprint(f"warning: {msg}", 'yellow')
-
 def msg_accumulate(coin: str):
     cprint(f"buying : {coin}", 'green')
 
 def msg_remove(coin: str):
     cprint(f"selling : {coin}", 'green')
-
 
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_trader(coin, ds['coin_exchg'][coin] if coin in ds['coin_exchg'].keys() else "dummy")
@@ -168,7 +162,8 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                     'coins': coin_qty,
                 })
         except Exception as e:
-            err(f"{coin} : was not added, exc was '{str(e)}'")
+            err(f"{coin} : was not added")
+            traceback.print_exc()
 
     if len(a):
         df = DataFrame.from_dict(a)

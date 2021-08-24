@@ -1,6 +1,7 @@
 from trader import Trader
 import poloniex_api, poloniex_config
-import time
+import time, traceback
+from msg import warn
 
 sym_to_pair={
     'bitcoin':          'USDT_BTC',
@@ -19,6 +20,7 @@ sym_to_pair={
 }
 
 MAX_RETRIES = 3
+DELAY = 5
 
 class PoloniexTrader(Trader):
 
@@ -26,55 +28,56 @@ class PoloniexTrader(Trader):
     def handles_sym(sym: str) -> bool:
         return sym in sym_to_pair.keys()
 
-
     def __init__(self, sym: str):
         self.pair = sym_to_pair[sym]
         self.api = poloniex_api.Poloniex(poloniex_config.API_KEY, poloniex_config.SECRET)
 
-
     def buy_market(self, qty_usd: float) -> float:
         retries = MAX_RETRIES
-        while retries > 0:
+        while retries >= 0:
             try:
                 return self._buy_market(qty_usd)
             except Exception:
-                if retries > 1:
+                if retries > 0:
                     retries -= 1
-                    print("PoloniexTrader: buy: failed, retrying...")
-                    time.sleep(1)
+                    traceback.print_exc()
+                    warn(f"PoloniexTrader: buy: failed, retrying in {DELAY} seconds...")
+                    time.sleep(DELAY)
                 else:
                     raise
-
 
     def sell_market(self, qty_tokens: float) -> float:
         retries = MAX_RETRIES
-        while retries > 0:
+        while retries >= 0:
             try:
                 return self._sell_market(qty_tokens)
             except Exception:
-                if retries > 1:
+                if retries > 0:
                     retries -= 1
-                    print("PoloniexTrader: sell: failed, retrying...")
-                    time.sleep(1)
+                    traceback.print_exc()
+                    warn(f"PoloniexTrader: sell: failed, retrying in {DELAY} seconds...")
+                    time.sleep(DELAY)
                 else:
                     raise
 
+    def _handle_trade(self, response: dict):
+        try:
+            trades = response['resultingTrades']
+        except:
+            print(f"response : {response}")
+            raise
+        else:
+            total_qty_coin = sum( [float(x['amount']) for x in trades] )
+            total_qty_usd = sum( [float(x['total']) for x in trades] )
+            fill_price = total_qty_usd / total_qty_coin
+            return [fill_price, total_qty_coin]
 
     def _buy_market(self, qty_usd: float) -> float:
         market_price = float(self.api.returnOrderBook(self.pair)['asks'][1][0])
         response = self.api.buy(self.pair, market_price, qty_usd / market_price, {'fillOrKill': True})
-        trades = response['resultingTrades']
-        total_qty_coin = sum( [float(x['amount']) for x in trades] )
-        total_qty_usd = sum( [float(x['total']) for x in trades] )
-        fill_price = total_qty_usd / total_qty_coin
-        return [fill_price, total_qty_coin]
-
+        return self._handle_trade(response)
 
     def _sell_market(self, qty_tokens: float) -> float:
         market_price = float(self.api.returnOrderBook(self.pair)['bids'][1][0])
         response = self.api.sell(self.pair, market_price, qty_tokens, {'fillOrKill': True})
-        trades = response['resultingTrades']
-        total_qty_coin = sum( [float(x['amount']) for x in trades] )
-        total_qty_usd = sum( [float(x['total']) for x in trades] )
-        fill_price = total_qty_usd / total_qty_coin
-        return [fill_price, total_qty_coin]
+        return self._handle_trade(response)
