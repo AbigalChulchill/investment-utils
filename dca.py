@@ -308,7 +308,7 @@ def main():
         accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else ds['auto_accumulate_list'], dry=args.dry)
     elif args.remove:
         if args.coin:
-            remove(coin=args.coin[0], qty=args.remove[0])
+            remove(coin=args.coin[0], qty=args.remove[0], dry=args.dry)
         else:
             print("remove: requires --coin")
     elif args.close:
