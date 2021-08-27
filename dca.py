@@ -46,9 +46,8 @@ class TradeHelper:
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
 
-    def get_market_cap(self, coin: str) -> float:
-        return self.market_data.get_norm_market_cap(coin)
-
+    def get_24h_change(self, coin: str) -> float:
+        return self.market_data.get_24h_change(coin)
 
 class Db:
     def __init__(self):
@@ -255,6 +254,7 @@ def stats(hide_private_data: bool):
             'available_qty': available_qty,
             'break_even_price': pnl_data.break_even_price,
             'current_price': market_price,
+            '24h chg %': round(th.get_24h_change(coin),1),
             'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
             'r pnl': round(pnl_data.realized_pnl,1),
             'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
