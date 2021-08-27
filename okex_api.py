@@ -73,6 +73,7 @@ class Okex:
             'side': side, #buy, sell
             'ordType': "market",
             'sz': size,
+            'tgtCcy': "base_ccy",
         })
         return int(response[0]['ordId'])
 
