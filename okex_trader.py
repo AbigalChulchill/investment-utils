@@ -4,6 +4,7 @@ import time
 
 sym_to_market={
     'decentraland':       'MANA-USDT',
+    'tezos':              'XTZ-USDT',
 }
 
 class OkexTrader(Trader):
