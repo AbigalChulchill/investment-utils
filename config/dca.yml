@@ -47,8 +47,8 @@ quota_usd: 30
 
 
 # moving average period to calculate average price to compare current price to
-quota_multiplier_average_days: 10
+quota_multiplier_average_days: 30
 
 
-# quota multiplier is limited to 1 +- max_deviation
-quota_multiplier_max_deviation: 0.5
+# quota multiplier is upper limited to quota_multiplier_max
+quota_multiplier_max: 2

@@ -51,6 +51,9 @@ class TradeHelper:
     def get_24h_change(self, coin: str) -> float:
         return self.market_data.get_24h_change(coin)
 
+    def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
+        return self.market_data.get_avg_price_n_days(coin, days_before)
+
 class Db:
     def __init__(self):
         import sqlite3
@@ -152,14 +155,12 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                 daily_qty = qty
             else:
                 quota_coin = get_quota(coin)
-                avg_price_last_n_trades = db.get_sym_average_price_n_last_trades(coin, ds['quota_multiplier_average_days'])
+                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
                 current_price = th.get_market_price(coin)
-                if avg_price_last_n_trades:
-                    r = abs(current_price - avg_price_last_n_trades) / current_price
-                    if current_price > avg_price_last_n_trades:
-                        quota_mul = max(1 - ds['quota_multiplier_max_deviation'], 1 - r)
-                    else:
-                        quota_mul = min(1 + ds['quota_multiplier_max_deviation'], 1 + r)
+                if avg_price_last_n_days:
+                    quota_mul = avg_price_last_n_days / current_price
+                quota_mul = min(quota_mul, ds['quota_multiplier_max'])
+                    
                 daily_qty = round(quota_coin * quota_mul)
 
             trader: Trader = create_trader(coin)
@@ -173,7 +174,7 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                 a.append({
                     'coin': coin,
                     'price': actual_price,
-                    'qty_factor': quota_mul,
+                    'qty_factor': round(quota_mul,2),
                     'usd': coin_qty*actual_price,
                     'coins': coin_qty,
                 })
