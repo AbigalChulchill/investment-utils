@@ -8,6 +8,7 @@ sym_to_market={
     'bitcoin':         'WBTC/USD',
     'ethereum-perpetual-futures':   'ETH-PERP',
     'bitcoin-perpetual-futures':    'BTC-PERP',
+    'coinbase-stock':  'COIN/USD',
 }
 
 

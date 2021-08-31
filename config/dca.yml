@@ -2,6 +2,7 @@
 
 # map coin id to exchange
 coin_exchg:
+  #crypto
   bitcoin:            poloniex
   dogecoin:           poloniex
   ethereum:           poloniex
@@ -19,6 +20,8 @@ coin_exchg:
   decentraland:       okex
   tezos:              okex
   gitcoin:            bitrue
+  #stocks:
+  coinbase-stock:     ftx
 
 # list of coins to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
@@ -34,8 +37,8 @@ auto_accumulate_list:
   - havven
   - ethereum-classic
   - ftx-token
-  # - decentraland
-  # - tezos
+  - decentraland
+  - tezos
 
 
 # default quota for --add per coin if --qty is not specified

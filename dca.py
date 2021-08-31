@@ -7,7 +7,7 @@ from lib.trader.trader_factory import TraderFactory
 from lib.trader.trader import Trader
 from lib.common.market_data import MarketData
 from lib.common import pnl
-from lib.common.msg import err
+from lib.common.msg import err, warn
 
 
 ds = dict()
@@ -155,12 +155,13 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                 daily_qty = qty
             else:
                 quota_coin = get_quota(coin)
-                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
                 current_price = th.get_market_price(coin)
-                if avg_price_last_n_days:
+                try: # get_avg_price_n_days might fail if the asset is not known by Binance. 
+                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
                     quota_mul = avg_price_last_n_days / current_price
+                except:
+                    warn(f"average price data on {coin} is not available, using default quota_mul")
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
-                    
                 daily_qty = round(quota_coin * quota_mul)
 
             trader: Trader = create_trader(coin)
