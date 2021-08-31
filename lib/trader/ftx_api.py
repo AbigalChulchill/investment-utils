@@ -63,10 +63,11 @@ class Ftx:
                 raise FtxQueryError(status_code=response.status_code, data=response.json())
             return data['result']
 
+    def get_ticker(self, market: str) -> float:
+        return self._get(f"/markets/{market}")['price']
 
     def get_orderbook(self, market: str ) -> dict:
         return self._get(f"/markets/{market}/orderbook")
-
 
     def place_order(self, market: str, side: str, price: float, limit_or_market: str, size: float, reduce_only: bool = False, ioc: bool = False, post_only: bool = False) -> int:
         response = self._post("/orders", {
@@ -83,12 +84,3 @@ class Ftx:
 
     def get_order_status(self, order_id: int) -> dict:
         return self._get(f"/orders/{order_id}")
-
-    def get_subaccounts(self) -> dict:
-        return self._get("/subaccounts")
-
-    def create_subaccount(self, nickname: str) -> dict:
-        return self._post("/subaccounts", {"nickname": nickname })
-
-    def delete_subaccount(self, nickname: str) -> dict:
-        return self._delete("/subaccounts", {"nickname": nickname })

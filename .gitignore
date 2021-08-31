@@ -1,10 +1,6 @@
 __pycache__
 .pytest_cache
-/*.db
-/cache*.json
-poloniex_config.py
-ftx_config.py
-binance_config.py
-okex_config.py
-bitrue_config.py
-dca_settings.yml
+*.db
+cache*.json
+keys.yml
+

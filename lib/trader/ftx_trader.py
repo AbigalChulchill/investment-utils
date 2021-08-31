@@ -1,12 +1,15 @@
-from trader import Trader
-import ftx_api, ftx_config
 import time
+from . import ftx_api
+from .trader import Trader
 
 sym_to_market={
     'ftx-token':       'FTT/USD',
     'solana':          'SOL/USD',
     'bitcoin':         'WBTC/USD',
+    'ethereum-perpetual-futures':   'ETH-PERP',
+    'bitcoin-perpetual-futures':    'BTC-PERP',
 }
+
 
 class FtxTrader(Trader):
 
@@ -15,10 +18,9 @@ class FtxTrader(Trader):
         return sym in sym_to_market.keys()
 
 
-    def __init__(self, sym: str):
+    def __init__(self, sym: str, api_key: str, secret: str, subaccount: str):
         self.market = sym_to_market[sym]
-        self.api = ftx_api.Ftx(ftx_config.API_KEY, ftx_config.SECRET, ftx_config.SUBACCOUNT)
-
+        self.api = ftx_api.Ftx(api_key, secret, subaccount)
 
     def buy_market(self, qty_usd: float) -> float:
         market_price = self.api.get_orderbook(self.market)['asks'][0][0]

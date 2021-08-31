@@ -1,10 +1,10 @@
-import collections
+from collections import namedtuple
 from typing import List
 
-PnL = collections.namedtuple('PnL', ['realized_pnl', 'realized_pnl_percent', 'break_even_price', 'unrealized_sell_value', 'unrealized_pnl', 'unrealized_pnl_percent'])
+PnL = namedtuple('PnL', ['realized_pnl', 'realized_pnl_percent', 'break_even_price', 'unrealized_sell_value', 'unrealized_pnl', 'unrealized_pnl_percent'])
 INVALID_PERCENT = "~"
 
-Order = collections.namedtuple('Order', ['side', 'value', 'qty'])
+Order = namedtuple('Order', ['side', 'value', 'qty'])
 
 def calculate_inc_pnl(orders: List[Order], market_price_now: float) -> PnL:
 
@@ -46,5 +46,3 @@ def calculate_inc_pnl(orders: List[Order], market_price_now: float) -> PnL:
         unrealized_pnl,
         unrealized_pnl_percent
     )
-
-

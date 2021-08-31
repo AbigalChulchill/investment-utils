@@ -1,4 +1,4 @@
-from pnl import Order, calculate_pnl, calculate_inc_pnl, INVALID_PERCENT
+from lib.pnl import Order, calculate_inc_pnl, INVALID_PERCENT
 from math import isclose
 
 def test_calculate_pnl_no_buys_or_sells():

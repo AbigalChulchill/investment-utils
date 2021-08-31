@@ -1,12 +1,14 @@
-import os, json, datetime, argparse, re, yaml, traceback
-from trader_factory import TraderFactory
-from market_data import MarketData
-from trader import Trader
-import pnl
+import json, datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
 from termcolor import cprint
-from msg import err
 from typing import List
+
+from lib.trader.trader_factory import TraderFactory
+from lib.trader.trader import Trader
+from lib.common.market_data import MarketData
+from lib.common import pnl
+from lib.common.msg import err
+
 
 ds = dict()
 
@@ -20,10 +22,10 @@ def msg_remove(coin: str):
     cprint(f"selling : {coin}", 'green')
 
 def create_trader(coin: str) -> Trader:
-    return TraderFactory.create_trader(coin, ds['coin_exchg'][coin] if coin in ds['coin_exchg'].keys() else "dummy")
+    return TraderFactory.create_dca(coin, ds['coin_exchg'][coin])
 
 def create_dummy_trader(coin: str) -> Trader:
-    return TraderFactory.create_trader(coin, "dummy")
+    return TraderFactory.create_dummy(coin)
 
 def get_quota_fixed_multiplier(coin: str):
     param = 'quota_fixed_multiplier'
@@ -52,7 +54,7 @@ class TradeHelper:
 class Db:
     def __init__(self):
         import sqlite3
-        self.con = sqlite3.connect('dca.db')
+        self.con = sqlite3.connect('config/dca.db')
         self.con.execute('''CREATE TABLE IF NOT EXISTS dca (date text, sym text, qty real, price real)''')
         self.con.commit()
 
@@ -278,14 +280,8 @@ def stats(hide_private_data: bool):
 
 
 def read_settings() -> dict:
-    ds =dict ()
-    names = ['dca_settings.yml', 'dca_settings_default.yml']
-    for n in names:
-        if os.path.exists(n):
-            with open(n, 'r') as file:
-                ds = yaml.safe_load(file)
-                break
-    return ds
+    with open('config/dca.yml', 'r') as file:
+        return yaml.safe_load(file)
 
 
 def main():

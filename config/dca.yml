@@ -8,19 +8,17 @@ coin_exchg:
   matic-network:      poloniex
   cardano:            poloniex
   ripple:             poloniex
-  gitcoin:            bitrue
   shiba-inu:          poloniex
-  solana:             ftx
   curve-dao-token:    poloniex
   aave:               poloniex
   0x:                 poloniex
   havven:             poloniex
   ethereum-classic:   poloniex
+  solana:             ftx
   ftx-token:          ftx
   decentraland:       okex
-  pancakeswap-token:  binance
   tezos:              okex
-
+  gitcoin:            bitrue
 
 # list of coins to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
@@ -36,8 +34,8 @@ auto_accumulate_list:
   - havven
   - ethereum-classic
   - ftx-token
-  - decentraland
-  - tezos
+  # - decentraland
+  # - tezos
 
 
 # default quota for --add per coin if --qty is not specified

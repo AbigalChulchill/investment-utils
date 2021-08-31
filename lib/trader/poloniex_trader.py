@@ -1,7 +1,7 @@
-from trader import Trader
-import poloniex_api, poloniex_config
 import time, traceback
-from msg import warn
+from lib.common.msg import warn
+from . import poloniex_api
+from .trader import Trader
 
 sym_to_pair={
     'bitcoin':          'USDT_BTC',
@@ -28,9 +28,9 @@ class PoloniexTrader(Trader):
     def handles_sym(sym: str) -> bool:
         return sym in sym_to_pair.keys()
 
-    def __init__(self, sym: str):
+    def __init__(self, sym: str, api_key: str, secret: str):
         self.pair = sym_to_pair[sym]
-        self.api = poloniex_api.Poloniex(poloniex_config.API_KEY, poloniex_config.SECRET)
+        self.api = poloniex_api.Poloniex(api_key, secret)
 
     def buy_market(self, qty_usd: float) -> float:
         retries = MAX_RETRIES

@@ -1,6 +1,6 @@
-from trader import Trader
-import okex_api, okex_config
 import time
+from . import okex_api
+from .trader import Trader
 
 sym_to_market={
     'decentraland':       'MANA-USDT',
@@ -13,9 +13,9 @@ class OkexTrader(Trader):
     def handles_sym(sym: str) -> bool:
         return sym in sym_to_market.keys()
 
-    def __init__(self, sym: str):
+    def __init__(self, sym: str, api_key: str, secret: str, passw: str):
         self.market = sym_to_market[sym]
-        self.api = okex_api.Okex(okex_config.API_KEY, okex_config.SECRET, okex_config.PASS)
+        self.api = okex_api.Okex(api_key, secret, passw)
 
     def buy_market(self, qty_usd: float) -> float:
         market_price = float(self.api.get_ticker(self.market)[0]['askPx'])
