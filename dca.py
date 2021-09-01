@@ -278,7 +278,33 @@ def stats(hide_private_data: bool):
     df_pf_structure = df_pnl
     df_pf_structure['%'] = round(df_pf_structure['unrealized_sell_value'] / sum(df_pf_structure['unrealized_sell_value']) * 100, 1)
     df_pf_structure = df_pf_structure.sort_values('%', ascending=False)
-    print(df_pf_structure.to_string(index=False, columns=['coin', '%']))
+def order_replay(coin: str):
+    db = Db()
+    orders = db.get_sym_trades_for_pnl(coin)
+    for i in range(1,len(orders)+1):
+        stats_data = list()
+        orders_slice = orders[:i]
+        last_order = orders_slice[-1]
+        market_price = abs(last_order.value / last_order.qty)
+        print(f"order: {last_order.side} value={last_order.value} qty={last_order.qty}")
+        pnl_data = pnl.calculate_inc_pnl(orders_slice, market_price)
+
+        stats_data.append({
+            'coin': coin,
+            'break_even_price': pnl_data.break_even_price,
+            'current_price': market_price,
+            'unrealized_sell_value': pnl_data.unrealized_sell_value,
+            'r pnl': pnl_data.realized_pnl,
+            'r pnl %': pnl_data.realized_pnl_percent if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            'u pnl': pnl_data.unrealized_pnl,
+            'u pnl %': pnl_data.unrealized_pnl_percent if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+        })
+        
+        df_pnl = DataFrame.from_dict(stats_data)
+        print(df_pnl.to_string(index=False))
+        print("\n")
+    
+
 
 
 def read_settings() -> dict:
@@ -298,6 +324,7 @@ def main():
     parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
     parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
+    parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
     parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     args = parser.parse_args()
@@ -321,7 +348,8 @@ def main():
             print("burn: requires --coin")
     elif args.stats:
         stats(args.hide_private_data)
-
+    elif args.order_replay:
+        order_replay(args.coin[0])
 
 if __name__ == '__main__':
     main()
