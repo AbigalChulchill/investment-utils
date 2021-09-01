@@ -175,7 +175,7 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                 a.append({
                     'coin': coin,
                     'price': actual_price,
-                    'qty_factor': round(quota_mul,2),
+                    'quota_mul': round(quota_mul,2),
                     'usd': coin_qty*actual_price,
                     'coins': coin_qty,
                 })
