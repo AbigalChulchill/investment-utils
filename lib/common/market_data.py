@@ -36,7 +36,7 @@ class MarketData:
     def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
         #print(f"get_avg_price_n_days {coin}")
         api = BinanceAPI()
-        candles = api.get_candles(coin, "1d", limit=30)
+        candles = api.get_candles(coin, "1d", limit=days_before)
         df = pd.DataFrame.from_dict(candles)
         df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
         df.set_index('timestamp', inplace=True)
