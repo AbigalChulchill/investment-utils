@@ -1,7 +1,7 @@
 ---
 
-# map coin id to exchange
-coin_exchg:
+# map asset to exchange
+asset_exchg:
   #crypto
   bitcoin:            poloniex
   dogecoin:           poloniex
@@ -21,9 +21,16 @@ coin_exchg:
   tezos:              okex
   gitcoin:            bitrue
   #stocks:
-  coinbase-stock:     ftx
+  "#AAPL":            ftx
+  "#AMZN":            ftx
+  "#BABA":            ftx
+  "#COIN":            ftx
+  "#GOOGL":           ftx
+  "#FB":              ftx
+  "#MSTR":            ftx
+  "#PYPL":            ftx
 
-# list of coins to be accumulated when using --add with no additional parameters
+# list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
   - bitcoin
   - dogecoin
@@ -39,9 +46,18 @@ auto_accumulate_list:
   - ftx-token
   - decentraland
   - tezos
+  #- "#AAPL"
+  #- "#AMZN"
+  - "#BABA"
+  - "#COIN"
+  #- "#GOOGL"
+  #- "#FB"
+  - "#MSTR"
+  #- "#PYPL"
 
 
-# default quota for --add per coin if --qty is not specified
+
+# default quota for --add per asset if --qty is not specified
 quota_usd: 30
 
 

@@ -14,26 +14,6 @@ def get_api_endpoint():
 
 
 
-id_to_pair={
-  "bitcoin":            "BTCUSDT",
-  "dogecoin":           "DOGEUSDT",
-  "ethereum":           "ETHUSDT",
-  "cardano":            "ADAUSDT",
-  "ripple":             "XRPUSDT",
-  "shiba-inu":          "SHIBUSDT",
-  "curve-dao-token":    "CRVUSDT",
-  "aave":               "AAVEUSDT",
-  "0x":                 "ZRXUSDT",
-  "havven":             "SNXUSDT",
-  "ethereum-classic":   "ETCUSDT",
-  "solana":             "SOLUSDT",
-  "ftx-token":          "FTTUSDT",
-  "decentraland":       "MANAUSDT",
-  "tezos":              "XTZUSDT",
-  "gitcoin":            "GTCUSDT",
-}
-
-
 class Binance:
     def __init__(self) -> None:
         self._session = requests.Session()
@@ -50,19 +30,19 @@ class Binance:
         response.raise_for_status()
         return response.json()
 
-    def get_orderbook(self, coin: str) -> dict:
-        return self._get("/api/v3/depth", {'symbol': id_to_pair[coin] })
+    def get_orderbook(self, pair: str) -> dict:
+        return self._get("/api/v3/depth", {'symbol': pair })
 
-    def get_current_price(self, coin: str) -> dict:
-        return float(self._get("/api/v3/avgPrice", {'symbol': id_to_pair[coin] })['price'])
+    def get_current_price(self, pair: str) -> dict:
+        return float(self._get("/api/v3/avgPrice", {'symbol': pair})['price'])
 
-    def get_24h_change_percent(self, coin: str) -> dict:
-        return float(self._get("/api/v3/ticker/24hr", {'symbol': id_to_pair[coin] })['priceChangePercent'])
+    def get_24h_change_percent(self, pair: str) -> dict:
+        return float(self._get("/api/v3/ticker/24hr", {'symbol': pair})['priceChangePercent'])
 
 
-    def get_candles(self, coin: str, interval: str, ts_start: int=None, ts_end: int=None, limit=None) -> dict:
+    def get_candles(self, pair: str, interval: str, ts_start: int=None, ts_end: int=None, limit=None) -> dict:
         params={
-            'symbol':      id_to_pair[coin],
+            'symbol':      pair,
             'interval':    interval,
         }
         if ts_start:

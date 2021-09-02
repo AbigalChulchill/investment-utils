@@ -23,7 +23,7 @@ def msg_remove(coin: str):
     cprint(f"selling : {coin}", 'green')
 
 def create_trader(coin: str) -> Trader:
-    return TraderFactory.create_dca(coin, ds['coin_exchg'][coin])
+    return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
 
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_dummy(coin)
@@ -44,7 +44,7 @@ def pretty_json(s):
 
 class TradeHelper:
     def __init__(self, ids: list):
-        self.market_data = MarketData(list(set(ids + list(ds['coin_exchg'].keys()))))
+        self.market_data = MarketData(list(set(ids + list(ds['asset_exchg'].keys()))))
 
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
@@ -162,11 +162,8 @@ def accumulate(qty: float, coins: list[str], dry: bool):
             else:
                 quota_coin = get_quota(coin)
                 current_price = th.get_market_price(coin)
-                try: # get_avg_price_n_days might fail if the asset is not known by Binance. 
-                    avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
-                    quota_mul = avg_price_last_n_days / current_price                
-                except:
-                    warn(f"average price data on {coin} is not available, using default quota_mul")
+                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
+                quota_mul = avg_price_last_n_days / current_price
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
                 daily_qty = round(quota_coin * quota_mul)
 

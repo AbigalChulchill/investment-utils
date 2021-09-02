@@ -3,12 +3,21 @@ from . import ftx_api
 from .trader import Trader
 
 sym_to_market={
+    #crypto
     'ftx-token':       'FTT/USD',
     'solana':          'SOL/USD',
     'bitcoin':         'WBTC/USD',
     'ethereum-perpetual-futures':   'ETH-PERP',
     'bitcoin-perpetual-futures':    'BTC-PERP',
-    'coinbase-stock':  'COIN/USD',
+    #stocks
+    '#AAPL':  'AAPL/USD',
+    '#AMZN':  'AMZN/USD',
+    '#BABA':  'BABA/USD',
+    '#COIN':  'COIN/USD',
+    '#GOOGL': 'GOOGL/USD',
+    '#FB':    'FB/USD',
+    '#MSTR':  'MSTR/USD',
+    '#PYPL':  'PYPL/USD',
 }
 
 
