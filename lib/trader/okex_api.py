@@ -83,3 +83,6 @@ class Okex:
             'ordId': order_id,
         })[0]
 
+    def get_balances(self) -> Dict:
+        return self._get("/api/v5/account/balance")[0]['details']
+

@@ -84,3 +84,6 @@ class Ftx:
 
     def get_order_status(self, order_id: int) -> dict:
         return self._get(f"/orders/{order_id}")
+
+    def get_balances(self) -> dict:
+        return self._get("/wallet/balances")

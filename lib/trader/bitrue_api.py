@@ -70,3 +70,6 @@ class Bitrue:
             'symbol': symbol,
             'orderId': order_id,
         })
+    
+    def get_balances(self) -> Dict:
+        return self._get("/api/v1/account")['balances']

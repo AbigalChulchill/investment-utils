@@ -6,6 +6,7 @@ from typing import List
 from lib.trader.trader_factory import TraderFactory
 from lib.trader.trader import Trader
 from lib.common.market_data import MarketData
+from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import err, warn
 
@@ -140,6 +141,11 @@ class Db:
         return avg_price
 
 
+def print_account_balances():
+    title("Account Balances, USD")
+    df_balances = DataFrame.from_dict(accounts_balance.get_available_usd_balances_dca())
+    print(df_balances.to_string(index=False, header=False))
+
 
 def accumulate(qty: float, coins: list[str], dry: bool):
     db = Db()
@@ -157,8 +163,8 @@ def accumulate(qty: float, coins: list[str], dry: bool):
                 quota_coin = get_quota(coin)
                 current_price = th.get_market_price(coin)
                 try: # get_avg_price_n_days might fail if the asset is not known by Binance. 
-                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
-                    quota_mul = avg_price_last_n_days / current_price
+                    avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
+                    quota_mul = avg_price_last_n_days / current_price                
                 except:
                     warn(f"average price data on {coin} is not available, using default quota_mul")
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
@@ -188,6 +194,7 @@ def accumulate(qty: float, coins: list[str], dry: bool):
         print(df.to_string(index=False))
     else:
         print('nothing was added.')
+    print_account_balances()
 
 
 def remove(coin: str, qty: str, dry: bool):
@@ -278,6 +285,9 @@ def stats(hide_private_data: bool):
     df_pf_structure = df_pnl
     df_pf_structure['%'] = round(df_pf_structure['unrealized_sell_value'] / sum(df_pf_structure['unrealized_sell_value']) * 100, 1)
     df_pf_structure = df_pf_structure.sort_values('%', ascending=False)
+    print(df_pf_structure.to_string(index=False, header=False, columns=['coin', '%']))
+
+
 def order_replay(coin: str):
     db = Db()
     orders = db.get_sym_trades_for_pnl(coin)
@@ -303,8 +313,6 @@ def order_replay(coin: str):
         df_pnl = DataFrame.from_dict(stats_data)
         print(df_pnl.to_string(index=False))
         print("\n")
-    
-
 
 
 def read_settings() -> dict:
@@ -325,6 +333,7 @@ def main():
     parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
+    parser.add_argument('--balances', action='store_const', const='True', help='Print available balances on accouns')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
     parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     args = parser.parse_args()
@@ -350,6 +359,8 @@ def main():
         stats(args.hide_private_data)
     elif args.order_replay:
         order_replay(args.coin[0])
+    elif args.balances:
+        print_account_balances()
 
 if __name__ == '__main__':
     main()
