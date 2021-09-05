@@ -17,6 +17,7 @@ sym_to_pair={
     "0x":               "USDT_ZRX",
     "havven":           "USDT_SNX",
     "ethereum-classic": "USDT_ETC",
+    "polkadot":         "USDT_DOT",
 }
 
 MAX_RETRIES = 3

@@ -15,6 +15,7 @@ asset_exchg:
   0x:                 poloniex
   havven:             poloniex
   ethereum-classic:   poloniex
+  polkadot:           poloniex
   solana:             ftx
   ftx-token:          ftx
   decentraland:       okex
@@ -33,7 +34,6 @@ asset_exchg:
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
   - bitcoin
-  - dogecoin
   - ethereum
   - ripple
   - solana
@@ -46,6 +46,7 @@ auto_accumulate_list:
   - ftx-token
   - decentraland
   - tezos
+  - polkadot
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"
