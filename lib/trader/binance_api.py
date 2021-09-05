@@ -1,5 +1,6 @@
-import hashlib, hmac, time, random, requests
+import random, requests, datetime, math
 from typing import Optional, Dict, Any
+from .. common.convert import timeframe_to_interval_ms
 
 BINANCE_API_ENDPOINTS = [
     "https://api.binance.com",
@@ -11,6 +12,11 @@ BINANCE_API_ENDPOINTS = [
 
 def get_api_endpoint():
     return random.choice(BINANCE_API_ENDPOINTS)
+
+
+def datetime_iso_to_binance(dt: str)->int:
+    return math.floor(datetime.datetime.fromisoformat(dt).replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
+
 
 
 
@@ -39,8 +45,8 @@ class Binance:
     def get_24h_change_percent(self, pair: str) -> dict:
         return float(self._get("/api/v3/ticker/24hr", {'symbol': pair})['priceChangePercent'])
 
-
-    def get_candles(self, pair: str, interval: str, ts_start: int=None, ts_end: int=None, limit=None) -> dict:
+    def _get_candles(self, pair: str, interval: str, ts_start: int=None, ts_end: int=None, limit=None) -> dict:
+        
         params={
             'symbol':      pair,
             'interval':    interval,
@@ -52,6 +58,21 @@ class Binance:
         if limit:
             params['limit'] = limit
         klines = self._get("/api/v3/klines", params)
-        candles = [ {'timestamp': x[0], 'open': x[1] , 'high': x[2], 'low': x[3], 'close': x[4], } for x in klines]
+        candles = [ {'timestamp': x[0], 'open': x[1] , 'high': x[2], 'low': x[3], 'close': x[4], 'volume': x[5], 'timestamp_close': x[6] } for x in klines]
         return candles
 
+    def get_candles_by_limit(self, pair: str, interval: str, limit: int) -> dict:
+        return self._get_candles(pair, interval, limit=limit)
+
+    def get_candles_by_range(self, pair: str, interval: str, dt_start: str, dt_end: str) -> dict:
+        candles = []
+        ts_start = datetime_iso_to_binance(dt_start)
+        ts_end = datetime_iso_to_binance(dt_end)
+        # default binance limit is 500 candles per call, so make sure we are below it
+        step =  timeframe_to_interval_ms[interval] * 300
+        pos = ts_start
+        while pos < ts_end:
+            next_candles =self._get_candles(pair, interval, ts_start=pos, ts_end=min(pos+step,ts_end))
+            pos += step
+            candles += next_candles
+        return candles

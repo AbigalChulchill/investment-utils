@@ -4,28 +4,8 @@ import pandas as pd
 import yfinance as yf
 from typing import List
 from .. trader.binance_api import Binance as BinanceAPI
+from .. common.convert import coingecko_id_to_binance
 
-
-
-
-coin_id_to_binance_pair={
-  "bitcoin":            "BTCUSDT",
-  "dogecoin":           "DOGEUSDT",
-  "ethereum":           "ETHUSDT",
-  "cardano":            "ADAUSDT",
-  "ripple":             "XRPUSDT",
-  "shiba-inu":          "SHIBUSDT",
-  "curve-dao-token":    "CRVUSDT",
-  "aave":               "AAVEUSDT",
-  "0x":                 "ZRXUSDT",
-  "havven":             "SNXUSDT",
-  "ethereum-classic":   "ETCUSDT",
-  "solana":             "SOLUSDT",
-  "ftx-token":          "FTTUSDT",
-  "decentraland":       "MANAUSDT",
-  "tezos":              "XTZUSDT",
-  "gitcoin":            "GTCUSDT",
-}
 
 
 def is_stock(asset: str):
@@ -68,7 +48,7 @@ class MarketData:
             df['ma'] = talib.MA(df['Close'], days_before)
         else:
             api = BinanceAPI()
-            candles = api.get_candles(coin_id_to_binance_pair[asset], "1d", limit=days_before)
+            candles = api.get_candles_by_limit(coingecko_id_to_binance[asset], "1d", limit=days_before)
             df = pd.DataFrame.from_dict(candles)
             df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
             df.set_index('timestamp', inplace=True)
