@@ -3,4 +3,5 @@ __pycache__
 *.db
 cache*.json
 keys.yml
+lib/bots/strategies/custom
 
