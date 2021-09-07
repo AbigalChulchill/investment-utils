@@ -27,7 +27,7 @@ class TraderFactory:
             if BitrueTrader.handles_sym(sym):
                 api_key, secret = cfg.get_bitrue_ks()
                 return BitrueTrader(sym, api_key, secret)
-        raise f"{sym} can't be traded"
+        raise ValueError(f"{sym} can't be traded")
 
     def create_trading_real(sym: str) -> Trader:
         cfg = ApiKeysConfig()

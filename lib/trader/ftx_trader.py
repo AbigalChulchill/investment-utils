@@ -7,17 +7,20 @@ sym_to_market={
     'ftx-token':       'FTT/USD',
     'solana':          'SOL/USD',
     'bitcoin':         'WBTC/USD',
-    'ethereum-perpetual-futures':   'ETH-PERP',
-    'bitcoin-perpetual-futures':    'BTC-PERP',
     #stocks
     '#AAPL':  'AAPL/USD',
     '#AMZN':  'AMZN/USD',
     '#BABA':  'BABA/USD',
+    '#BILI':  'BILI/USD',
     '#COIN':  'COIN/USD',
-    '#GOOGL': 'GOOGL/USD',
     '#FB':    'FB/USD',
+    '#GBTC':  'GBTC/USD',
+    '#GOOGL': 'GOOGL/USD',
     '#MSTR':  'MSTR/USD',
+    '#NIO':   'NIO/USD',
     '#PYPL':  'PYPL/USD',
+    '#TSLA':  'TSLA/USD',
+    '#TWTR':  'TWTR/USD',
 }
 
 

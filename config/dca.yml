@@ -22,14 +22,19 @@ asset_exchg:
   tezos:              okex
   gitcoin:            bitrue
   #stocks:
-  "#AAPL":            ftx
-  "#AMZN":            ftx
-  "#BABA":            ftx
-  "#COIN":            ftx
-  "#GOOGL":           ftx
-  "#FB":              ftx
-  "#MSTR":            ftx
-  "#PYPL":            ftx
+  "#AAPL":            ftx  # Apple Inc.
+  "#AMZN":            ftx  # Amazon.com Inc.
+  "#BABA":            ftx  # Alibaba Group Hldg (ADR) [China]
+  "#BILI":            ftx  # Bilibili Inc. [China] [game publisher]
+  "#COIN":            ftx  # Coinbase Global Inc.
+  "#FB":              ftx  # Facebook Inc.
+  "#GBTC":            ftx  # Grayscale bitcoin trust
+  "#GOOGL":           ftx  # Alphabet Inc.
+  "#MSTR":            ftx  # MicroStrategy Inc.
+  "#NIO":             ftx  # NIO Inc. [China] [electrocars]
+  "#PYPL":            ftx  # PayPal Holdings
+  "#TSLA":            ftx  # Tesla Inc.
+  "#TWTR":            ftx  # Twitter Inc.
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
@@ -50,12 +55,16 @@ auto_accumulate_list:
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"
+  - "#BILI"
   - "#COIN"
-  #- "#GOOGL"
   #- "#FB"
+  - "#GBTC"
+  #- "#GOOGL"
   - "#MSTR"
+  - "#NIO"
   #- "#PYPL"
-
+  - "#TSLA"
+  - "#TWTR"
 
 
 # default quota for --add per asset if --qty is not specified
