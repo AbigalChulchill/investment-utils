@@ -9,12 +9,16 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import err, warn
+from lib.common.misc import is_stock
 
 
 ds = dict()
 
 def title(name: str):
     cprint(f"\n{name}\n", 'red', attrs=['bold'])
+
+def title2(name: str):
+    cprint(f"  {name}", 'white', attrs=['bold'])
 
 def msg_accumulate(coin: str):
     cprint(f"buying : {coin}", 'green')
@@ -247,42 +251,68 @@ def close(coin: str):
 
 
 def stats(hide_private_data: bool):
+    title("PnL")
     db = Db()
     th = TradeHelper(db.get_syms())
-    syms = db.get_syms()
-    stats_data = list()
-    for coin in syms:
-
-        market_price = th.get_market_price(coin)
-        available_qty = db.get_sym_available_qty(coin)
-        pnl_data = pnl.calculate_inc_pnl(db.get_sym_trades_for_pnl(coin), market_price)
-
-        stats_data.append({
-            'coin': coin,
-            'available_qty': available_qty,
-            'break_even_price': pnl_data.break_even_price,
-            'current_price': market_price,
-            '24h chg %': round(th.get_24h_change(coin),1),
-            'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
-            'r pnl': round(pnl_data.realized_pnl,1),
-            'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
-            'u pnl': round(pnl_data.unrealized_pnl,1),
-            'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
-        })
-    title("PnL")
-    df_pnl = DataFrame.from_dict(stats_data)
-    df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
-    columns=["coin", "break_even_price", "current_price", "u pnl %"] if hide_private_data else None
-    formatters={
-        'buy_qty':          lambda x: f'{x:8.8f}',
-        'available_qty':    lambda x: f'{x:8.8f}',
+    assets = db.get_syms()
+    asset_groups= {
+        'Crypto': [x for x in assets if not is_stock(x)],
+        'Stocks': [x for x in assets if is_stock(x)]
     }
-    print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+    asset_group_pnl_df={}
+    for asset_group in asset_groups.keys():
+        title2(asset_group)
+        stats_data = list()
+        for coin in asset_groups[asset_group]:
+
+            market_price = th.get_market_price(coin)
+            available_qty = db.get_sym_available_qty(coin)
+            pnl_data = pnl.calculate_inc_pnl(db.get_sym_trades_for_pnl(coin), market_price)
+
+            stats_data.append({
+                'asset': coin,
+                'available_qty': available_qty,
+                'break_even_price': pnl_data.break_even_price,
+                'current_price': market_price,
+                '24h chg %': round(th.get_24h_change(coin),1),
+                'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
+                'r pnl': round(pnl_data.realized_pnl,1),
+                'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+                'u pnl': round(pnl_data.unrealized_pnl,1),
+                'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            })
+        df_pnl = DataFrame.from_dict(stats_data)
+        df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
+        columns=["asset", "break_even_price", "current_price", "u pnl %"] if hide_private_data else None
+        formatters={
+            'buy_qty':          lambda x: f'{x:8.8f}',
+            'available_qty':    lambda x: f'{x:8.8f}',
+        }
+        print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+        print("")
+        asset_group_pnl_df[asset_group] = df_pnl
+
     title("Portfolio Structure")
-    df_pf_structure = df_pnl
-    df_pf_structure['%'] = round(df_pf_structure['unrealized_sell_value'] / sum(df_pf_structure['unrealized_sell_value']) * 100, 1)
-    df_pf_structure = df_pf_structure.sort_values('%', ascending=False)
-    print(df_pf_structure.to_string(index=False, header=False, columns=['coin', '%']))
+    for asset_group in asset_groups.keys():
+        title2(asset_group)
+        df = asset_group_pnl_df[asset_group]
+        df['%'] = round(df['unrealized_sell_value'] / sum(df['unrealized_sell_value']) * 100, 1)
+        df = df.sort_values('%', ascending=False)
+        print(df.to_string(index=False, header=False, columns=['asset', '%']))
+        print("")
+
+    title2("By asset group")
+    total_unrealized_sell_value = sum(sum(df['unrealized_sell_value']) for df in asset_group_pnl_df.values())
+    stats_data = list()
+    for asset_group in asset_groups.keys():
+        stats_data.append({
+            'asset_group': asset_group,
+            '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized_sell_value']) / total_unrealized_sell_value * 100, 1),
+        })
+    df = DataFrame.from_dict(stats_data)
+    df = df.sort_values('%', ascending=False)
+    print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
+    print("")
 
 
 def order_replay(coin: str):

@@ -5,11 +5,7 @@ import yfinance as yf
 from typing import List
 from .. trader.binance_api import Binance as BinanceAPI
 from .. common.convert import coingecko_id_to_binance
-
-
-
-def is_stock(asset: str):
-    return asset[0] == "#"
+from .. common.misc import is_stock
 
 
 class MarketData:
