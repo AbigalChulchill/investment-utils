@@ -52,6 +52,7 @@ class BrokerAdapterPnL(Broker):
         self._broker = broker
         self._ticker = ticker
         self._orders:List[pnl.Order] = list()
+        self._pnl = None
 
     def _print_pnl(self):
         pnl_data = pnl.calculate_inc_pnl(self._orders, self._ticker.market_price)
@@ -60,9 +61,12 @@ class BrokerAdapterPnL(Broker):
             'break_even_price': pnl_data.break_even_price,
             'r pnl': round(pnl_data.realized_pnl,1),
             'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            'u pnl': round(pnl_data.unrealized_pnl,1),
+            'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
         })
         df_pnl = pd.DataFrame.from_dict(stats_data)
         print(df_pnl.to_string(index=False))
+        self._pnl = pnl_data
 
 
     def buy(self, qty: float)->Tuple[float,float]:
@@ -87,6 +91,9 @@ class BrokerAdapterPnL(Broker):
     def account_size_token(self) -> float:
         return self._broker.account_size_token
 
+    @property
+    def pnl(self) -> pnl.PnL:
+        return self._pnl
 
 
 class TickerRealtime(Ticker):

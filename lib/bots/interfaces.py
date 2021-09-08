@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
 import pandas as pd
+from lib.common import pnl
 
 class Broker:
     def buy(self, qty: float)->Tuple[float,float]:
@@ -21,6 +22,10 @@ class Broker:
 
     @property
     def account_size_token(self) -> float:
+        raise NotImplementedError()
+
+    @property
+    def pnl(self) -> pnl.PnL:
         raise NotImplementedError()
 
 
