@@ -57,6 +57,7 @@ class BrokerAdapterPnL(Broker):
         pnl_data = pnl.calculate_inc_pnl(self._orders, self._ticker.market_price)
         stats_data = []
         stats_data.append({
+            'break_even_price': pnl_data.break_even_price,
             'r pnl': round(pnl_data.realized_pnl,1),
             'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
         })

@@ -52,7 +52,7 @@ class MarketData:
             df = pd.DataFrame.from_dict(candles)
             df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
             df.set_index('timestamp', inplace=True)
-            df['ma'] = talib.MA(df['close'], days_before)
+            df['ma'] = talib.MA(df['close'], min(len(df), days_before))
         r = df['ma'][-1]
         if r != r:
             raise ValueError("ma == NaN")
