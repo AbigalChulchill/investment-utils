@@ -1,7 +1,8 @@
 __pycache__
 .pytest_cache
+reports/
+cache/
 *.db
-cache*.json
 keys.yml
 lib/bots/strategies/custom
 

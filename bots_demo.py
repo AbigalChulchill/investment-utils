@@ -11,22 +11,24 @@ def get_strategy_class(name: str):
             next
     if strategy_module is None:
         raise ValueError(f"strategy not found: {name}")
-    strategy_class = getattr(strategy_module, f"Trader{name}")
+    strategy_class = getattr(strategy_module, f"StrategyImpl")
     return strategy_class
 
 
-def create_conductor_backtesting(strategy: str, strategy_args: dict(), sym: str, tf: str, dt_start: str, dt_end: str, initial_account: float):
+def create_conductor_backtesting(strategy: str, strategy_args: dict(), sym: str, tf: str, dt_start: str, dt_end: str, initial_account: float, with_pnl: bool):
     ticker = TickerHistorical(sym, tf, dt_start, dt_end)
     broker = DummyBroker(ticker=ticker, initial_account=initial_account)
-    broker = BrokerAdapterPnL(ticker=ticker, broker=broker)
+    if with_pnl:
+        broker = BrokerAdapterPnL(ticker=ticker, broker=broker)
     strategy = get_strategy_class(strategy)(strategy_args)
     return BacktestingConductor(strategy=strategy, ticker=ticker, broker=broker)
 
 
-def create_conductor_live(strategy: str, strategy_args: dict(), sym: str, tf: str):
+def create_conductor_live(strategy: str, strategy_args: dict(), sym: str, tf: str, with_pnl: bool):
     ticker = TickerLive(sym, tf)
     broker = DummyBroker(ticker=ticker)
-    #broker = BrokerAdapterPnL(ticker=ticker, broker=broker)
+    if with_pnl:
+        broker = BrokerAdapterPnL(ticker=ticker, broker=broker)
     strategy = get_strategy_class(strategy)(strategy_args)
     return LiveConductor(strategy=strategy, ticker=ticker, broker=broker)
 
@@ -42,6 +44,7 @@ def create_conductor_live(strategy: str, strategy_args: dict(), sym: str, tf: st
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backtest', action='store_const', const='True', help='Run in backtesting mode. Without this parameter run in live mode (default)')
+    parser.add_argument('--pnl',      nargs='?', type=bool, const=True, default=False, help='Calculate and report PnL of each trade')
     parser.add_argument('--strategy', type=str, help='Name of the strategy to use')
     parser.add_argument('--sym',      type=str, help='symbol to trade')
     parser.add_argument('--account',  type=float, default=1000, help='total money available for trading session')
@@ -63,12 +66,10 @@ def main():
             k,v = kv.split("=")
             strategy_args[k] = v
 
-
-
     if args.backtest:
-        conductor = create_conductor_backtesting(strategy=args.strategy, strategy_args=strategy_args, sym=args.sym, tf=args.tf, dt_start=args.start, dt_end=args.end, initial_account=args.account)
+        conductor = create_conductor_backtesting(strategy=args.strategy, strategy_args=strategy_args, sym=args.sym, tf=args.tf, dt_start=args.start, dt_end=args.end, initial_account=args.account, with_pnl=args.pnl)
     else:
-        conductor = create_conductor_live(strategy=args.strategy,strategy_args=strategy_args, sym=args.sym, tf=args.tf)
+        conductor = create_conductor_live(strategy=args.strategy,strategy_args=strategy_args, sym=args.sym, tf=args.tf, with_pnl=args.pnl)
 
     conductor.run()
 

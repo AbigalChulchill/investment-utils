@@ -3,8 +3,8 @@ from lib.common import ta
 from lib.common import position_size
 import talib
 
-class TraderMACross(Strategy):
-    def __init__(self):
+class StrategyImpl(Strategy):
+    def __init__(self, args: dict={}):
         self._position = 0
         self._risk = 1
         self._long_enabled = True
