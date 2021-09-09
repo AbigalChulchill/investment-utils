@@ -41,14 +41,15 @@ class MarketData:
             elif days_before <= 365:
                 period = "1y"
             df = ticker.history(period=period)
-            df['ma'] = talib.MA(df['Close'], days_before)
+            df['close'] = df['Close']
         else:
             api = BinanceAPI()
             candles = api.get_candles_by_limit(coingecko_id_to_binance[asset], "1d", limit=days_before)
             df = pd.DataFrame.from_dict(candles)
             df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
             df.set_index('timestamp', inplace=True)
-            df['ma'] = talib.MA(df['close'], min(len(df), days_before))
+
+        df['ma'] = talib.MA(df['close'], min(len(df), days_before))
         r = df['ma'][-1]
         if r != r:
             raise ValueError("ma == NaN")
