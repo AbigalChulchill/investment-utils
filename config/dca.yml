@@ -81,3 +81,7 @@ quota_multiplier_average_days: 200
 
 # quota multiplier is upper limited to quota_multiplier_max
 quota_multiplier_max: 2
+
+
+# asset from auto_accumulate_list is only processed if currently market is open or this parameter is True
+accumulate_when_market_closed: False

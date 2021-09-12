@@ -53,6 +53,9 @@ class TradeHelper:
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
 
+    def is_tradeable(self, asset: str) -> bool:
+        return self.market_data.is_tradeable(asset)
+
     def get_24h_change(self, coin: str) -> float:
         return self.market_data.get_24h_change(coin)
 
@@ -151,43 +154,48 @@ def print_account_balances():
     print(df_balances.to_string(index=False, header=False))
 
 
-def accumulate(qty: float, coins: list[str], dry: bool):
+def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
     db = Db()
-    th = TradeHelper(db.get_syms())
+    th = TradeHelper(assets)
     a= list()
-    for coin in coins:
+    
+    for asset in assets:
 
-        msg_accumulate(coin)
+        msg_accumulate(asset)
+
+        if not (th.is_tradeable(asset) or ds['accumulate_when_market_closed'] or single_mode):
+            print("skipped -- market is closed")
+            continue
 
         try:
             quota_mul = 1
             if qty:
                 daily_qty = qty
             else:
-                quota_coin = get_quota(coin)
-                current_price = th.get_market_price(coin)
-                avg_price_last_n_days = th.get_avg_price_n_days(coin, ds['quota_multiplier_average_days'])
+                quota_asset = get_quota(asset)
+                current_price = th.get_market_price(asset)
+                avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
                 quota_mul = avg_price_last_n_days / current_price
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
-                daily_qty = round(quota_coin * quota_mul)
+                daily_qty = round(quota_asset * quota_mul)
 
-            trader: Trader = create_trader(coin)
+            trader: Trader = create_trader(asset)
             if trader:
                 if dry:
-                    actual_price = th.get_market_price(coin)
+                    actual_price = th.get_market_price(asset)
                     coin_qty = daily_qty / actual_price
                 else:
                     actual_price, coin_qty = trader.buy_market(daily_qty)
-                    db.add(coin, coin_qty, actual_price)
+                    db.add(asset, coin_qty, actual_price)
                 a.append({
-                    'coin': coin,
+                    'asset': asset,
                     'price': actual_price,
                     'quota_mul': round(quota_mul,2),
                     'usd': coin_qty*actual_price,
-                    'coins': coin_qty,
+                    'coins/shares': coin_qty,
                 })
         except Exception as e:
-            err(f"{coin} : was not added")
+            err(f"{asset} : was not added")
             traceback.print_exc()
 
     if len(a):
@@ -353,11 +361,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
-    parser.add_argument('--remove', nargs=1, type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
-    parser.add_argument('--burn', nargs=1, type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
+    parser.add_argument('--remove', type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
+    parser.add_argument('--burn', type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
-    parser.add_argument('--qty', nargs=1, type=int, help='Quota in USD for every position')
-    parser.add_argument('--coin', nargs=1, type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
+    parser.add_argument('--qty', type=int, help='Quota in USD for every position')
+    parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print available balances on accouns')
@@ -366,26 +374,26 @@ def main():
     args = parser.parse_args()
 
     if args.add:
-        accumulate(qty=args.qty[0] if args.qty else None, coins=args.coin if args.coin else ds['auto_accumulate_list'], dry=args.dry)
+        accumulate(qty=args.qty if args.qty else None, assets=[args.coin] if args.coin else ds['auto_accumulate_list'], single_mode=args.coin is not None, dry=args.dry)
     elif args.remove:
         if args.coin:
-            remove(coin=args.coin[0], qty=args.remove[0], dry=args.dry)
+            remove(coin=args.coin, qty=args.remove, dry=args.dry)
         else:
             print("remove: requires --coin")
     elif args.close:
         if args.coin:
-            close(coin=args.coin[0])
+            close(coin=args.coin)
         else:
             print("close: requires --coin")
     elif args.burn:
         if args.coin:
-            burn(coin=args.coin[0], qty=args.burn[0])
+            burn(coin=args.coin, qty=args.burn)
         else:
             print("burn: requires --coin")
     elif args.stats:
         stats(args.hide_private_data)
     elif args.order_replay:
-        order_replay(args.coin[0])
+        order_replay(args.coin)
     elif args.balances:
         print_account_balances()
 

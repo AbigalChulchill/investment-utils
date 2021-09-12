@@ -14,20 +14,32 @@ class MarketData:
         # so we don't call API for every single item (because of frequency limits)
         coin_ids = [x for x in asset_ids if not is_stock(x)]
         cg = pycoingecko.CoinGeckoAPI()
-        self.price_data = cg.get_price(ids=coin_ids, vs_currencies='usd', include_24hr_change="true")
+        self._price_data = cg.get_price(ids=coin_ids, vs_currencies='usd', include_24hr_change="true")
+        self._stock_info = dict()
+
+    def _get_cached_stock_info(self, asset: str):
+        if not asset in self._stock_info:
+            ticker = yf.Ticker(asset.replace("#", ""))
+            self._stock_info[asset] = ticker.info
+        return self._stock_info[asset]
 
     def get_market_price(self, asset: str) -> float:
         if is_stock(asset):
-            ticker = yf.Ticker(asset.replace("#", ""))
-            return ticker.info['currentPrice']
+            return self._get_cached_stock_info(asset)['currentPrice']
         else:
-            return float(self.price_data[asset]['usd'])
+            return float(self._price_data[asset]['usd'])
+
+    def is_tradeable(self, asset: str) -> bool:
+        if is_stock(asset):
+            return self._get_cached_stock_info(asset)['tradeable']
+        else:
+            return True
 
     def get_24h_change(self, asset: str) -> float:
         if is_stock(asset):
             return 0
         else:
-            return float(self.price_data[asset]['usd_24h_change'])
+            return float(self._price_data[asset]['usd_24h_change'])
 
     def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
         if is_stock(asset):
