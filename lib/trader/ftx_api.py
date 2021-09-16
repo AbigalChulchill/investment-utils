@@ -97,5 +97,8 @@ class Ftx:
     def get_markets(self) -> dict:
         return self._get("/markets")
 
+    def get_future_stats(self, market: str) -> dict:
+        return self._get(f"/futures/{market}/stats")
+
     def get_funding_rates(self) -> dict:
         return self._get("/funding_rates")
