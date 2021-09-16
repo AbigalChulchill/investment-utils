@@ -85,5 +85,17 @@ class Ftx:
     def get_order_status(self, order_id: int) -> dict:
         return self._get(f"/orders/{order_id}")
 
+    def get_account_information(self) -> dict:
+        return self._get("/account")
+
     def get_balances(self) -> dict:
         return self._get("/wallet/balances")
+
+    def get_positions(self) -> dict:
+        return self._get("/positions")
+
+    def get_markets(self) -> dict:
+        return self._get("/markets")
+
+    def get_funding_rates(self) -> dict:
+        return self._get("/funding_rates")
