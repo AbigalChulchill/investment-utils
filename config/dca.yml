@@ -21,6 +21,9 @@ asset_exchg:
   decentraland:       okex
   tezos:              okex
   gitcoin:            bitrue
+  basic-attention-token: poloniex
+  enjincoin:          ftx
+  fantom:             ftx
   #stocks:
   "#AAPL":            ftx  # Apple Inc.
   "#AMZN":            ftx  # Amazon.com Inc.
@@ -52,6 +55,9 @@ auto_accumulate_list:
   - decentraland
   - tezos
   - polkadot
+  - basic-attention-token
+  - enjincoin
+  - fantom
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"

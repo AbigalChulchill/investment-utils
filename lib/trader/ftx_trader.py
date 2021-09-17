@@ -7,6 +7,9 @@ sym_to_market={
     'ftx-token':       'FTT/USD',
     'solana':          'SOL/USD',
     'bitcoin':         'WBTC/USD',
+    'enjincoin':       'ENJ/USD',
+    'fantom':          'FTM/USD',
+
     #stocks
     '#AAPL':  'AAPL/USD',
     '#AMZN':  'AMZN/USD',

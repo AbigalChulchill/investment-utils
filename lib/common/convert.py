@@ -35,4 +35,7 @@ coingecko_id_to_binance={
   "tezos":              "XTZUSDT",
   "gitcoin":            "GTCUSDT",
   "polkadot":           "DOTUSDT",
+  "basic-attention-token": "BATUSDT",
+  "enjincoin":          "ENJUSDT",
+  "fantom":             "FTMUSDT",
 }
