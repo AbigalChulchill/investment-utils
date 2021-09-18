@@ -1,10 +1,10 @@
-import argparse, time
+import argparse, time, datetime
 from collections import defaultdict
-from termcolor import colored
 import pandas as pd
 
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
+from lib.common.sound_notification import SoundNotification
 
 FUTURE_IGNORE=[
     "DMG-PERP",
@@ -145,8 +145,8 @@ class App:
     def list_markets(self, limit_count: int):
         cl = self.cl
 
-        arrow_up = colored("↑",color="green",attrs=["bold"])
-        arrow_down= colored("↓",color="red",attrs=["bold"])
+        arrow_up = "↑"
+        arrow_down= "↓"
     
         df = pd.DataFrame.from_dict(cl.funding_rates)
     
@@ -156,13 +156,14 @@ class App:
         df_positives['rate'] = df_positives.apply(axis='columns', func=lambda x: cl.get_future_data(x['future'])['nextFundingRate']*100)
         df_positives = df_positives.sort_values("rate", ascending=False)
         df_positives['change'] = df_positives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
+        df_positives['stability'] = df_positives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] < 0]}{['+','-'][x['rate_1'] < 0]}{['+','-'][x['rate_0'] < 0]}{['+','-'][x['rate'] < 0]}")
         df_positives['future op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['bids'][0][0])
         df_positives['spot op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['asks'][0][0])
         df_positives['future cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['asks'][0][0])
         df_positives['spot cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['bids'][0][0])
         df_positives['op spread %'] = round( (df_positives['future op p'] -  df_positives['spot op p'] )/ df_positives['future op p'] * 100,2)
         df_positives['cl spread %'] = round( (df_positives['spot cl p'] -  df_positives['future cl p'] )/ df_positives['spot cl p'] * 100,2)
-        print(df_positives.to_string(header=True, index=False, columns=["future","rate","change","future op p","spot op p","op spread %","cl spread %"]))
+        print(df_positives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
 
         print("\nmost negative funding rates " + arrow_down + "\n")
         df_negatives = df.loc[ [ x.replace("-PERP", "") in SHORTABLE for x in df['future'] ] ] #only include those that can be shorted on spot market
@@ -171,13 +172,14 @@ class App:
         df_negatives['rate'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_future_data(x['future'])['nextFundingRate']*100)
         df_negatives = df_negatives.sort_values("rate", ascending=True)
         df_negatives['change'] = df_negatives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
+        df_negatives['stability'] = df_negatives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] > 0]}{['+','-'][x['rate_1'] > 0]}{['+','-'][x['rate_0'] > 0]}{['+','-'][x['rate'] > 0]}")
         df_negatives['future op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['asks'][0][0])
         df_negatives['spot op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['bids'][0][0])
         df_negatives['future cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['bids'][0][0])
         df_negatives['spot cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['asks'][0][0])
         df_negatives['op spread %'] = round( ( df_negatives['spot op p'] - df_negatives['future op p'] )/ df_negatives['future op p'] * 100,2)
         df_negatives['cl spread %'] = round( ( df_negatives['future cl p'] - df_negatives['spot cl p'] )/ df_negatives['future cl p'] * 100,2)
-        print(df_negatives.to_string(header=True, index=False, columns=["future","rate","change","future op p","spot op p","op spread %","cl spread %"]))
+        print(df_negatives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
 
 
     def list_positions(self):
@@ -215,7 +217,9 @@ class App:
                 net_qty = spot_coin_data['total'] + x['netSize']
                 is_profitable = (pos_side == "SHORT" and fr > 0) or(pos_side == "LONG" and fr < 0)
                 ####
-                if abs(net_qty) > 0 or not is_profitable:
+                if abs(net_qty) > 0:
+                    self._alert = True
+                if not is_profitable and datetime.datetime.now().minute > 50:
                     self._alert = True
                 ####
                 position_data = {
@@ -230,7 +234,7 @@ class App:
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
                     'net qty': net_qty,
                     'profitable': is_profitable,
-                    'fr trend': f"{['+','-'][historical_frs['rate_2'] < 0]}{['+','-'][historical_frs['rate_1'] < 0]}{['+','-'][historical_frs['rate_0'] < 0]}",
+                    'stability': f"{['+','-'][historical_frs['rate_2'] < 0]}{['+','-'][historical_frs['rate_1'] < 0]}{['+','-'][historical_frs['rate_0'] < 0]}",
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
@@ -307,8 +311,11 @@ def main():
             print("error: --market not specified")
 
     if app.is_alert_state:
+        sn = SoundNotification()
         for _ in range(3):
             print("\n****************** ALERT ****************** ALERT ****************** ALERT ******************")
+            sn.info()
+            time.sleep(0.6)
 
 if __name__ == '__main__':
     main()
