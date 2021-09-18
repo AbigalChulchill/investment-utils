@@ -238,9 +238,10 @@ class App:
 
 
     def add_position(self, market: str, qty: float, limit_spread: float):
-        cl = self.cl
+        cl = None
         if limit_spread:
             while True:
+                cl = Client()
                 buy_price = cl.get_orderbook(market)['asks'][0][0]
                 sell_price = cl.get_orderbook(convert_symbol_futures_spot(market))['bids'][0][0]
                 open_spread= round((sell_price - buy_price )/ sell_price * 100,2)
@@ -255,9 +256,10 @@ class App:
 
 
     def sub_position(self, market: str, qty: float, limit_spread: float):
-        cl = self.cl
+        cl = None
         if limit_spread:
             while True:
+                cl = Client()
                 sell_price = cl.get_orderbook(market)['bids'][0][0]
                 buy_price = cl.get_orderbook(convert_symbol_futures_spot(market))['asks'][0][0]
                 open_spread= round((sell_price - buy_price )/ sell_price * 100,2)
