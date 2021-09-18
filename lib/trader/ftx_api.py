@@ -66,8 +66,8 @@ class Ftx:
     def get_ticker(self, market: str) -> float:
         return self._get(f"/markets/{market}")['price']
 
-    def get_orderbook(self, market: str ) -> dict:
-        return self._get(f"/markets/{market}/orderbook")
+    def get_orderbook(self, market: str, depth: int = 20) -> dict:
+        return self._get(f"/markets/{market}/orderbook", params={'depth': depth})
 
     def place_order(self, market: str, side: str, price: float, limit_or_market: str, size: float, reduce_only: bool = False, ioc: bool = False, post_only: bool = False) -> int:
         response = self._post("/orders", {
