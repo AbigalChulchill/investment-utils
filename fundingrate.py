@@ -243,7 +243,7 @@ class App:
 
     def add_position(self, market: str, qty: float, limit_spread: float):
         cl = None
-        if limit_spread:
+        if limit_spread is not None:
             while True:
                 cl = Client()
                 buy_price = cl.get_orderbook(market)['asks'][0][0]
@@ -261,7 +261,7 @@ class App:
 
     def sub_position(self, market: str, qty: float, limit_spread: float):
         cl = None
-        if limit_spread:
+        if limit_spread is not None:
             while True:
                 cl = Client()
                 sell_price = cl.get_orderbook(market)['bids'][0][0]
