@@ -5,6 +5,8 @@ from .trader import Trader
 sym_to_market={
     'decentraland':       'MANA-USDT',
     'tezos':              'XTZ-USDT',
+    'hedera-hashgraph':   'HBAR-USDT',
+    'avalanche-2':        'AVAX-USDT',
 }
 
 class OkexTrader(Trader):

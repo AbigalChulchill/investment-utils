@@ -38,4 +38,6 @@ coingecko_id_to_binance={
   "basic-attention-token": "BATUSDT",
   "enjincoin":          "ENJUSDT",
   "fantom":             "FTMUSDT",
+  'hedera-hashgraph':   "HBARUSDT",
+  'avalanche-2':        "AVAXUSDT",
 }

@@ -24,6 +24,8 @@ asset_exchg:
   basic-attention-token: poloniex
   enjincoin:          ftx
   fantom:             ftx
+  hedera-hashgraph:   okex
+  avalanche-2:        okex
   #stocks:
   "#AAPL":            ftx  # Apple Inc.
   "#AMZN":            ftx  # Amazon.com Inc.
@@ -58,6 +60,8 @@ auto_accumulate_list:
   - basic-attention-token
   - enjincoin
   - fantom
+  - hedera-hashgraph
+  - avalanche-2
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"
