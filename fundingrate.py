@@ -245,44 +245,49 @@ class App:
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
                     'net qty': net_qty,
                     'profitable': is_profitable,
-                    'stability': f"{['+','-'][historical_frs['rate_2'] < 0]}{['+','-'][historical_frs['rate_1'] < 0]}{['+','-'][historical_frs['rate_0'] < 0]}",
+                    'stability': f"{['-','+'][stability[2]]}{['-','+'][stability[1]]}{['-','+'][stability[0]]}",
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
         print(df.to_string(index=False))
 
 
-    def add_position(self, market: str, qty: float, limit_spread: float):
+    def update_pos(self, market: str, qty: float, limit_spread: float):
+        if qty > 0:
+            self._long_pos(market, qty, limit_spread)
+        elif qty < 0:
+            self._short_pos(market, -qty, limit_spread)
+
+    def _long_pos(self, market: str, qty: float, limit_spread: float):
         cl = None
         if limit_spread is not None:
             while True:
                 cl = Client()
                 buy_price = cl.get_orderbook(market)['asks'][0][0]
                 sell_price = cl.get_orderbook(convert_symbol_futures_spot(market))['bids'][0][0]
-                open_spread= round((sell_price - buy_price )/ sell_price * 100,2)
-                print(f"open_spread {open_spread}")
-                if open_spread > limit_spread:
+                spread= round((sell_price - buy_price )/ sell_price * 100,2)
+                print(f"current spread: {spread}%, required: >{limit_spread}%")
+                if spread > limit_spread:
                     break
                 time.sleep(5.0)
-        print(f"adding {qty}")
+        print(f"add long: {qty}")
         market_spot = convert_symbol_futures_spot(market)
         self.cl.execute_hedge_order(market, "buy", market_spot, "sell", qty)
         self.list_positions()
 
-
-    def sub_position(self, market: str, qty: float, limit_spread: float):
+    def _short_pos(self, market: str, qty: float, limit_spread: float):
         cl = None
         if limit_spread is not None:
             while True:
                 cl = Client()
                 sell_price = cl.get_orderbook(market)['bids'][0][0]
                 buy_price = cl.get_orderbook(convert_symbol_futures_spot(market))['asks'][0][0]
-                open_spread= round((sell_price - buy_price )/ sell_price * 100,2)
-                print(f"open_spread {open_spread}")
-                if open_spread > limit_spread:
+                spread= round((sell_price - buy_price )/ sell_price * 100,2)
+                print(f"current spread: {spread}%, required: >{limit_spread}%")
+                if spread > limit_spread:
                     break
                 time.sleep(5.0)
-        print(f"removing {qty}")
+        print(f"add short: {qty}")
         market_spot = convert_symbol_futures_spot(market)
         self.cl.execute_hedge_order(market, "sell", market_spot, "buy", qty)
         self.list_positions()
@@ -290,12 +295,10 @@ class App:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--list-markets', type=int, help='Display list of futures markets and their current funding rates')
+    parser.add_argument('--list-markets', type=int, help='Display list of top futures markets sorted by last funding rate. Argument: n: limit displayed results to top n markets')
     parser.add_argument('--list-positions', action='store_const', const='True',  help='Display list of opened positions')
-    parser.add_argument('--add', type=float,  help='Add to position. Argument: add amount in tokens. Requires --market')
-    parser.add_argument('--sub', type=float,  help='Remove from position. Argument: add amount in tokens. Requires --market')
-    parser.add_argument('--market', type=str,  help='Futures market symbol, to use with --add or --sub')
-
+    parser.add_argument('--update', type=float,  help='add long/short position. Argument: add qty in tokens. Positive qty adds to long, negative qty adds to short. Requires --market')
+    parser.add_argument('--market', type=str,  help='Futures market symbol, to use with --update')
     parser.add_argument('--limit-spread', type=float,  help='Does not create order right away, waits until open spread percent is greater than limit value. '
                                                     'When placing orders it is important that spread is kept positive to minimize losses on price difference between hedge pair. '
                                                     ' spread >0:  selling higher and hedge buying lower'
@@ -306,18 +309,14 @@ def main():
 
     app = App()
 
+    if args.list_positions:
+        app.list_positions()
     if args.list_markets:
         app.list_markets(args.list_markets)
-    elif args.list_positions:
-        app.list_positions()
-    elif args.add:
+
+    if args.update:
         if args.market:
-            app.add_position(args.market, args.add, args.limit_spread)
-        else:
-            print("error: --market not specified")
-    elif args.sub:
-        if args.market:
-            app.sub_position(args.market, args.sub, args.limit_spread)
+            app.update_pos(args.market, args.update, args.limit_spread)
         else:
             print("error: --market not specified")
 
