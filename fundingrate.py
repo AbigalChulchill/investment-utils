@@ -218,10 +218,12 @@ class App:
                 orderbook_spot = cl.get_orderbook(convert_symbol_futures_spot(future_name))
                 future_close_price =  orderbook_futures['bids'][0][0] if pos_side == "LONG" else orderbook_futures['asks'][0][0]
                 spot_close_price =  orderbook_spot['asks'][0][0] if pos_side == "LONG" else orderbook_spot['bids'][0][0]
+                value = round(x['netSize']*future_close_price,2)
                 net_qty = spot_coin_data['total'] + x['netSize']
                 floor_net_qty = math.floor(abs(spot_coin_data['total'] + x['netSize']))
                 get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
                 is_profitable = get_fr_profitable(fr)
+                profit_per_hour = -value*fr*0.01
                 stability = [ get_fr_profitable(historical_frs['rate_0']), get_fr_profitable(historical_frs['rate_1']), get_fr_profitable(historical_frs['rate_2']) ]
                 ####
                 # use rounded diff of qties because sometimes qty may not be exactly 0
@@ -238,27 +240,30 @@ class App:
                     'fr': fr,
                     'side': pos_side,
                     'qty': x['netSize'],
-                    'value': round(x['netSize']*future_close_price,2),
+                    'value': value,
                     'liq p': x['estimatedLiquidationPrice'],
                     'future cl p': future_close_price,
                     'spot cl p': spot_close_price,
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
                     'net qty': net_qty,
-                    'profitable': is_profitable,
+                    'profit/h': round(profit_per_hour,2),
                     'stability': f"{['-','+'][stability[2]]}{['-','+'][stability[1]]}{['-','+'][stability[0]]}",
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
+        df.sort_values('value', ascending=True, inplace=True)
         print(df.to_string(index=False))
+        net_profit_per_hour = sum(df['profit/h'])
+        print(f"net profit/h: {round(net_profit_per_hour,2)}")
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
         lot_qty, lot_count = self._calc_lot_qty_and_count(market, abs(qty))
         for ilot in range(lot_count):
             print(f"** LOT {ilot+1} of {lot_count} qty={lot_qty} **")
-        if qty > 0:
+            if qty > 0:
                self._long_pos(market, lot_qty, limit_spread)
-        elif qty < 0:
+            elif qty < 0:
                self._short_pos(market, lot_qty, limit_spread)
         self.list_positions()
 
