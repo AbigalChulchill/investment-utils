@@ -102,3 +102,8 @@ class Ftx:
 
     def get_funding_rates(self) -> dict:
         return self._get("/funding_rates")
+
+    def cancel_all_orders(self, market: str) -> dict:
+        return self._delete("/orders", {
+            "market": market,
+        })
