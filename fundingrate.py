@@ -1,4 +1,4 @@
-import argparse, time, datetime
+import argparse, time, datetime, math
 from collections import defaultdict
 import pandas as pd
 
@@ -136,10 +136,14 @@ class Client:
 class App:
     def __init__(self):
         self.cl = Client(restrict_non_usd_collateral=False)
-        self._alert = False
+        self._alert = None
 
     @property
-    def is_alert_state(self):
+    def alert_state(self):
+        return self._alert is not None
+
+    @property
+    def alert_message(self):
         return self._alert
 
     def list_markets(self, limit_count: int):
@@ -198,7 +202,7 @@ class App:
         print(f"USD Balance:      {round(spot_usd_data['total'],2)} ({round(spot_usd_data['total']/cl.account['collateral'],1)}x of net collateral)")
         ####
         if cl.account['marginFraction'] / cl.account['maintenanceMarginRequirement'] < 2:
-            self._alert = True
+            self._alert = "margin"
         ####
         print("\nHedged positions:\n")
         positions_data = list()
@@ -215,12 +219,19 @@ class App:
                 future_close_price =  orderbook_futures['bids'][0][0] if pos_side == "LONG" else orderbook_futures['asks'][0][0]
                 spot_close_price =  orderbook_spot['asks'][0][0] if pos_side == "LONG" else orderbook_spot['bids'][0][0]
                 net_qty = spot_coin_data['total'] + x['netSize']
-                is_profitable = (pos_side == "SHORT" and fr > 0) or(pos_side == "LONG" and fr < 0)
+                floor_net_qty = math.floor(abs(spot_coin_data['total'] + x['netSize']))
+                get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
+                is_profitable = get_fr_profitable(fr)
+                stability = [ get_fr_profitable(historical_frs['rate_0']), get_fr_profitable(historical_frs['rate_1']), get_fr_profitable(historical_frs['rate_2']) ]
                 ####
-                if abs(net_qty) > 0:
-                    self._alert = True
-                if not is_profitable and datetime.datetime.now().minute > 50:
-                    self._alert = True
+                # use rounded diff of qties because sometimes qty may not be exactly 0
+                # due to extra amount borrowed when market-short-selling
+                if floor_net_qty > 0:
+                    self._alert = "net qty"
+                    print(floor_net_qty, net_qty)
+                ##
+                if not is_profitable and datetime.datetime.now().minute > 50 and not stability[0]:
+                    self._alert = "profitable"
                 ####
                 position_data = {
                     'future': future_name,
@@ -310,10 +321,10 @@ def main():
         else:
             print("error: --market not specified")
 
-    if app.is_alert_state:
+    if app.alert_state:
         sn = SoundNotification()
         for _ in range(3):
-            print("\n****************** ALERT ****************** ALERT ****************** ALERT ******************")
+            print(f"****************** ALERT {app.alert_message} ******************")
             sn.info()
             time.sleep(0.6)
 
