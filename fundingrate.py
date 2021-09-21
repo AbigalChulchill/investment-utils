@@ -253,10 +253,25 @@ class App:
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
+        lot_qty, lot_count = self._calc_lot_qty_and_count(market, abs(qty))
+        for ilot in range(lot_count):
+            print(f"** LOT {ilot+1} of {lot_count} qty={lot_qty} **")
         if qty > 0:
-            self._long_pos(market, qty, limit_spread)
+               self._long_pos(market, lot_qty, limit_spread)
         elif qty < 0:
-            self._short_pos(market, -qty, limit_spread)
+               self._short_pos(market, lot_qty, limit_spread)
+        self.list_positions()
+
+    def _calc_lot_qty_and_count(self,  market: str, qty: float):
+        '''
+        returns [lot_qty, count]
+        '''
+        max_value_per_lot = 15
+        price = self.cl.get_orderbook(market)['asks'][0][0]
+        lot_qty = max_value_per_lot / price
+        count = max(1,round(qty / lot_qty))
+        return round(qty / count,3), count
+
 
     def _long_pos(self, market: str, qty: float, limit_spread: float):
         cl = None
@@ -266,14 +281,12 @@ class App:
                 buy_price = cl.get_orderbook(market)['asks'][0][0]
                 sell_price = cl.get_orderbook(convert_symbol_futures_spot(market))['bids'][0][0]
                 spread= round((sell_price - buy_price )/ sell_price * 100,2)
-                print(f"current spread: {spread}%, required: >{limit_spread}%")
+                print(f"current spread: {spread}%, required: >{limit_spread}%", end="\r", flush=True)
                 if spread > limit_spread:
                     break
                 time.sleep(5.0)
-        print(f"add long: {qty}")
-        market_spot = convert_symbol_futures_spot(market)
-        self.cl.execute_hedge_order(market, "buy", market_spot, "sell", qty)
-        self.list_positions()
+        print(f"\nadd long: {qty}")
+        self.cl.execute_hedge_order(market, "buy", convert_symbol_futures_spot(market), "sell", qty)
 
     def _short_pos(self, market: str, qty: float, limit_spread: float):
         cl = None
@@ -283,14 +296,12 @@ class App:
                 sell_price = cl.get_orderbook(market)['bids'][0][0]
                 buy_price = cl.get_orderbook(convert_symbol_futures_spot(market))['asks'][0][0]
                 spread= round((sell_price - buy_price )/ sell_price * 100,2)
-                print(f"current spread: {spread}%, required: >{limit_spread}%")
+                print(f"current spread: {spread}%, required: >{limit_spread}%", end="\r", flush=True)
                 if spread > limit_spread:
                     break
                 time.sleep(5.0)
-        print(f"add short: {qty}")
-        market_spot = convert_symbol_futures_spot(market)
-        self.cl.execute_hedge_order(market, "sell", market_spot, "buy", qty)
-        self.list_positions()
+        print(f"\nadd short: {qty}")
+        self.cl.execute_hedge_order(market, "sell", convert_symbol_futures_spot(market), "buy", qty)
 
 
 def main():
