@@ -94,4 +94,7 @@ quota_multiplier_max: 2
 
 
 # asset from auto_accumulate_list is only processed if currently market is open or this parameter is True
-accumulate_when_market_closed: False
+accumulate_when_market_closed: True
+
+# asset from auto_accumulate_list is only processed if dip has been detected or this parameter is True
+accumulate_if_not_dipping: True

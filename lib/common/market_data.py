@@ -41,7 +41,7 @@ class MarketData:
         else:
             return float(self._price_data[asset]['usd_24h_change'])
 
-    def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
+    def _get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         if is_stock(asset):
             ticker = yf.Ticker(asset.replace("#", ""))
             if days_before <= 30:
@@ -53,16 +53,42 @@ class MarketData:
             elif days_before <= 365:
                 period = "1y"
             df = ticker.history(period=period)
-            df['close'] = df['Close']
+            df.rename(columns={ "Open": "open", "Close": "close", "High": "high", "Low": "low", }, inplace=True)
+            return df
         else:
             api = BinanceAPI()
             candles = api.get_candles_by_limit(coingecko_id_to_binance[asset], "1d", limit=days_before)
             df = pd.DataFrame.from_dict(candles)
+            df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
             df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
             df.set_index('timestamp', inplace=True)
+            return df
 
+    def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
+        df = self._get_historical_bars(asset, days_before)
         df['ma'] = talib.MA(df['close'], min(len(df), days_before))
         r = df['ma'][-1]
         if r != r:
             raise ValueError("ma == NaN")
         return r
+
+
+    def is_dipping(self, asset: str) -> dict:
+        df = self._get_historical_bars(asset, 3)
+        bar0 = df.iloc[-1]
+        bar1 = df.iloc[-2]
+        open0 = float(bar0['open'])
+        open1 = float(bar1['open'])
+        close0 = float(bar0['close'])
+        close1 = float(bar1['close'])
+
+        #1) last day was red candle
+        # or
+        #2) last day was gren candle but it closed (gapped) below last-1 day close. This usually indicates bullish reversal
+        # return (bar0['close'] < bar0['open']) or \
+        #        (bar0['close'] > bar0['open'] and bar0['close'] < bar1['close'])
+
+        # two red bars in a row or red bar that is too large
+        return (close1 < open1) and (close0 < open0)\
+                or \
+                (close0 < open0 and ((open0-close0)/open0 > 0.05)  )

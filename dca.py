@@ -39,9 +39,6 @@ def get_quota_fixed_multiplier(coin: str):
             return ds[param][coin]
     return 1
 
-def get_quota(coin: str):
-    return ds['quota_usd'] * get_quota_fixed_multiplier(coin)
-
 def pretty_json(s):
     print(json.dumps(s, indent=4, sort_keys=True))
 
@@ -61,6 +58,9 @@ class TradeHelper:
 
     def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before)
+
+    def is_dipping(self, coin: str) -> float:
+        return self.market_data.is_dipping(coin)
 
 class Db:
     def __init__(self):
@@ -167,15 +167,20 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
             print("skipped -- market is closed")
             continue
 
+        if not (th.is_dipping(asset) or ds['accumulate_if_not_dipping'] or single_mode):
+            print("skipped -- no dip detected")
+            continue
+
         try:
             quota_mul = 1
             if qty:
                 daily_qty = qty
             else:
-                quota_asset = get_quota(asset)
+                quota_asset = ds['quota_usd']
+                quota_mul *= get_quota_fixed_multiplier(asset)
                 current_price = th.get_market_price(asset)
                 avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
-                quota_mul = avg_price_last_n_days / current_price
+                quota_mul *= avg_price_last_n_days / current_price
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
                 daily_qty = round(quota_asset * quota_mul)
 
