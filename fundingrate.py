@@ -5,6 +5,7 @@ import pandas as pd
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.common.sound_notification import SoundNotification
+from lib.common.misc import get_decimal_count
 
 FUTURE_IGNORE=[
     "DMG-PERP",
@@ -33,6 +34,11 @@ SHORTABLE=[
 "1INCH", "AAVE", "BCH", "BNB", "BTC", "CEL", "DOGE", "ETH", "LEO", "LINK", "LTC", "MATIC", "OKB", "OMG", "PAXG",
 "PENN", "PFE", "REN", "RSR", "RUNE", "SLV", "SNX", "SOL", "SUSHI", "SXP", "TOMO", "TRX", "UNI", "WBTC", "XAUT", "XRP", "YFI",
 ]
+
+MIN_LOT_SIZE={
+    "XAUT-PERP":    20,
+    "BNB-PERP":     40,
+}
 
 
 def convert_symbol_futures_spot(symbol: str):
@@ -230,7 +236,6 @@ class App:
                 # due to extra amount borrowed when market-short-selling
                 if floor_net_qty > 0:
                     self._alert = "net qty"
-                    print(floor_net_qty, net_qty)
                 ##
                 if not is_profitable and datetime.datetime.now().minute > 50 and not stability[0]:
                     self._alert = "profitable"
@@ -241,7 +246,6 @@ class App:
                     'side': pos_side,
                     'qty': x['netSize'],
                     'value': value,
-                    'liq p': x['estimatedLiquidationPrice'],
                     'future cl p': future_close_price,
                     'spot cl p': spot_close_price,
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
@@ -258,7 +262,15 @@ class App:
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
-        lot_qty, lot_count = self._calc_lot_qty_and_count(market, abs(qty))
+        lot_qty0, lot_count = self._calc_lot_qty_and_count(market, abs(qty))
+        future_market = [m for m in self.cl.markets if m['name'] ==  market ][0]
+        spot_market = [m for m in self.cl.markets if m['name'] ==  convert_symbol_futures_spot(market)][0]
+        future_size_increment = future_market['sizeIncrement']
+        spot_size_increment = spot_market['sizeIncrement']
+        future_min_decimals = get_decimal_count(future_size_increment)
+        spot_min_decimals = get_decimal_count(spot_size_increment)
+        lot_qty = round(lot_qty0, min(future_min_decimals,spot_min_decimals))
+        print(f"rounded lot size {lot_qty0} -> {lot_qty} future market min decimals: {future_min_decimals},  spot market min decimals: {spot_min_decimals}")
         for ilot in range(lot_count):
             print(f"** LOT {ilot+1} of {lot_count} qty={lot_qty} **")
             if qty > 0:
@@ -271,11 +283,11 @@ class App:
         '''
         returns [lot_qty, count]
         '''
-        max_value_per_lot = 15
+        max_value_per_lot =  MIN_LOT_SIZE[market] if market in MIN_LOT_SIZE else 15
         price = self.cl.get_orderbook(market)['asks'][0][0]
         lot_qty = max_value_per_lot / price
-        count = max(1,round(qty / lot_qty))
-        return round(qty / count,3), count
+        count = max(1,math.floor(qty / lot_qty))
+        return lot_qty, count
 
 
     def _long_pos(self, market: str, qty: float, limit_spread: float):
