@@ -16,16 +16,16 @@ asset_exchg:
   havven:             poloniex
   ethereum-classic:   poloniex
   polkadot:           poloniex
+  basic-attention-token: poloniex
   solana:             ftx
   ftx-token:          ftx
-  decentraland:       okex
-  tezos:              okex
-  gitcoin:            bitrue
-  basic-attention-token: poloniex
   enjincoin:          ftx
   fantom:             ftx
+  decentraland:       okex
+  tezos:              okex
   hedera-hashgraph:   okex
   avalanche-2:        okex
+  gitcoin:            bitrue
   #stocks:
   "#AAPL":            ftx  # Apple Inc.
   "#AMZN":            ftx  # Amazon.com Inc.
@@ -43,25 +43,25 @@ asset_exchg:
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
+  - 0x
+  - aave
+  - avalanche-2
+  - basic-attention-token
   - bitcoin
+  - curve-dao-token
+  - decentraland
+  - enjincoin
   - ethereum
+  - ethereum-classic
+  - fantom
+  - ftx-token
+  - gitcoin
+  - havven
+  - hedera-hashgraph
+  - polkadot
   - ripple
   - solana
-  - gitcoin
-  - curve-dao-token
-  - aave
-  - 0x
-  - havven
-  - ethereum-classic
-  - ftx-token
-  - decentraland
   - tezos
-  - polkadot
-  - basic-attention-token
-  - enjincoin
-  - fantom
-  - hedera-hashgraph
-  - avalanche-2
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"
@@ -81,9 +81,22 @@ auto_accumulate_list:
 quota_usd: 30
 
 
-# quota_fixed_multiplier:
-#   bitcoin: 0.3
-
+quota_fixed_multiplier:
+  basic-attention-token:    0.5
+  decentraland:             0.5
+  enjincoin:                0.5
+  ethereum-classic:         0.5
+  ftx-token:                0.5
+  havven:                   0.5
+  ripple:                   0.5
+  "#BABA":                  0.2
+  "#BILI":                  0.2
+  "#COIN":                  0.2
+  "#GBTC":                  0.2
+  "#MSTR":                  0.2
+  "#NIO":                   0.2
+  "#TSLA":                  0.2
+  "#TWTR":                  0.2
 
 # moving average period to calculate average price to compare current price to
 quota_multiplier_average_days: 200
