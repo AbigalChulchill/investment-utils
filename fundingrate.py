@@ -7,6 +7,8 @@ from lib.trader import ftx_api
 from lib.common.sound_notification import SoundNotification
 from lib.common.misc import get_decimal_count
 
+
+# ignoring low 24h volume futures as they tend to have huge spread to spot
 FUTURE_IGNORE=[
     "DMG-PERP",
     "SHIB-PERP",
@@ -15,6 +17,8 @@ FUTURE_IGNORE=[
     "TRYB-PERP",
     "MER-PERP",
     "DENT-PERP",
+    "MTA-PERP",
+    "BAO-PERP",
 ]
 
 NON_USD_COLLATERAL=[
