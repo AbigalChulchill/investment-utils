@@ -33,10 +33,10 @@ def calculate_inc_pnl(orders: List[Order], market_price_now: float) -> PnL:
     unrealized_sell_value = position_qty * market_price_now
     average_buying_value = position_qty * average_buying_rate if average_buying_rate else 0
     unrealized_pnl = unrealized_sell_value - average_buying_value
-    unrealized_pnl_percent = unrealized_pnl / average_buying_value * 100 if average_buying_value > 0 else INVALID_PERCENT
+    unrealized_pnl_percent = unrealized_pnl / average_buying_value * 100 if average_buying_value > 1e-5 else INVALID_PERCENT
 
     realized_pnl = cumulative_sell_value - cumulative_initial_buy_value
-    realized_pnl_percent = realized_pnl / cumulative_initial_buy_value * 100 if cumulative_initial_buy_value > 0 else INVALID_PERCENT
+    realized_pnl_percent = realized_pnl / cumulative_initial_buy_value * 100 if cumulative_initial_buy_value > 1e-5 else INVALID_PERCENT
 
     return PnL(
         realized_pnl,

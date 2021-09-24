@@ -25,6 +25,18 @@ def test_calculate_pnl_unrealized():
     assert pnl.unrealized_pnl == 0
     assert pnl.unrealized_pnl_percent == 0
 
+
+    # even but the sum is not exactly 0  (almost all realized) due to decimal fraction representation
+    pnl = calculate_inc_pnl(
+    [
+        Order("BUY", value=1, qty=1),
+        Order("SELL",value=1, qty=1-0.00000000000000144329),
+    ], market_price_now=1)
+    assert isclose(pnl.unrealized_sell_value, 0, abs_tol=1e-9)
+    assert isclose(pnl.unrealized_pnl, 0)
+    assert pnl.unrealized_pnl_percent == INVALID_PERCENT
+
+
     # unrealized profit
     pnl = calculate_inc_pnl(
     [

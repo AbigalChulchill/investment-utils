@@ -225,7 +225,7 @@ def remove(coin: str, qty: str, dry: bool):
     if m:
         sell_qty = available_sell_qty * float(m[1]) / 100
     else:
-        sell_qty = min(available_sell_qty, float(qty) / market_price)
+        sell_qty = min(available_sell_qty, float(qty))
 
     trader: Trader = create_trader(coin)
     if trader:
@@ -295,10 +295,9 @@ def stats(hide_private_data: bool):
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
             })
         df_pnl = DataFrame.from_dict(stats_data)
-        df_pnl = df_pnl.sort_values('u pnl %', ascending=False)
+        df_pnl.sort_values('u pnl %', inplace=True, ascending=False, key=lambda x: [-101 if a == "~" else a for a in x])
         columns=["asset", "break_even_price", "current_price", "u pnl %"] if hide_private_data else None
         formatters={
-            'buy_qty':          lambda x: f'{x:8.8f}',
             'available_qty':    lambda x: f'{x:8.8f}',
         }
         print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
