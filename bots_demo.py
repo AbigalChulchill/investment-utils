@@ -7,8 +7,8 @@ def get_strategy_class(name: str):
     for subset in ".", ".custom.":
         try:
             strategy_module = importlib.import_module(f"lib.bots.strategies{subset}{name}")
-        except:
-            next
+        except ModuleNotFoundError:
+            continue
     if strategy_module is None:
         raise ValueError(f"strategy not found: {name}")
     strategy_class = getattr(strategy_module, f"StrategyImpl")
