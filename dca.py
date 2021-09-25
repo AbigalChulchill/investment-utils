@@ -23,6 +23,9 @@ def title2(name: str):
 def msg_accumulate(coin: str):
     cprint(f"buying : {coin}", 'green')
 
+def msg_accumulate_skip(coin: str, reason: str):
+    cprint(f"skipped: {coin}, {reason}", 'yellow')
+
 def msg_remove(coin: str):
     cprint(f"selling : {coin}", 'green')
 
@@ -53,8 +56,8 @@ class TradeHelper:
     def is_tradeable(self, asset: str) -> bool:
         return self.market_data.is_tradeable(asset)
 
-    def get_24h_change(self, coin: str) -> float:
-        return self.market_data.get_24h_change(coin)
+    def get_daily_change(self, coin: str) -> float:
+        return self.market_data.get_daily_change(coin)
 
     def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before)
@@ -157,20 +160,21 @@ def print_account_balances():
 def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
     db = Db()
     th = TradeHelper(assets)
-    a= list()
+    a = list()
     
     for asset in assets:
+        if not single_mode:
+            if ds['check_market_open']:
+                if not (th.is_tradeable(asset)):
+                    msg_accumulate_skip(asset, "market is closed")
+                    continue
+
+            if ds['check_dip']:
+                if th.get_daily_change(asset) > ds['dip_threshold']:
+                    msg_accumulate_skip(asset, "not dipping today")
+                    continue
 
         msg_accumulate(asset)
-
-        if not (th.is_tradeable(asset) or ds['accumulate_when_market_closed'] or single_mode):
-            print("skipped -- market is closed")
-            continue
-
-        if not (th.is_dipping(asset) or ds['accumulate_if_not_dipping'] or single_mode):
-            print("skipped -- no dip detected")
-            continue
-
         try:
             quota_mul = 1
             if qty:
@@ -287,7 +291,7 @@ def stats(hide_private_data: bool):
                 'available_qty': available_qty,
                 'break_even_price': pnl_data.break_even_price,
                 'current_price': market_price,
-                '24h chg %': round(th.get_24h_change(coin),1),
+                'daily chg %': round(th.get_daily_change(coin),1),
                 'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
                 'r pnl': round(pnl_data.realized_pnl,1),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,

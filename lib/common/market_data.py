@@ -2,6 +2,7 @@ import pycoingecko
 import talib
 import pandas as pd
 import yfinance as yf
+import numpy as np
 from typing import List
 from .. trader.binance_api import Binance as BinanceAPI
 from .. common.convert import coingecko_id_to_binance
@@ -35,16 +36,25 @@ class MarketData:
         else:
             return True
 
-    def get_24h_change(self, asset: str) -> float:
-        if is_stock(asset):
-            return 0
-        else:
-            return float(self._price_data[asset]['usd_24h_change'])
+    def get_daily_change(self, asset: str) -> float:
+        daily_change = 0
+        df = self._get_historical_bars(asset, 2, with_partial_today_bar=True)
+        if df.size > 0:
+            c = df['close'].to_numpy(dtype=np.double)
+            previous_close = c[-2]
+            current_price = c[-1]
+            daily_change = (current_price - previous_close) / current_price * 100
+        return daily_change
 
-    def _get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
+
+    def _get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
         if is_stock(asset):
             ticker = yf.Ticker(asset.replace("#", ""))
-            if days_before <= 30:
+            if days_before <= 1:
+                period = "1d"
+            elif days_before <= 5:
+                period = "5d"
+            elif days_before <= 30:
                 period = "1mo"
             elif days_before <= 90:
                 period = "3mo"
@@ -52,17 +62,20 @@ class MarketData:
                 period = "6mo"
             elif days_before <= 365:
                 period = "1y"
-            df = ticker.history(period=period)
+            df = ticker.history(period=period, interval="1d")
             df.rename(columns={ "Open": "open", "Close": "close", "High": "high", "Low": "low", }, inplace=True)
             return df
         else:
-            api = BinanceAPI()
-            candles = api.get_candles_by_limit(coingecko_id_to_binance[asset], "1d", limit=days_before)
-            df = pd.DataFrame.from_dict(candles)
-            df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
-            df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
-            df.set_index('timestamp', inplace=True)
-            return df
+            if asset in coingecko_id_to_binance.keys():
+                api = BinanceAPI()
+                candles = api.get_candles_by_limit(coingecko_id_to_binance[asset], "1d", limit=days_before)
+                df = pd.DataFrame.from_dict(candles)
+                if not with_partial_today_bar:
+                    df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
+                df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
+                df.set_index('timestamp', inplace=True)
+                return df
+            return pd.DataFrame.from_dict({})
 
     def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
         df = self._get_historical_bars(asset, days_before)
@@ -71,24 +84,3 @@ class MarketData:
         if r != r:
             raise ValueError("ma == NaN")
         return r
-
-
-    def is_dipping(self, asset: str) -> dict:
-        df = self._get_historical_bars(asset, 3)
-        bar0 = df.iloc[-1]
-        bar1 = df.iloc[-2]
-        open0 = float(bar0['open'])
-        open1 = float(bar1['open'])
-        close0 = float(bar0['close'])
-        close1 = float(bar1['close'])
-
-        #1) last day was red candle
-        # or
-        #2) last day was gren candle but it closed (gapped) below last-1 day close. This usually indicates bullish reversal
-        # return (bar0['close'] < bar0['open']) or \
-        #        (bar0['close'] > bar0['open'] and bar0['close'] < bar1['close'])
-
-        # two red bars in a row or red bar that is too large
-        return (close1 < open1) and (close0 < open0)\
-                or \
-                (close0 < open0 and ((open0-close0)/open0 > 0.05)  )

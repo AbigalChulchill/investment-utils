@@ -41,6 +41,7 @@ asset_exchg:
   "#TSLA":            ftx  # Tesla Inc.
   "#TWTR":            ftx  # Twitter Inc.
 
+
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
   - 0x
@@ -78,10 +79,11 @@ auto_accumulate_list:
 
 
 # default quota for --add per asset if --qty is not specified
-quota_usd: 30
+quota_usd: 60
 
 
 quota_fixed_multiplier:
+  0x:                       0.5
   basic-attention-token:    0.5
   decentraland:             0.5
   enjincoin:                0.5
@@ -98,6 +100,7 @@ quota_fixed_multiplier:
   "#TSLA":                  0.2
   "#TWTR":                  0.2
 
+
 # moving average period to calculate average price to compare current price to
 quota_multiplier_average_days: 200
 
@@ -106,8 +109,9 @@ quota_multiplier_average_days: 200
 quota_multiplier_max: 2
 
 
-# asset from auto_accumulate_list is only processed if currently market is open or this parameter is True
-accumulate_when_market_closed: True
+# is True, asset from auto_accumulate_list is only processed if market is open at the moment
+check_market_open: False
 
-# asset from auto_accumulate_list is only processed if dip has been detected or this parameter is True
-accumulate_if_not_dipping: True
+# if True, asset from auto_accumulate_list is only processed if today price is <= dip_threshold
+check_dip: True
+dip_threshold: -3
