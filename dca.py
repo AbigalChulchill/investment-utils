@@ -267,7 +267,7 @@ def close(coin: str):
     print(f"{coin} position has been closed")
 
 
-def stats(hide_private_data: bool):
+def stats(hide_private_data: bool, sort_by: str):
     title("PnL")
     db = Db()
     th = TradeHelper(db.get_syms())
@@ -288,21 +288,21 @@ def stats(hide_private_data: bool):
 
             stats_data.append({
                 'asset': coin,
-                'available_qty': available_qty,
-                'break_even_price': pnl_data.break_even_price,
-                'current_price': market_price,
+                'available qty': available_qty,
+                'break even price': pnl_data.break_even_price,
+                'current price': market_price,
                 'daily chg %': round(th.get_daily_change(coin),1),
-                'unrealized_sell_value': round(pnl_data.unrealized_sell_value,1),
+                'unrealized sell value': round(pnl_data.unrealized_sell_value,1),
                 'r pnl': round(pnl_data.realized_pnl,1),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
                 'u pnl': round(pnl_data.unrealized_pnl,1),
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
             })
         df_pnl = DataFrame.from_dict(stats_data)
-        df_pnl.sort_values('u pnl %', inplace=True, ascending=False, key=lambda x: [-101 if a == "~" else a for a in x])
-        columns=["asset", "break_even_price", "current_price", "u pnl %"] if hide_private_data else None
+        df_pnl.sort_values(sort_by, inplace=True, ascending=False, key=lambda x: [-101 if a == "~" else a for a in x])
+        columns=["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
         formatters={
-            'available_qty':    lambda x: f'{x:8.8f}',
+            'available qty':    lambda x: f'{x:8.8f}',
         }
         print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
         print("")
@@ -312,18 +312,18 @@ def stats(hide_private_data: bool):
     for asset_group in asset_groups.keys():
         title2(asset_group)
         df = asset_group_pnl_df[asset_group]
-        df['%'] = round(df['unrealized_sell_value'] / sum(df['unrealized_sell_value']) * 100, 1)
+        df['%'] = round(df['unrealized sell value'] / sum(df['unrealized sell value']) * 100, 1)
         df = df.sort_values('%', ascending=False)
         print(df.to_string(index=False, header=False, columns=['asset', '%']))
         print("")
 
     title2("By asset group")
-    total_unrealized_sell_value = sum(sum(df['unrealized_sell_value']) for df in asset_group_pnl_df.values())
+    total_unrealized_sell_value = sum(sum(df['unrealized sell value']) for df in asset_group_pnl_df.values())
     stats_data = list()
     for asset_group in asset_groups.keys():
         stats_data.append({
             'asset_group': asset_group,
-            '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized_sell_value']) / total_unrealized_sell_value * 100, 1),
+            '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized sell value']) / total_unrealized_sell_value * 100, 1),
         })
     df = DataFrame.from_dict(stats_data)
     df = df.sort_values('%', ascending=False)
@@ -374,7 +374,8 @@ def main():
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
     parser.add_argument('--qty', type=int, help='Quota in USD for every position')
     parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
-    parser.add_argument('--stats', action='store_const', const='True', help='Print average buy price of all positions')
+    parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
+    parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print available balances on accouns')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
@@ -399,7 +400,7 @@ def main():
         else:
             print("burn: requires --coin")
     elif args.stats:
-        stats(args.hide_private_data)
+        stats(args.hide_private_data, args.sort_by)
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:
