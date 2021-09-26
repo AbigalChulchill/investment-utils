@@ -1,5 +1,4 @@
-import subprocess
-import os
+import os, subprocess
 
 class SoundNotification:
     def __init__(self):
@@ -16,5 +15,5 @@ class SoundNotification:
         self._play("ding.wav")
 
     def _play(self, name: str):
-        args = ["aplay", f"{self._dir}/{name}"]
+        args = ["paplay", f"{self._dir}/{name}"]
         subprocess.Popen(args, close_fds=True, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL)
