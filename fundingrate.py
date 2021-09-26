@@ -8,8 +8,8 @@ from lib.common.sound_notification import SoundNotification
 from lib.common.misc import get_decimal_count
 
 
-# ignoring low 24h volume futures as they tend to have huge spread to spot
 FUTURE_IGNORE=[
+    "AMPL-PERP",
     "DMG-PERP",
     "SHIB-PERP",
     "HUM-PERP",
@@ -199,17 +199,12 @@ class App:
     def list_positions(self):
         cl = self.cl
 
-        #df = pd.DataFrame.from_dict(cl.balances)
-        #print(df.to_string(index=False))
-        #df = pd.DataFrame.from_dict(cl.positions)
-        #print(df.to_string(index=False))
-        print(f"Account Value:    {round(cl.account['totalAccountValue'],2)}")
-        print(f"Total Collateral: {round(cl.account['collateral'],2)}")
-        print(f"Free Collateral:  {round(cl.account['freeCollateral'],2)}")
-        print(f"Margin:           {round(cl.account['marginFraction']*100,1)}%/{round(cl.account['maintenanceMarginRequirement']*100,1)}%")
+        print(f"Account Value:    {sum([x['usdValue'] for x in cl.balances]) + sum([x['unrealizedPnl'] for x in cl.positions]) :.2f}")
+        print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
+        print(f"Margin:           {cl.account['marginFraction']*100:.1f}%/{cl.account['maintenanceMarginRequirement']*100:.1f}%")
         print(f"Fees:             Taker {cl.account['takerFee']*100}%, Maker {cl.account['makerFee']*100}%")
         spot_usd_data = [a for a in cl.balances if a['coin'] == "USD"][0]
-        print(f"USD Balance:      {round(spot_usd_data['total'],2)} ({round(spot_usd_data['total']/cl.account['collateral'],1)}x of net collateral)")
+        print(f"USD Balance:      {spot_usd_data['total']:.2f} ({spot_usd_data['total']/cl.account['collateral']:.1f}x of net collateral)")
         ####
         if cl.account['marginFraction'] / cl.account['maintenanceMarginRequirement'] < 2:
             self._alert = "margin"
@@ -228,7 +223,7 @@ class App:
                 orderbook_spot = cl.get_orderbook(convert_symbol_futures_spot(future_name))
                 future_close_price =  orderbook_futures['bids'][0][0] if pos_side == "LONG" else orderbook_futures['asks'][0][0]
                 spot_close_price =  orderbook_spot['asks'][0][0] if pos_side == "LONG" else orderbook_spot['bids'][0][0]
-                value = round(x['netSize']*future_close_price,2)
+                value = x['netSize']*future_close_price
                 net_qty = spot_coin_data['total'] + x['netSize']
                 floor_net_qty = math.floor(abs(spot_coin_data['total'] + x['netSize']))
                 get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
@@ -249,7 +244,7 @@ class App:
                     'fr': fr,
                     'side': pos_side,
                     'qty': x['netSize'],
-                    'value': value,
+                    'value': round(value,2),
                     'future cl p': future_close_price,
                     'spot cl p': spot_close_price,
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
@@ -262,7 +257,8 @@ class App:
         df.sort_values('value', ascending=True, inplace=True)
         print(df.to_string(index=False))
         net_profit_per_hour = sum(df['profit/h'])
-        print(f"net profit/h: {round(net_profit_per_hour,2)}")
+        print(f"net profit/h: {net_profit_per_hour:.2f}")
+
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
