@@ -144,6 +144,26 @@ class Client:
         self._balances = None
 
 
+
+class Db:
+    def __init__(self):
+        import sqlite3
+        self.con = sqlite3.connect('config/fundingrate.db')
+        self.con.execute('''CREATE TABLE IF NOT EXISTS historical_frs (date text, market text, fr real, is_gainer integer)''')
+        self.con.execute('''CREATE TABLE IF NOT EXISTS payments (date text, account_value real, net_profit real)''')
+        self.con.commit()
+
+    def add_fr(self, market: str, fr: float, is_gainer: bool ):
+        now = datetime.datetime.now()
+        self.con.execute("INSERT INTO historical_frs VALUES (?,?,?,?)", (now, market, fr, is_gainer))
+        self.con.commit()
+
+    def add_net_profit(self, account_value: float, net_profit: float):
+        now = datetime.datetime.now()
+        self.con.execute("INSERT INTO payments VALUES (?,?,?)", (now, account_value, net_profit))
+        self.con.commit()
+
+
 class App:
     def __init__(self):
         self.cl = Client(restrict_non_usd_collateral=False)
@@ -318,6 +338,25 @@ class App:
         self.cl.execute_hedge_order(market, "sell", convert_symbol_futures_spot(market), "buy", qty)
 
 
+    def update_db(self):
+        db = Db()
+        net_profit_per_hour = 0
+        for x in self.cl.positions:
+            future_name = x['future']
+            if x['size'] > 0:
+                future_data = self.cl.get_future_data(future_name)
+                fr = future_data['nextFundingRate']*100
+                pos_side = "SHORT" if x['side'] == "sell" else "LONG"
+                future_close_price =  self.cl.get_market(future_name)['bid'] if pos_side == "LONG" else self.cl.get_market(future_name)['ask']
+                value = x['netSize']*future_close_price
+                get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
+                is_profitable = get_fr_profitable(fr)
+                profit_per_hour = -value*fr*0.01
+                net_profit_per_hour += profit_per_hour
+                db.add_fr(future_name, fr, is_profitable)
+        db.add_net_profit(account_value=round(self._calc_account_value()), net_profit=round(net_profit_per_hour,2))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--list-markets', type=int, help='Display list of top futures markets sorted by last funding rate. Argument: n: limit displayed results to top n markets')
@@ -329,6 +368,7 @@ def main():
                                                     ' spread >0:  selling higher and hedge buying lower'
                                                     ' spread <0:  buying higher and hedge selling lower'
                                                     ' spread =0:  buying and hedge selling at same price'   )
+    parser.add_argument('--update-db', action='store_const', const='True',  help='Collects stat data to db')
 
     args = parser.parse_args()
 
@@ -344,6 +384,9 @@ def main():
             app.update_pos(args.market, args.update, args.limit_spread)
         else:
             print("error: --market not specified")
+
+    if args.update_db:
+        app.update_db()
 
     if app.alert_state:
         sn = SoundNotification()
