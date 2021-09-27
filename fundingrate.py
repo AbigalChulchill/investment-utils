@@ -257,9 +257,6 @@ class App:
                 if floor_net_qty > 0:
                     self._alert = "net qty"
                 ##
-                if not is_profitable and datetime.datetime.now().minute > 50 and not stability[-1]:
-                    self._alert = "profitable"
-                ####
                 position_data = {
                     'future': future_name,
                     'fr': fr,
@@ -279,6 +276,8 @@ class App:
         print(df.to_string(index=False))
         net_profit_per_hour = sum(df['profit/h'])
         print(f"net profit/h: {net_profit_per_hour:.2f}")
+        if net_profit_per_hour < 0:
+            self._alert = "net profit"
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
@@ -391,7 +390,7 @@ def main():
     if app.alert_state:
         sn = SoundNotification()
         for _ in range(3):
-            print(f"****************** ALERT {app.alert_message} ******************")
+            print(f"****************** ALERT : {app.alert_message}! ******************")
             sn.info()
             time.sleep(0.6)
 
