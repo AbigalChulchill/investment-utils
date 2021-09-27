@@ -19,6 +19,7 @@ FUTURE_IGNORE=[
     "DENT-PERP",
     "MTA-PERP",
     "BAO-PERP",
+    "STMX-PERP",
 ]
 
 NON_USD_COLLATERAL=[
@@ -62,12 +63,6 @@ class Client:
         self._orderbook_cache = dict()
 
     @property
-    def markets(self):
-        if self._markets is None:
-            self._markets = self._api.get_markets()
-        return self._markets
-
-    @property
     def funding_rates(self):
         if self._funding_rates is None:
             self._funding_rates =  self._convert_funding_rates(self._api.get_funding_rates())
@@ -91,10 +86,16 @@ class Client:
             self._balances = self._api.get_balances()
         return self._balances
 
-    def get_orderbook(self, market: str):
-        if market not in self._orderbook_cache.keys():
-            self._orderbook_cache[market] = self._api.get_orderbook(market, depth=1)
-        return self._orderbook_cache[market]
+    def get_market(self, market: str):
+        if self._markets is None:
+            self._markets = self._api.get_markets()
+        market = [m for m in self._markets if m['name'] ==  market][0]
+        return market
+
+    def has_market(self, market: str) -> bool:
+        if self._markets is None:
+            self._markets = self._api.get_markets()
+        return len( [m for m in self._markets if m['name'] ==  market] ) != 0
 
     def get_future_data(self, market: str):
         return self._api.get_future_stats(market)
@@ -114,7 +115,7 @@ class Client:
                 continue
             if self._restrict_non_usd_collateral and k.replace("-PERP","") not in NON_USD_COLLATERAL:
                 continue
-            if len([m for m in self.markets if m['name'] ==  convert_symbol_futures_spot(k) ]) == 0:
+            if not self.has_market(convert_symbol_futures_spot(k)): #does not have corresponding spot market for this future market
                 continue
             future_data = {
                 'future': k
@@ -171,10 +172,10 @@ class App:
         df_positives = df_positives.sort_values("rate", ascending=False)
         df_positives['change'] = df_positives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
         df_positives['stability'] = df_positives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] < 0]}{['+','-'][x['rate_1'] < 0]}{['+','-'][x['rate_0'] < 0]}{['+','-'][x['rate'] < 0]}")
-        df_positives['future op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['bids'][0][0])
-        df_positives['spot op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['asks'][0][0])
-        df_positives['future cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['asks'][0][0])
-        df_positives['spot cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['bids'][0][0])
+        df_positives['future op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['bid'])
+        df_positives['spot op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['ask'])
+        df_positives['future cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['ask'])
+        df_positives['spot cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['bid'])
         df_positives['op spread %'] = round( (df_positives['future op p'] -  df_positives['spot op p'] )/ df_positives['future op p'] * 100,2)
         df_positives['cl spread %'] = round( (df_positives['spot cl p'] -  df_positives['future cl p'] )/ df_positives['spot cl p'] * 100,2)
         print(df_positives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
@@ -187,19 +188,21 @@ class App:
         df_negatives = df_negatives.sort_values("rate", ascending=True)
         df_negatives['change'] = df_negatives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
         df_negatives['stability'] = df_negatives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] > 0]}{['+','-'][x['rate_1'] > 0]}{['+','-'][x['rate_0'] > 0]}{['+','-'][x['rate'] > 0]}")
-        df_negatives['future op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['asks'][0][0])
-        df_negatives['spot op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['bids'][0][0])
-        df_negatives['future cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(x['future'])['bids'][0][0])
-        df_negatives['spot cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_orderbook(convert_symbol_futures_spot(x['future']))['asks'][0][0])
+        df_negatives['future op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['ask'])
+        df_negatives['spot op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['bid'])
+        df_negatives['future cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['bid'])
+        df_negatives['spot cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['ask'])
         df_negatives['op spread %'] = round( ( df_negatives['spot op p'] - df_negatives['future op p'] )/ df_negatives['future op p'] * 100,2)
         df_negatives['cl spread %'] = round( ( df_negatives['future cl p'] - df_negatives['spot cl p'] )/ df_negatives['future cl p'] * 100,2)
         print(df_negatives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
 
+    def _calc_account_value(self):
+        return  sum([x['usdValue'] for x in self.cl.balances]) + sum([x['unrealizedPnl'] for x in self.cl.positions])
 
     def list_positions(self):
         cl = self.cl
 
-        print(f"Account Value:    {sum([x['usdValue'] for x in cl.balances]) + sum([x['unrealizedPnl'] for x in cl.positions]) :.2f}")
+        print(f"Account Value:    {self._calc_account_value():.2f}")
         print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
         print(f"Margin:           {cl.account['marginFraction']*100:.1f}%/{cl.account['maintenanceMarginRequirement']*100:.1f}%")
         print(f"Fees:             Taker {cl.account['takerFee']*100}%, Maker {cl.account['makerFee']*100}%")
@@ -219,24 +222,22 @@ class App:
                 fr = future_data['nextFundingRate']*100
                 historical_frs = [a for a in cl.funding_rates if a['future'] == future_name][0]
                 pos_side = "SHORT" if x['side'] == "sell" else "LONG"
-                orderbook_futures = cl.get_orderbook(future_name)
-                orderbook_spot = cl.get_orderbook(convert_symbol_futures_spot(future_name))
-                future_close_price =  orderbook_futures['bids'][0][0] if pos_side == "LONG" else orderbook_futures['asks'][0][0]
-                spot_close_price =  orderbook_spot['asks'][0][0] if pos_side == "LONG" else orderbook_spot['bids'][0][0]
+                future_close_price =  cl.get_market(future_name)['bid'] if pos_side == "LONG" else cl.get_market(future_name)['ask']
+                spot_close_price =  cl.get_market(convert_symbol_futures_spot(future_name))['ask'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['bid']
                 value = x['netSize']*future_close_price
                 net_qty = spot_coin_data['total'] + x['netSize']
                 floor_net_qty = math.floor(abs(spot_coin_data['total'] + x['netSize']))
                 get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
                 is_profitable = get_fr_profitable(fr)
                 profit_per_hour = -value*fr*0.01
-                stability = [ get_fr_profitable(historical_frs['rate_0']), get_fr_profitable(historical_frs['rate_1']), get_fr_profitable(historical_frs['rate_2']) ]
+                stability = [ get_fr_profitable(historical_frs[k]) for k in ["rate_2","rate_1", "rate_0"] ]
                 ####
                 # use rounded diff of qties because sometimes qty may not be exactly 0
                 # due to extra amount borrowed when market-short-selling
                 if floor_net_qty > 0:
                     self._alert = "net qty"
                 ##
-                if not is_profitable and datetime.datetime.now().minute > 50 and not stability[0]:
+                if not is_profitable and datetime.datetime.now().minute > 50 and not stability[-1]:
                     self._alert = "profitable"
                 ####
                 position_data = {
@@ -250,7 +251,7 @@ class App:
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
                     'net qty': net_qty,
                     'profit/h': round(profit_per_hour,2),
-                    'stability': f"{['-','+'][stability[2]]}{['-','+'][stability[1]]}{['-','+'][stability[0]]}",
+                    'stability': "".join([ ['-','+'][x]  for x in stability]),
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
@@ -260,33 +261,29 @@ class App:
         print(f"net profit/h: {net_profit_per_hour:.2f}")
 
 
-
     def update_pos(self, market: str, qty: float, limit_spread: float):
-        lot_qty0, lot_count = self._calc_lot_qty_and_count(market, abs(qty))
-        future_market = [m for m in self.cl.markets if m['name'] ==  market ][0]
-        spot_market = [m for m in self.cl.markets if m['name'] ==  convert_symbol_futures_spot(market)][0]
-        future_size_increment = future_market['sizeIncrement']
-        spot_size_increment = spot_market['sizeIncrement']
-        future_min_decimals = get_decimal_count(future_size_increment)
-        spot_min_decimals = get_decimal_count(spot_size_increment)
-        lot_qty = round(lot_qty0, min(future_min_decimals,spot_min_decimals))
-        print(f"rounded lot size {lot_qty0} -> {lot_qty} future market min decimals: {future_min_decimals},  spot market min decimals: {spot_min_decimals}")
+        future_size_increment = self.cl.get_market(market)['sizeIncrement']
+        spot_size_increment = self.cl.get_market(convert_symbol_futures_spot(market))['sizeIncrement']
+        future_decimals = get_decimal_count(future_size_increment)
+        spot_decimals = get_decimal_count(spot_size_increment)
+        lot_qty, lot_count = self._calc_lot_qty_and_count(market, abs(qty), min(future_decimals,spot_decimals))
         for ilot in range(lot_count):
             print(f"** LOT {ilot+1} of {lot_count} qty={lot_qty} **")
             if qty > 0:
                self._long_pos(market, lot_qty, limit_spread)
             elif qty < 0:
                self._short_pos(market, lot_qty, limit_spread)
-        self.list_positions()
 
-    def _calc_lot_qty_and_count(self,  market: str, qty: float):
+    def _calc_lot_qty_and_count(self,  market: str, qty: float, round_decimals: int):
         '''
         returns [lot_qty, count]
         '''
         max_value_per_lot =  MIN_LOT_SIZE[market] if market in MIN_LOT_SIZE else 15
-        price = self.cl.get_orderbook(market)['asks'][0][0]
-        lot_qty = max_value_per_lot / price
+        price = self.cl.get_market(market)['ask']
+        lot_qty0 = max_value_per_lot / price
+        lot_qty = round(lot_qty0, round_decimals)
         count = max(1,math.floor(qty / lot_qty))
+        print(f"rounded lot size {lot_qty0} -> {lot_qty} round_decimals: {round_decimals}")
         return lot_qty, count
 
 
@@ -295,8 +292,8 @@ class App:
         if limit_spread is not None:
             while True:
                 cl = Client()
-                buy_price = cl.get_orderbook(market)['asks'][0][0]
-                sell_price = cl.get_orderbook(convert_symbol_futures_spot(market))['bids'][0][0]
+                buy_price = cl.get_market(market)['ask']
+                sell_price = cl.get_market(convert_symbol_futures_spot(market))['bid']
                 spread= round((sell_price - buy_price )/ sell_price * 100,2)
                 print(f"current spread: {spread}%, required: >{limit_spread}%", end="\r", flush=True)
                 if spread > limit_spread:
@@ -310,8 +307,8 @@ class App:
         if limit_spread is not None:
             while True:
                 cl = Client()
-                sell_price = cl.get_orderbook(market)['bids'][0][0]
-                buy_price = cl.get_orderbook(convert_symbol_futures_spot(market))['asks'][0][0]
+                sell_price = cl.get_market(market)['bid']
+                buy_price = cl.get_market(convert_symbol_futures_spot(market))['ask']
                 spread= round((sell_price - buy_price )/ sell_price * 100,2)
                 print(f"current spread: {spread}%, required: >{limit_spread}%", end="\r", flush=True)
                 if spread > limit_spread:
