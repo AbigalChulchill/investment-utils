@@ -2,7 +2,7 @@ import random, requests, datetime, math
 from typing import Optional, Dict, Any
 from .. common.convert import timeframe_to_interval_ms
 
-BINANCE_API_ENDPOINTS = [
+API_URIS = [
     "https://api.binance.com",
     "https://api1.binance.com",
     "https://api2.binance.com",
@@ -10,14 +10,12 @@ BINANCE_API_ENDPOINTS = [
 ]
 
 
-def get_api_endpoint():
-    return random.choice(BINANCE_API_ENDPOINTS)
+def get_random_api_uri():
+    return random.choice(API_URIS)
 
 
 def datetime_iso_to_binance(dt: str)->int:
     return math.floor(datetime.datetime.fromisoformat(dt).replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
-
-
 
 
 class Binance:
@@ -25,7 +23,7 @@ class Binance:
         self._session = requests.Session()
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
-        request = requests.Request(method, get_api_endpoint() + path, **kwargs)
+        request = requests.Request(method, get_random_api_uri() + path, **kwargs)
         response = self._session.send(request.prepare())
         return self._process_response(response)
 

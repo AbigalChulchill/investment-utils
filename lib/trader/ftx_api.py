@@ -15,7 +15,7 @@ class FtxQueryError(Exception):
 
 
 class Ftx:
-    FTX_API_ENDPOINT = "https://ftx.com/api"
+    API_URI = "https://ftx.com/api"
 
     def __init__(self, api_key: str, secret: str, subaccount: str = None) -> None:
         self._api_key = api_key
@@ -34,7 +34,7 @@ class Ftx:
         return self._request('DELETE', path, json=params)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
-        request = requests.Request(method, Ftx.FTX_API_ENDPOINT + path, **kwargs)
+        request = requests.Request(method, Ftx.API_URI + path, **kwargs)
         self._sign_request(request)
         response = self._session.send(request.prepare())
         return self._process_response(response)

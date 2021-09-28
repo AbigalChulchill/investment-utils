@@ -1,8 +1,8 @@
-import hmac, time, requests
+import hmac, time, datetime, requests
 from urllib.parse import urlencode
 from typing import Optional, Dict, Any
 
-ENDPOINT = "https://www.bitrue.com"
+API_URI = "https://www.bitrue.com"
 
 
 class BitrueQueryError(Exception):
@@ -35,7 +35,7 @@ class Bitrue:
         return self._request('DELETE', path, params=params)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
-        request = requests.Request(method, ENDPOINT + path, **kwargs)
+        request = requests.Request(method, API_URI + path, **kwargs)
         self._sign_request(request)
         response = self._session.send(request.prepare())
         return self._process_response(response)

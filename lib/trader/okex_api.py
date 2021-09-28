@@ -15,7 +15,7 @@ class OkexQueryError(Exception):
 
 
 class Okex:
-    ENDPOINT = "https://www.okex.com"
+    API_URI = "https://www.okex.com"
 
     def __init__(self, api_key: str, secret: str, passphrase: str) -> None:
         self._api_key = api_key
@@ -33,7 +33,7 @@ class Okex:
         return self._request('DELETE', path, json=params)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
-        request = requests.Request(method, Okex.ENDPOINT + path, **kwargs)
+        request = requests.Request(method, Okex.API_URI + path, **kwargs)
         self._sign_request(request)
         response = self._session.send(request.prepare())
         return self._process_response(response)
