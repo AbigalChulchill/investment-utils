@@ -1,6 +1,9 @@
-import argparse, time, datetime, math
+import argparse, time, datetime, math, talib
 from collections import defaultdict
+from typing import List, Tuple
 import pandas as pd
+import numpy as np
+from termcolor import cprint
 
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
@@ -36,8 +39,8 @@ NON_USD_COLLATERAL=[
 ]
 
 SHORTABLE=[
-"1INCH", "AAVE", "BCH", "BNB", "BTC", "CEL", "DOGE", "ETH", "LEO", "LINK", "LTC", "MATIC", "OKB", "OMG", "PAXG",
-"PENN", "PFE", "REN", "RSR", "RUNE", "SLV", "SNX", "SOL", "SUSHI", "SXP", "TOMO", "TRX", "UNI", "WBTC", "XAUT", "XRP", "YFI",
+"1INCH", "AAVE", "BCH", "BNB", "BTC", "CEL", "DOGE", "ETH", "LEO", "LINK", "LTC", "MATIC",  "OMG", "PAXG",
+"PENN", "PFE", "REN", "RSR", "RUNE", "SLV", "SNX", "SOL", "SUSHI", "SXP",  "TRX", "UNI", "WBTC", "XAUT", "XRP", "YFI",
 ]
 
 MIN_LOT_SIZE={
@@ -45,6 +48,9 @@ MIN_LOT_SIZE={
     "BNB-PERP":     40,
 }
 
+
+def section(name: str):
+    cprint(f"{name}", 'white', attrs=['bold'])
 
 def convert_symbol_futures_spot(symbol: str):
     return symbol.replace("-PERP", "/USD")
@@ -59,8 +65,6 @@ class Client:
         self._funding_rates = None
         self._account = None
         self._balances = None
-
-        self._orderbook_cache = dict()
 
     @property
     def funding_rates(self):
@@ -162,6 +166,12 @@ class Db:
         now = datetime.datetime.now()
         self.con.execute("INSERT INTO payments VALUES (?,?,?)", (now, account_value, net_profit))
         self.con.commit()
+
+    def get_markets(self) -> List[str]:
+        return [ row[0] for row in self.con.execute(f"SELECT DISTINCT market FROM historical_frs") ]
+
+    def get_market_historical_frs(self, market: str) -> List[Tuple[float, bool]]:
+        return [ {'fr': row[0], 'is_gainer': row[1] > 0} for row in self.con.execute(f"SELECT fr, is_gainer FROM historical_frs WHERE market = '{market}' ORDER BY date") ]
 
 
 class App:
@@ -356,6 +366,31 @@ class App:
         db.add_net_profit(account_value=round(self._calc_account_value()), net_profit=round(net_profit_per_hour,2))
 
 
+    def stats(self):
+        db = Db()
+        markets = db.get_markets()
+        market_info = []
+        sma_period_days = 7
+        for m in markets:
+            frs =  db.get_market_historical_frs(m)
+            total_actions = len(frs)
+            payment_history = ([ abs(x['fr']) if  x['is_gainer'] else -abs(x['fr'])  for x in frs ] )
+            avg_payment = talib.SMA(np.array(payment_history),min(sma_period_days*24,len(payment_history)))[-1]
+            wins_as_long  = sum([ 1 if x['is_gainer'] else 0 for x in frs if x['fr'] < 0 ] )
+            wins_as_short = sum([ 1 if x['is_gainer'] else 0 for x in frs if x['fr'] > 0 ] )
+            market_info.append( {
+                'market': m,
+                'pnl %': round(avg_payment,4),
+                '% wins as long': round(wins_as_long/total_actions*100,1),
+                '% wins as short': round(wins_as_short/total_actions*100,1),
+            })
+        df = pd.DataFrame.from_dict(market_info)
+        df.sort_values("pnl %", inplace=True, ascending=False)
+        section(f"{sma_period_days:.0f}-day average pnl % per 1h")
+        print(df.to_string(index=False))
+
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--list-markets', type=int, help='Display list of top futures markets sorted by last funding rate. Argument: n: limit displayed results to top n markets')
@@ -368,6 +403,7 @@ def main():
                                                     ' spread <0:  buying higher and hedge selling lower'
                                                     ' spread =0:  buying and hedge selling at same price'   )
     parser.add_argument('--update-db', action='store_const', const='True',  help='Collects stat data to db')
+    parser.add_argument('--stats', action='store_const', const='True',  help='Print a performance report')
 
     args = parser.parse_args()
 
@@ -386,6 +422,9 @@ def main():
 
     if args.update_db:
         app.update_db()
+    
+    if args.stats:
+        app.stats()
 
     if app.alert_state:
         sn = SoundNotification()
