@@ -173,6 +173,9 @@ class Db:
     def get_market_historical_frs(self, market: str) -> List[Tuple[float, bool]]:
         return [ {'fr': row[0], 'is_gainer': row[1] > 0} for row in self.con.execute(f"SELECT fr, is_gainer FROM historical_frs WHERE market = '{market}' ORDER BY date") ]
 
+    def get_payments(self) -> List[Tuple[float, float]]:
+        return [ {'account_value': row[0], 'net_profit': row[1]} for row in self.con.execute(f"SELECT account_value, net_profit FROM payments ORDER BY date") ]
+
 
 class App:
     def __init__(self):
@@ -371,23 +374,37 @@ class App:
         markets = db.get_markets()
         market_info = []
         sma_period_days = 7
+        print(f"Results below are {sma_period_days}-day averages")
+        print()
         for m in markets:
             frs =  db.get_market_historical_frs(m)
             total_actions = len(frs)
-            payment_history = ([ abs(x['fr']) if  x['is_gainer'] else -abs(x['fr'])  for x in frs ] )
-            avg_payment = talib.SMA(np.array(payment_history),min(sma_period_days*24,len(payment_history)))[-1]
+            frs_signed = ([ abs(x['fr']) if  x['is_gainer'] else -abs(x['fr'])  for x in frs ] )
+            avg_pnl = talib.SMA(np.array(frs_signed),min(sma_period_days*24,len(frs_signed)))[-1]
             wins_as_long  = sum([ 1 if x['is_gainer'] else 0 for x in frs if x['fr'] < 0 ] )
             wins_as_short = sum([ 1 if x['is_gainer'] else 0 for x in frs if x['fr'] > 0 ] )
             market_info.append( {
                 'market': m,
-                'pnl %': round(avg_payment,4),
+                'pnl %': round(avg_pnl,4),
                 '% wins as long': round(wins_as_long/total_actions*100,1),
                 '% wins as short': round(wins_as_short/total_actions*100,1),
             })
         df = pd.DataFrame.from_dict(market_info)
         df.sort_values("pnl %", inplace=True, ascending=False)
-        section(f"{sma_period_days:.0f}-day average pnl % per 1h")
         print(df.to_string(index=False))
+        print()
+        payments = db.get_payments()
+        account_values = [x['account_value'] for x in payments]
+        net_profits = [x['net_profit'] for x in payments]
+
+        avg_account_value = talib.SMA(np.array(account_values),min(sma_period_days*24,len(account_values)))[-1]
+        avg_net_profit = talib.SMA(np.array(net_profits),min(sma_period_days*24,len(net_profits)))[-1]
+        
+        df = pd.DataFrame.from_dict({
+                'account value': {'value': avg_account_value},
+                'net profit': {'value': avg_net_profit },
+            }, orient='index' )
+        print(df.to_string(index=True, header=False))
 
 
 
