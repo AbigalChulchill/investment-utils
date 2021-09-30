@@ -3,6 +3,7 @@ from .poloniex_trader import PoloniexTrader
 from .ftx_trader import FtxTrader
 from .okex_trader import OkexTrader
 from .bitrue_trader import BitrueTrader
+from .mexc_trader import MexcTrader
 from .dummy_trader import DummyTrader
 from .api_keys_config import ApiKeysConfig
 
@@ -27,6 +28,10 @@ class TraderFactory:
             if BitrueTrader.handles_sym(sym):
                 api_key, secret = cfg.get_bitrue_ks()
                 return BitrueTrader(sym, api_key, secret)
+        elif exch == 'mexc':
+            if MexcTrader.handles_sym(sym):
+                api_key, secret = cfg.get_mexc_ks()
+                return MexcTrader(sym, api_key, secret)
         raise ValueError(f"{sym} can't be traded")
 
     def create_trading_real(sym: str) -> Trader:

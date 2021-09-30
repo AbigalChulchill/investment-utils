@@ -2,6 +2,7 @@ from ..trader.poloniex_api import Poloniex
 from ..trader.ftx_api import Ftx
 from ..trader.okex_api import Okex
 from ..trader.bitrue_api import Bitrue
+from ..trader.mexc_api import Mexc
 
 from ..trader.api_keys_config import ApiKeysConfig
 from typing import Dict
@@ -27,6 +28,10 @@ def get_bitrue(api: Bitrue) -> float:
     free = [x['free'] for x in balances if x['asset'] == "usdt"]
     return roundx(float(free[0]))
 
+def get_mexc(api: Mexc) -> float:
+    balances = api.get_balances()
+    return roundx(float(balances['USDT']['available'])) if 'USDT' in balances.keys() else 0
+
 def get_available_usd_balances_dca() -> Dict[str,float]:
     cfg = ApiKeysConfig()
     return [
@@ -34,5 +39,6 @@ def get_available_usd_balances_dca() -> Dict[str,float]:
         {'exchange': 'FTX',       'USD': get_ftx(       Ftx(        cfg.get_ftx_ks()[0],        cfg.get_ftx_ks()[1],        cfg.get_ftx_subaccount_dca()  ))},
         {'exchange': 'Okex',      'USD': get_okex(      Okex(       cfg.get_okex_ksp()[0],      cfg.get_okex_ksp()[1],      cfg.get_okex_ksp()[2]  ))},
         {'exchange': 'Bitrue',    'USD': get_bitrue(    Bitrue(     cfg.get_bitrue_ks()[0],     cfg.get_bitrue_ks()[1]  ))},
+        {'exchange': 'MEXC',      'USD': get_mexc(      Mexc(       cfg.get_mexc_ks()[0],       cfg.get_mexc_ks()[1]  ))},
     ]
 

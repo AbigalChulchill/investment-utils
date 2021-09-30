@@ -14,6 +14,9 @@ class ApiKeysConfig:
     def get_bitrue_ks(self) -> Tuple[str,str]:
         return self._cfg['bitrue']['API_KEY'], self._cfg['bitrue']['SECRET']
 
+    def get_mexc_ks(self) -> Tuple[str,str]:
+        return self._cfg['mexc']['API_KEY'], self._cfg['mexc']['SECRET']
+
     def get_okex_ksp(self) -> Tuple[str,str,str]:
         return self._cfg['okex']['API_KEY'], self._cfg['okex']['SECRET'], self._cfg['okex']['PASS']
 

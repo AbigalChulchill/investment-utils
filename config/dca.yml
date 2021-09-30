@@ -25,7 +25,10 @@ asset_exchg:
   tezos:              okex
   hedera-hashgraph:   okex
   avalanche-2:        okex
-  gitcoin:            bitrue
+  arweave:            mexc
+  cosmos:             mexc
+  gitcoin:            mexc
+  harmony:            mexc
   #stocks:
   "#AAPL":            ftx  # Apple Inc.
   "#AMZN":            ftx  # Amazon.com Inc.
