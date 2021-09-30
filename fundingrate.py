@@ -421,6 +421,7 @@ def main():
                                                     ' spread =0:  buying and hedge selling at same price'   )
     parser.add_argument('--update-db', action='store_const', const='True',  help='Collects stat data to db')
     parser.add_argument('--stats', action='store_const', const='True',  help='Print a performance report')
+    parser.add_argument('--silent-alerts', action='store_const', const='True',  help='Do not play sound for alerts')
 
     args = parser.parse_args()
 
@@ -444,10 +445,12 @@ def main():
         app.stats()
 
     if app.alert_state:
-        sn = SoundNotification()
+        if not args.silent_alerts:
+            sn = SoundNotification()
         for _ in range(3):
             print(f"****************** ALERT : {app.alert_message}! ******************")
-            sn.info()
+            if not args.silent_alerts:
+                sn.info()
             time.sleep(0.6)
 
 if __name__ == '__main__':
