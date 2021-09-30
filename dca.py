@@ -163,15 +163,17 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
     a = list()
     
     for asset in assets:
+        current_price = th.get_market_price(asset)
+
         if not single_mode:
             if ds['check_market_open']:
                 if not (th.is_tradeable(asset)):
                     msg_accumulate_skip(asset, "market is closed")
                     continue
 
-            if ds['check_dip']:
-                if th.get_daily_change(asset) > ds['dip_threshold']:
-                    msg_accumulate_skip(asset, "not dipping today")
+            if ds['check_overprice']:
+                if current_price > th.get_avg_price_n_days(asset, ds['check_overprice_avg_days']):
+                    msg_accumulate_skip(asset, "may be overpriced")
                     continue
 
         msg_accumulate(asset)
@@ -182,7 +184,6 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
             else:
                 quota_asset = ds['quota_usd']
                 quota_mul *= get_quota_fixed_multiplier(asset)
-                current_price = th.get_market_price(asset)
                 avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
                 quota_mul *= avg_price_last_n_days / current_price
                 quota_mul = min(quota_mul, ds['quota_multiplier_max'])
@@ -200,7 +201,7 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
                     'asset': asset,
                     'price': actual_price,
                     'quota_mul': round(quota_mul,2),
-                    'usd': coin_qty*actual_price,
+                    'value': coin_qty*actual_price,
                     'coins/shares': coin_qty,
                 })
         except Exception as e:
@@ -210,6 +211,7 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
     if len(a):
         df = DataFrame.from_dict(a)
         print(df.to_string(index=False))
+        print(f"accumulated value: ${sum(df['value']):.2f}")
     else:
         print('nothing was added.')
     print_account_balances()
