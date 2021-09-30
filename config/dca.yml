@@ -49,9 +49,11 @@ asset_exchg:
 auto_accumulate_list:
   - 0x
   - aave
+  - arweave
   - avalanche-2
   - basic-attention-token
   - bitcoin
+  - cosmos
   - curve-dao-token
   - decentraland
   - enjincoin
@@ -60,6 +62,7 @@ auto_accumulate_list:
   - fantom
   - ftx-token
   - gitcoin
+  - harmony
   - havven
   - hedera-hashgraph
   - polkadot
@@ -82,25 +85,39 @@ auto_accumulate_list:
 
 
 # default quota for --add per asset if --qty is not specified
-quota_usd: 60
+quota_usd: 30
 
 
 quota_fixed_multiplier:
   0x:                       0.5
+  aave:                     1
+  arweave:                  0.5
+  avalanche-2:              1
   basic-attention-token:    0.5
+  bitcoin:                  1
+  cosmos:                   0.5
+  curve-dao-token:          1
   decentraland:             0.5
   enjincoin:                0.5
+  ethereum:                 1.1
   ethereum-classic:         0.5
+  fantom:                   1
   ftx-token:                0.5
+  gitcoin:                  0.5
+  harmony:                  0.5
   havven:                   0.5
+  hedera-hashgraph:         1
+  polkadot:                 1
   ripple:                   0.5
+  solana:                   1
+  tezos:                    1
   "#BABA":                  0.2
   "#BILI":                  0.2
   "#COIN":                  0.2
   "#GBTC":                  0.2
   "#MSTR":                  0.2
   "#NIO":                   0.2
-  "#TSLA":                  0.2
+  "#TSLA":                  0.3
   "#TWTR":                  0.2
 
 
