@@ -5,3 +5,6 @@ def err(msg: str):
 
 def warn(msg: str):
     cprint(f"warning: {msg}", 'yellow')
+
+def info(msg: str):
+    print(msg)

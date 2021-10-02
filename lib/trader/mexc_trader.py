@@ -2,6 +2,7 @@ import time
 
 from typing import Tuple
 
+from .. common.msg import info,warn
 from . import mexc_api
 from .trader import Trader
 
@@ -24,10 +25,12 @@ class MexcTrader(Trader):
         self._api = mexc_api.Mexc(api_key, secret)
 
     def buy_market(self, qty_usd: float) -> Tuple[float,float]:
+        self._check_mx_balance()
         market_price = float(self._api.get_ticker(self._symbol)['ask'])
         return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*1.01, qty=qty_usd / market_price, trade_type="BID", order_type="IMMEDIATE_OR_CANCEL" ))
 
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
+        self._check_mx_balance()
         market_price = float(self._api.get_ticker(self._symbol)['bid'])
         return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*0.99, qty=qty_tokens, trade_type="ASK", order_type="IMMEDIATE_OR_CANCEL"))
 
@@ -42,3 +45,17 @@ class MexcTrader(Trader):
                 fill_price = float(r['deal_amount']) / fill_qty
                 break
         return fill_price, fill_qty,
+
+    def _check_mx_balance(self):
+        balances = self._api.get_balances()
+        get_mx_balance = lambda : float(balances['MX']['available']) if 'MX' in balances.keys() else 0
+        qty = get_mx_balance()
+        market_price = float(self._api.get_ticker("MX_USDT")['ask'])
+        if qty * market_price < 5:
+            add_qty = 10 / market_price
+            info(f"mexc_trader: buying {add_qty:.1f} additional MX tokens")
+            self._api.place_order(symbol="MX_USDT", price=market_price*1.01, qty=add_qty, trade_type="BID", order_type="IMMEDIATE_OR_CANCEL" )
+            time.sleep(1)
+            new_qty = get_mx_balance()
+            if new_qty < add_qty:
+                warn("mexc_trader: failed to buy MX tokens")
