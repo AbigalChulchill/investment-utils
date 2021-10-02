@@ -313,7 +313,7 @@ class App:
         '''
         max_value_per_lot =  MIN_LOT_SIZE[market] if market in MIN_LOT_SIZE else 15
         price = self.cl.get_market(market)['ask']
-        lot_qty0 = max_value_per_lot / price
+        lot_qty0 = min(qty, max_value_per_lot / price)
         lot_qty = round(lot_qty0, round_decimals)
         count = max(1,math.floor(qty / lot_qty))
         print(f"rounded lot size {lot_qty0} -> {lot_qty} round_decimals: {round_decimals}")
