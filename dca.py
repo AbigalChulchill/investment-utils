@@ -222,7 +222,7 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, List[str]]:
         filter_result, filter_reason = passes_acc_filter(asset, th)
         if not filter_result:
             cprint(f"{asset} filtered: {filter_reason}", "yellow")
-                continue
+            continue
 
         daily_qty,_ = calc_daily_qty(asset, th, ds['quota_usd'])
         price = th.get_market_price(asset)
@@ -356,7 +356,7 @@ def stats(hide_private_data: bool, sort_by: str):
                 'available qty': available_qty,
                 'break even price': pnl_data.break_even_price,
                 'current price': market_price,
-                'daily chg %': round(th.get_daily_change(coin),1),
+                #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_overprice_avg_days']),1),
                 'unrealized sell value': round(pnl_data.unrealized_sell_value,1),
                 'r pnl': round(pnl_data.realized_pnl,1),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
@@ -394,6 +394,27 @@ def stats(hide_private_data: bool, sort_by: str):
     df = df.sort_values('%', ascending=False)
     print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
     print("")
+
+
+def technicals():
+    title("Technicals")
+    db = Db()
+    assets = list(set( db.get_syms() + ds['auto_accumulate_list'] ))
+    th = TradeHelper(assets)
+    data = list()
+    op_sma_len = ds['check_overprice_avg_days']
+    op_header = f"distance to {op_sma_len}-day SMA %"
+    print("reading data...")
+    for coin in assets:
+        print(".", end="", flush=True)
+        data.append({
+            'asset': coin,
+            op_header: round(th.get_distance_to_avg_percent(coin, op_sma_len),1),
+        })
+    print()
+    df = DataFrame.from_dict(data)
+    df.sort_values(op_header, inplace=True, ascending=False)
+    print(df.to_string(index=False))
 
 
 def order_replay(coin: str):
@@ -440,6 +461,7 @@ def main():
     parser.add_argument('--qty', type=int, help='Quota in USD for every position')
     parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
+    parser.add_argument('--technicals', action='store_const', const='True', help='Print technicals for coins')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print available balances on accouns')
@@ -469,6 +491,8 @@ def main():
             print("burn: requires --coin")
     elif args.stats:
         stats(args.hide_private_data, args.sort_by)
+    elif args.technicals:
+        technicals()
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:

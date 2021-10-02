@@ -79,8 +79,10 @@ class MarketData:
 
     def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
         df = self._get_historical_bars(asset, days_before)
-        df['ma'] = talib.MA(df['close'], min(len(df), days_before))
-        r = df['ma'][-1]
-        if r != r:
-            raise ValueError("ma == NaN")
-        return r
+        if len(df) > 0:
+            df['ma'] = talib.MA(df['close'], min(len(df), days_before))
+            r = df['ma'][-1]
+            if r != r:
+                raise ValueError("ma == NaN")
+            return r
+        return self.get_market_price(asset)
