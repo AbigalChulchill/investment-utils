@@ -180,15 +180,6 @@ class Db:
 class App:
     def __init__(self):
         self.cl = Client(restrict_non_usd_collateral=False)
-        self._alert = None
-
-    @property
-    def alert_state(self):
-        return self._alert is not None
-
-    @property
-    def alert_message(self):
-        return self._alert
 
     def list_markets(self, limit_count: int):
         cl = self.cl
@@ -232,8 +223,9 @@ class App:
     def _calc_account_value(self):
         return  sum([x['usdValue'] for x in self.cl.balances]) + sum([x['unrealizedPnl'] for x in self.cl.positions])
 
-    def list_positions(self):
+    def list_positions(self, silent_alert: bool = False):
         cl = self.cl
+        alert = None
 
         print(f"Account Value:    {self._calc_account_value():.2f}")
         print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
@@ -242,8 +234,8 @@ class App:
         spot_usd_data = [a for a in cl.balances if a['coin'] == "USD"][0]
         print(f"USD Balance:      {spot_usd_data['total']:.2f} ({spot_usd_data['total']/cl.account['collateral']:.1f}x of net collateral)")
         ####
-        if cl.account['marginFraction'] / cl.account['maintenanceMarginRequirement'] < 2:
-            self._alert = "margin"
+        if cl.account['marginFraction'] / cl.account['maintenanceMarginRequirement'] < 1.5:
+            alert = "margin"
         ####
         print("\nHedged positions:\n")
         positions_data = list()
@@ -268,7 +260,7 @@ class App:
                 # use rounded diff of qties because sometimes qty may not be exactly 0
                 # due to extra amount borrowed when market-short-selling
                 if floor_net_qty > 0:
-                    self._alert = "net qty"
+                    alert = "net qty"
                 ##
                 position_data = {
                     'future': future_name,
@@ -290,7 +282,16 @@ class App:
         net_profit_per_hour = sum(df['profit/h'])
         print(f"net profit/h: {net_profit_per_hour:.2f}")
         if net_profit_per_hour < 0:
-            self._alert = "net profit"
+            alert = "net profit"
+
+        if alert:
+            if not silent_alert:
+                sn = SoundNotification()
+            for _ in range(3):
+                print(f"****************** ALERT : {alert}! ******************")
+                if not silent_alert:
+                    sn.info()
+                time.sleep(0.6)
 
 
     def update_pos(self, market: str, qty: float, limit_spread: float):
@@ -428,7 +429,7 @@ def main():
     app = App()
 
     if args.list_positions:
-        app.list_positions()
+        app.list_positions(args.silent_alerts)
     if args.list_markets:
         app.list_markets(args.list_markets)
 
@@ -444,14 +445,6 @@ def main():
     if args.stats:
         app.stats()
 
-    if app.alert_state:
-        if not args.silent_alerts:
-            sn = SoundNotification()
-        for _ in range(3):
-            print(f"****************** ALERT : {app.alert_message}! ******************")
-            if not args.silent_alerts:
-                sn.info()
-            time.sleep(0.6)
 
 if __name__ == '__main__':
     main()
