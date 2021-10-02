@@ -267,7 +267,7 @@ class App:
                     'fr': fr,
                     'side': pos_side,
                     'qty': x['netSize'],
-                    'value': round(value,2),
+                    'value': round(abs(value),2),
                     'future cl p': future_close_price,
                     'spot cl p': spot_close_price,
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
@@ -277,7 +277,7 @@ class App:
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
-        df.sort_values('value', ascending=True, inplace=True)
+        df.sort_values('value', ascending=False, inplace=True)
         print(df.to_string(index=False))
         net_profit_per_hour = sum(df['profit/h'])
         print(f"net profit/h: {net_profit_per_hour:.2f}")
