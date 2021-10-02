@@ -1,7 +1,7 @@
-import json, datetime, argparse, re, yaml, traceback
+import json, datetime, argparse, re, yaml, traceback, math
 from pandas.core.frame import DataFrame
 from termcolor import cprint
-from typing import List
+from typing import List, Tuple
 
 from lib.trader.trader_factory import TraderFactory
 from lib.trader.trader import Trader
@@ -20,14 +20,13 @@ def title(name: str):
 def title2(name: str):
     cprint(f"  {name}", 'white', attrs=['bold'])
 
-def msg_accumulate(coin: str):
-    cprint(f"buying : {coin}", 'green')
+def msg_buying(coin: str):
+    print("buying : ", end="")
+    cprint(coin, "green")
 
-def msg_accumulate_skip(coin: str, reason: str):
-    cprint(f"skipped: {coin}, {reason}", 'yellow')
-
-def msg_remove(coin: str):
-    cprint(f"selling : {coin}", 'green')
+def msg_selling(coin: str):
+    print("selling : ", end="")
+    cprint(coin, "green")
 
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
@@ -41,9 +40,6 @@ def get_quota_fixed_multiplier(coin: str):
         if coin in ds[param].keys():
             return ds[param][coin]
     return 1
-
-def pretty_json(s):
-    print(json.dumps(s, indent=4, sort_keys=True))
 
 
 class TradeHelper:
@@ -61,6 +57,11 @@ class TradeHelper:
 
     def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before)
+
+    def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
+        avg = self.get_avg_price_n_days(coin, days_before)
+        current = self.get_market_price(coin)
+        return (current - avg) / current * 100.
 
     def is_dipping(self, coin: str) -> float:
         return self.market_data.is_dipping(coin)
@@ -157,37 +158,91 @@ def print_account_balances():
     print(df_balances.to_string(index=False, header=False))
 
 
-def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
+def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
+    '''
+    return (daily_qty, quota_multiplier)
+    '''
+    quota_mul = get_quota_fixed_multiplier(asset)
+    avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
+    current_price = th.get_market_price(asset)
+    quota_mul *= avg_price_last_n_days / current_price
+    quota_mul = min(quota_mul, ds['quota_multiplier_max'])
+    daily_qty = round(quota_asset * quota_mul)
+    return (daily_qty,quota_mul)
+
+
+def accumulate_one(qty: float, asset: str, dry: bool):
+    msg_buying(asset)
+
+    db = Db()
+    th = TradeHelper([asset])
+
+    daily_qty,quota_mul = (qty,1) if qty else calc_daily_qty(asset, th, ds['quota_usd'])
+
+    trader: Trader = create_trader(asset)
+    if trader:
+        if dry:
+            actual_price = th.get_market_price(asset)
+            coin_qty = daily_qty / actual_price
+        else:
+            actual_price, coin_qty = trader.buy_market(daily_qty)
+            db.add(asset, coin_qty, actual_price)
+        df = DataFrame.from_dict([{
+            'asset': asset,
+            'price': actual_price,
+            'quota_mul': round(quota_mul,2),
+            'value': coin_qty*actual_price,
+            'coins/shares': coin_qty,
+        }])
+        print(df.to_string(index=False))
+        print_account_balances()
+
+
+def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
+    if ds['check_market_open']:
+        if not (th.is_tradeable(asset)):
+            return False, "market is closed"
+    if ds['check_overprice']:
+        d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
+        #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
+        if d > 1.:
+            return False, "maybe overpriced"
+    return True, ""
+
+
+def accumulate_pre_pass(assets: List[str]) -> Tuple[float, List[str]]:
+    th = TradeHelper(assets)
+    total_value = 0
+    i = 1
+    enabled = []
+    for asset in assets:
+        print(f"\r{i} of {len(assets)}  ", end='', flush=True)
+        i += 1
+
+        filter_result, filter_reason = passes_acc_filter(asset, th)
+        if not filter_result:
+            cprint(f"{asset} filtered: {filter_reason}", "yellow")
+                continue
+
+        daily_qty,_ = calc_daily_qty(asset, th, ds['quota_usd'])
+        price = th.get_market_price(asset)
+        coin_qty = daily_qty / price
+        value = coin_qty * price
+        total_value += value
+        enabled.append(asset)
+    print()
+    return total_value,enabled
+
+
+def accumulate_main_pass(assets: List[str], dry: bool, quota_asset: float):
     db = Db()
     th = TradeHelper(assets)
     a = list()
     
     for asset in assets:
-        current_price = th.get_market_price(asset)
-
-        if not single_mode:
-            if ds['check_market_open']:
-                if not (th.is_tradeable(asset)):
-                    msg_accumulate_skip(asset, "market is closed")
-                    continue
-
-            if ds['check_overprice']:
-                if current_price > th.get_avg_price_n_days(asset, ds['check_overprice_avg_days']):
-                    msg_accumulate_skip(asset, "may be overpriced")
-                    continue
-
-        msg_accumulate(asset)
+        msg_buying(asset)
         try:
-            quota_mul = 1
-            if qty:
-                daily_qty = qty
-            else:
-                quota_asset = ds['quota_usd']
-                quota_mul *= get_quota_fixed_multiplier(asset)
-                avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
-                quota_mul *= avg_price_last_n_days / current_price
-                quota_mul = min(quota_mul, ds['quota_multiplier_max'])
-                daily_qty = round(quota_asset * quota_mul)
+            daily_qty,quota_mul = calc_daily_qty(asset, th, quota_asset)
 
             trader: Trader = create_trader(asset)
             if trader:
@@ -210,6 +265,7 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
 
     if len(a):
         df = DataFrame.from_dict(a)
+        df.sort_values("value", inplace=True, ascending=False)
         print(df.to_string(index=False))
         print(f"accumulated value: ${sum(df['value']):.2f}")
     else:
@@ -217,14 +273,24 @@ def accumulate(qty: float, assets: List[str], single_mode: bool, dry: bool):
     print_account_balances()
 
 
+def accumulate(assets: List[str], dry: bool):
+    quota_asset = ds['quota_usd']
+    print("calculating value of assets to be bought...")
+    total_value, enabled_assets = accumulate_pre_pass(assets)
+    print(f"estimated total value before limiting: {total_value}")
+    if total_value > ds['total_quota_usd']:
+        quota_asset *= ds['total_quota_usd'] / total_value
+        quota_asset = math.floor(quota_asset)
+        print(f"lowering quota_usd to {quota_asset}")
+    print("now buying assets...")
+    accumulate_main_pass(enabled_assets, dry, quota_asset)
+
+
 def remove(coin: str, qty: str, dry: bool):
+    msg_selling(coin)
+
     db = Db()
     th = TradeHelper(db.get_syms())
-    a= list()
-
-    msg_remove(coin)
-
-    market_price = th.get_market_price(coin)
     available_sell_qty = db.get_sym_available_qty(coin)
     sell_qty = 0
     m = re.match(r"([0-9]+)%", qty)
@@ -241,17 +307,14 @@ def remove(coin: str, qty: str, dry: bool):
         else:
             actual_price, actual_qty = trader.sell_market(sell_qty)
             db.remove(coin, actual_qty, actual_price)
-        a.append({
+        df = DataFrame.from_dict([{
             'coin': coin,
             'price': actual_price,
             'coins sold': actual_qty,
             'usd sold': actual_qty*actual_price,
             'coins avail': available_sell_qty - actual_qty,
             'usd avail': (available_sell_qty - actual_qty)*actual_price,
-        })
-
-    if len(a):
-        df = DataFrame.from_dict(a)
+        }])
         print(df.to_string(index=False))
     else:
         print('not removed.')
@@ -385,7 +448,10 @@ def main():
     args = parser.parse_args()
 
     if args.add:
-        accumulate(qty=args.qty if args.qty else None, assets=[args.coin] if args.coin else ds['auto_accumulate_list'], single_mode=args.coin is not None, dry=args.dry)
+        if args.coin:
+            accumulate_one(qty=args.qty, asset=args.coin, dry=args.dry)
+        else:
+            accumulate(assets=ds['auto_accumulate_list'], dry=args.dry)
     elif args.remove:
         if args.coin:
             remove(coin=args.coin, qty=args.remove, dry=args.dry)

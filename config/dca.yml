@@ -85,7 +85,12 @@ auto_accumulate_list:
 
 
 # default quota for --add per asset if --qty is not specified
-quota_usd: 30
+quota_usd: 50
+
+
+# for auto-accumulate: quotas of individual assets will be lowered
+# to ensure that sum of their usd value is not exceeding this parameter
+total_quota_usd: 500
 
 
 quota_fixed_multiplier:
