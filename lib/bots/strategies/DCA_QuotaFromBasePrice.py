@@ -11,7 +11,7 @@ class StrategyImpl(Strategy):
 
     def tick(self, ticker: Ticker, broker: Broker):
         c = ticker.close
-        quota_mult = self._base_price / c[-1]
+        quota_mult = min(1, self._base_price / c[-1])
         buy_qty = self._dca_base_quota * quota_mult /  c[-1]
         print(f"{ticker.timestamp} buy {buy_qty}  mult={quota_mult:.2f}")
         broker.buy(buy_qty)
