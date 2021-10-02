@@ -104,9 +104,6 @@ class Client:
     def get_future_data(self, market: str):
         return self._api.get_future_stats(market)
 
-    def get_ticker(self, market: str):
-        return self._api.get_ticker(market)
-
     def _convert_funding_rates(self, rates_list):
         rates = defaultdict(list)
         for row in rates_list:
@@ -134,8 +131,8 @@ class Client:
         return futures_data
 
     def execute_hedge_order(self, market1: str, side1: str, market2: str, side2: str, size: float):
-        order_id1 = self._api.place_order(market1, side1, 0, "market", size)
-        order_id2 = self._api.place_order(market2, side2, 0, "market", size)
+        order_id1 = self._api.place_order(market1, side1, None, "market", size)
+        order_id2 = self._api.place_order(market2, side2, None, "market", size)
 
         for _ in range(10):
             time.sleep(0.5)
