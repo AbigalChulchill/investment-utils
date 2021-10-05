@@ -11,12 +11,17 @@ from .. common.misc import is_stock
 
 class MarketData:
     def __init__(self, asset_ids: List[str] = None):
-        # caching price data for all available coins at once
-        # so we don't call API for every single item (because of frequency limits)
-        coin_ids = [x for x in asset_ids if not is_stock(x)]
-        cg = pycoingecko.CoinGeckoAPI()
-        self._price_data = cg.get_price(ids=coin_ids, vs_currencies='usd', include_24hr_change="true")
         self._stock_info = dict()
+        self._crypto_prices = BinanceAPI().get_prices()
+
+    def _get_cached_crypto_price(self, asset: str):
+        if asset in coingecko_id_to_binance.keys():
+            return float([x['price'] for x in self._crypto_prices if x['symbol'] == coingecko_id_to_binance[asset]][0])
+        else:
+            # use coingecko for symbols not on Binance
+            cg = pycoingecko.CoinGeckoAPI()
+            price_data = cg.get_price(ids=[asset], vs_currencies='usd', include_24hr_change="false")
+            return float(price_data[asset]['usd'])
 
     def _get_cached_stock_info(self, asset: str):
         if not asset in self._stock_info:
@@ -28,7 +33,7 @@ class MarketData:
         if is_stock(asset):
             return self._get_cached_stock_info(asset)['currentPrice']
         else:
-            return float(self._price_data[asset]['usd'])
+            return self._get_cached_crypto_price(asset)
 
     def is_tradeable(self, asset: str) -> bool:
         if is_stock(asset):
@@ -86,3 +91,8 @@ class MarketData:
                 raise ValueError("ma == NaN")
             return r
         return self.get_market_price(asset)
+
+    def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
+        avg = self.get_avg_price_n_days(coin, days_before)
+        current = self.get_market_price(coin)
+        return (current - avg) / current * 100.

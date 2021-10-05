@@ -59,9 +59,7 @@ class TradeHelper:
         return self.market_data.get_avg_price_n_days(coin, days_before)
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
-        avg = self.get_avg_price_n_days(coin, days_before)
-        current = self.get_market_price(coin)
-        return (current - avg) / current * 100.
+        return self.market_data.get_distance_to_avg_percent(coin, days_before)
 
     def is_dipping(self, coin: str) -> float:
         return self.market_data.is_dipping(coin)

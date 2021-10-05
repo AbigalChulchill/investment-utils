@@ -40,6 +40,22 @@ class Binance:
     def get_current_price(self, pair: str) -> dict:
         return float(self._get("/api/v3/avgPrice", {'symbol': pair})['price'])
 
+    def get_prices(self) -> dict:
+        '''
+        Symbol Price Ticker : Latest price for a symbol or symbols
+        '''
+        # [
+        #     {
+        #         "symbol": "LTCBTC",
+        #         "price": "4.00000200"
+        #     },
+        #     {
+        #         "symbol": "ETHBTC",
+        #         "price": "0.07946600"
+        #     }
+        # ]
+        return self._get("/api/v3/ticker/price")
+
     def get_24h_change_percent(self, pair: str) -> dict:
         return float(self._get("/api/v3/ticker/24hr", {'symbol': pair})['priceChangePercent'])
 
