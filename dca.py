@@ -279,7 +279,7 @@ def accumulate(assets: List[str], dry: bool):
     print(f"estimated total value before limiting: {total_value}")
     if total_value > ds['total_quota_usd']:
         quota_asset *= ds['total_quota_usd'] / total_value
-        quota_asset = math.floor(quota_asset)
+        quota_asset = round(quota_asset,2)
         print(f"lowering quota_usd to {quota_asset}")
     print("now buying assets...")
     accumulate_main_pass(enabled_assets, dry, quota_asset)
