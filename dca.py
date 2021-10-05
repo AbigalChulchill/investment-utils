@@ -153,7 +153,7 @@ class Db:
 def print_account_balances():
     title("Account Balances, USD")
     df_balances = DataFrame.from_dict(accounts_balance.get_available_usd_balances_dca())
-    print(df_balances.to_string(index=False, header=False))
+    print(df_balances.to_string(index=False))
 
 
 def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
