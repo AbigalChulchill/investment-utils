@@ -43,4 +43,6 @@ coingecko_id_to_binance={
   "arweave":            "ARUSDT",
   "cosmos":             "ATOMUSDT",
   "harmony":            "ONEUSDT",
+  "raydium":            "RAYUSDT",
+  "serum":              "SRMUSDT",
 }

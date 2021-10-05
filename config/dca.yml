@@ -21,6 +21,8 @@ asset_exchg:
   ftx-token:          ftx
   enjincoin:          ftx
   fantom:             ftx
+  raydium:            ftx
+  serum:              ftx
   decentraland:       okex
   tezos:              okex
   hedera-hashgraph:   okex
@@ -69,6 +71,8 @@ auto_accumulate_list:
   - ripple
   - solana
   - tezos
+  - raydium
+  - serum
   #- "#AAPL"
   #- "#AMZN"
   - "#BABA"

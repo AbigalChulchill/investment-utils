@@ -13,6 +13,8 @@ sym_to_market={
     'bitcoin':         'WBTC/USD',
     'enjincoin':       'ENJ/USD',
     'fantom':          'FTM/USD',
+    'raydium':         'RAY/USD',
+    'serum':           'SRM/USD',
 
     #stocks
     '#AAPL':  'AAPL/USD',
