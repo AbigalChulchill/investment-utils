@@ -140,3 +140,8 @@ check_market_open: False
 # if True, asset from auto_accumulate_list is only processed if today price < SMA(check_overprice_avg_days)
 check_overprice: True
 check_overprice_avg_days: 50
+
+# list of assets that are not filtered under any condition
+no_filter_list:
+  - bitcoin
+  - ethereum

@@ -199,6 +199,7 @@ def accumulate_one(qty: float, asset: str, dry: bool):
 
 
 def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
+    if asset not in ds['no_filter_list']:
     if ds['check_market_open']:
         if not (th.is_tradeable(asset)):
             return False, "market is closed"
