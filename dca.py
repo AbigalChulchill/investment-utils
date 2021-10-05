@@ -198,14 +198,14 @@ def accumulate_one(qty: float, asset: str, dry: bool):
 
 def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
     if asset not in ds['no_filter_list']:
-    if ds['check_market_open']:
-        if not (th.is_tradeable(asset)):
-            return False, "market is closed"
-    if ds['check_overprice']:
-        d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
-        #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
-        if d > 1.:
-            return False, "maybe overpriced"
+        if ds['check_market_open']:
+            if not (th.is_tradeable(asset)):
+                return False, "market is closed"
+        if ds['check_overprice']:
+            d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
+            #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
+            if d > 1.:
+                return False, "maybe overpriced"
     return True, ""
 
 
