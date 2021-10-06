@@ -222,7 +222,7 @@ class App:
 
     def list_positions(self, silent_alert: bool = False):
         cl = self.cl
-        alert = None
+        alert_list = list()
 
         print(f"Account Value:    {self._calc_account_value():.2f}")
         print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
@@ -231,8 +231,10 @@ class App:
         spot_usd_data = [a for a in cl.balances if a['coin'] == "USD"][0]
         print(f"USD Balance:      {spot_usd_data['total']:.2f} ({spot_usd_data['total']/cl.account['collateral']:.1f}x of net collateral)")
         ####
+        if cl.account['freeCollateral'] < 200:
+            alert_list.append("collateral")
         if cl.account['marginFraction'] / cl.account['maintenanceMarginRequirement'] < 1.5:
-            alert = "margin"
+            alert_list.append("margin")
         ####
         print("\nHedged positions:\n")
         positions_data = list()
@@ -244,6 +246,8 @@ class App:
                 fr = future_data['nextFundingRate']*100
                 historical_frs = [a for a in cl.funding_rates if a['future'] == future_name][0]
                 pos_side = "SHORT" if x['side'] == "sell" else "LONG"
+                future_op_price =  cl.get_market(future_name)['ask'] if pos_side == "LONG" else cl.get_market(future_name)['bid']
+                spot_op_price =  cl.get_market(convert_symbol_futures_spot(future_name))['bid'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['ask']
                 future_close_price =  cl.get_market(future_name)['bid'] if pos_side == "LONG" else cl.get_market(future_name)['ask']
                 spot_close_price =  cl.get_market(convert_symbol_futures_spot(future_name))['ask'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['bid']
                 value = x['netSize']*future_close_price
@@ -257,16 +261,20 @@ class App:
                 # use rounded diff of qties because sometimes qty may not be exactly 0
                 # due to extra amount borrowed when market-short-selling
                 if floor_net_qty > 0:
-                    alert = "net qty"
+                    alert_list.append("net_qty")
                 ##
                 position_data = {
                     'future': future_name,
                     'fr': fr,
                     'side': pos_side,
                     'qty': x['netSize'],
+                    'price': round((future_close_price+spot_close_price)/2,2),
                     'value': round(abs(value),2),
-                    'future cl p': future_close_price,
-                    'spot cl p': spot_close_price,
+                    # 'f op p': round(future_op_price,2),
+                    # 's op p': round(spot_op_price,2),
+                    # 'f cl p': round(future_close_price,2),
+                    # 's cl p': round(spot_close_price,2),
+                    'op spread %': round( (future_op_price - spot_op_price)/future_op_price * 100 * [1,-1][pos_side == "LONG"] ,2),
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
                     'net qty': net_qty,
                     'profit/h': round(profit_per_hour,2),
@@ -279,13 +287,13 @@ class App:
         net_profit_per_hour = sum(df['profit/h'])
         print(f"net profit/h: {net_profit_per_hour:.2f}")
         if net_profit_per_hour < 0:
-            alert = "net profit"
+            alert_list.append("net_profit")
 
-        if alert:
+        if len(alert_list):
             if not silent_alert:
                 sn = SoundNotification()
             for _ in range(3):
-                print(f"****************** ALERT : {alert}! ******************")
+                print(f"****************** ALERT : {' '.join(alert_list)}! ******************")
                 if not silent_alert:
                     sn.info()
                 time.sleep(0.6)
@@ -398,11 +406,12 @@ class App:
         avg_account_value = talib.SMA(np.array(account_values),min(sma_period_days*24,len(account_values)))[-1]
         avg_net_profit = talib.SMA(np.array(net_profits),min(sma_period_days*24,len(net_profits)))[-1]
         
-        df = pd.DataFrame.from_dict({
-                'account value': {'value': avg_account_value},
-                'net profit': {'value': avg_net_profit },
-            }, orient='index' )
-        print(df.to_string(index=True, header=False))
+        df = pd.DataFrame.from_dict([
+                { 'param' : f'account value MA{sma_period_days}', 'value': avg_account_value},
+                { 'param' : f'net profit MA{sma_period_days}', 'value': avg_net_profit },
+                { 'param' : f'cumulative profit since {len(net_profits)/24:.1f} days', 'value': sum(net_profits)},
+            ] )
+        print(df.to_string(index=False, header=False))
 
 
 
