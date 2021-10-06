@@ -3,6 +3,8 @@ from typing import List, Tuple
 
 from lib.common import pnl
 from lib.common import convert
+from ..common.binance_id_map import id_to_binance
+from ..common.ftx_id_map import id_to_ftx
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.trader import binance_api
@@ -110,7 +112,7 @@ class TickerRealtime(Ticker):
 
     @property
     def market_price(self) -> float:
-        return self._api.get_ticker(convert.coingecko_id_to_ftx[ self._market ])
+        return self._api.get_ticker(id_to_ftx[ self._market ])
 
     @property
     def timestamp(self) -> pd.DatetimeIndex:
@@ -139,7 +141,7 @@ class TickerLive(Ticker):
         called by the conductor to update ticker candlestick data
         '''
         api = binance_api.Binance()
-        candles = api.get_candles_by_limit(convert.coingecko_id_to_binance[self._market], self._timeframe, limit=500)
+        candles = api.get_candles_by_limit(id_to_binance[self._market], self._timeframe, limit=500)
         self._df = pd.DataFrame.from_dict(candles)
         self._df = self._df[:-1] # remove last item as it corresponds to just opened candle (partial)
         self._df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(self._df['timestamp'], unit="ms"))
@@ -183,7 +185,7 @@ class TickerHistorical(Ticker):
 
     def _load_candles_live(self, market: str, timeframe: str, dt_start: str, dt_end: str ):
         api = binance_api.Binance()
-        return api.get_candles_by_range(convert.coingecko_id_to_binance[market], timeframe, dt_start, dt_end)
+        return api.get_candles_by_range(id_to_binance[market], timeframe, dt_start, dt_end)
 
     def _load_candles(self, market: str, timeframe: str, dt_start: str, dt_end: str ) -> str:
         cache_dir:str ="cache"

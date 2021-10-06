@@ -4,43 +4,17 @@ from typing import Tuple
 
 from . import ftx_api
 from .trader import Trader
-
-
-sym_to_market={
-    #crypto
-    'ftx-token':       'FTT/USD',
-    'solana':          'SOL/USD',
-    'bitcoin':         'WBTC/USD',
-    'enjincoin':       'ENJ/USD',
-    'fantom':          'FTM/USD',
-    'raydium':         'RAY/USD',
-    'serum':           'SRM/USD',
-
-    #stocks
-    '#AAPL':  'AAPL/USD',
-    '#AMZN':  'AMZN/USD',
-    '#BABA':  'BABA/USD',
-    '#BILI':  'BILI/USD',
-    '#COIN':  'COIN/USD',
-    '#FB':    'FB/USD',
-    '#GBTC':  'GBTC/USD',
-    '#GOOGL': 'GOOGL/USD',
-    '#MSTR':  'MSTR/USD',
-    '#NIO':   'NIO/USD',
-    '#PYPL':  'PYPL/USD',
-    '#TSLA':  'TSLA/USD',
-    '#TWTR':  'TWTR/USD',
-}
+from ..common.ftx_id_map import id_to_ftx
 
 
 class FtxTrader(Trader):
 
     @staticmethod
     def handles_sym(sym: str) -> bool:
-        return sym in sym_to_market.keys()
+        return sym in id_to_ftx.keys()
 
     def __init__(self, sym: str, api_key: str, secret: str, subaccount: str):
-        self._market = sym_to_market[sym]
+        self._market = id_to_ftx[sym]
         self._api = ftx_api.Ftx(api_key, secret, subaccount)
 
     def buy_market(self, qty_usd: float) -> Tuple[float,float]:

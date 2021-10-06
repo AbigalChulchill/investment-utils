@@ -14,6 +14,38 @@ class FtxQueryError(Exception):
         super().__init__(message)
 
 
+class FtxPublic:
+    API_URI = "https://ftx.com/api"
+
+    def __init__(self) -> None:
+        pass
+
+    def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        response = requests.get(FtxPublic.API_URI + path, params=params)
+        try:
+            data = response.json()
+        except ValueError:
+            response.raise_for_status()
+            raise
+        else:
+            if not data['success']:
+                raise FtxQueryError(status_code=response.status_code, data=response.json())
+            return data['result']
+
+    def get_markets(self) -> dict:
+        return self._get("/markets")
+
+    def get_candles(self, market: str, resolution_seconds: int, ts_start: int=None, ts_end: int=None) -> dict:
+        params={
+            'resolution':  resolution_seconds,
+            'start_time':  ts_start,
+            'end_time':  ts_end,
+        }
+        candles = self._get(f"/markets/{market}/candles", params)
+        return candles
+
+
+
 class Ftx:
     API_URI = "https://ftx.com/api"
 

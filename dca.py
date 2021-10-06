@@ -9,7 +9,7 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import err, warn
-from lib.common.misc import is_stock
+from lib.common.misc import is_stock, is_metal
 
 
 ds = dict()
@@ -337,8 +337,9 @@ def stats(hide_private_data: bool, sort_by: str):
     th = TradeHelper(db.get_syms())
     assets = db.get_syms()
     asset_groups= {
-        'Crypto': [x for x in assets if not is_stock(x)],
-        'Stocks': [x for x in assets if is_stock(x)]
+        'Crypto': [x for x in assets if not is_stock(x) and not is_metal(x)],
+        'Stocks': [x for x in assets if is_stock(x)],
+        'Metals': [x for x in assets if is_metal(x)]
     }
     asset_group_pnl_df={}
     for asset_group in asset_groups.keys():
@@ -368,7 +369,10 @@ def stats(hide_private_data: bool, sort_by: str):
         formatters={
             'available qty':    lambda x: f'{x:8.8f}',
         }
-        print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+        if df_pnl.size > 0:
+            print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+        else:
+            print("No assets")
         print("")
         asset_group_pnl_df[asset_group] = df_pnl
 
@@ -376,19 +380,28 @@ def stats(hide_private_data: bool, sort_by: str):
     for asset_group in asset_groups.keys():
         title2(asset_group)
         df = asset_group_pnl_df[asset_group]
-        df['%'] = round(df['unrealized sell value'] / sum(df['unrealized sell value']) * 100, 1)
-        df = df.sort_values('%', ascending=False)
-        print(df.to_string(index=False, header=False, columns=['asset', '%']))
+        if df.size > 0:
+            df['%'] = round(df['unrealized sell value'] / sum(df['unrealized sell value']) * 100, 1)
+            df = df.sort_values('%', ascending=False)
+            print(df.to_string(index=False, header=False, columns=['asset', '%']))
+        else:
+            print("No assets")
         print("")
 
     title2("By asset group")
-    total_unrealized_sell_value = sum(sum(df['unrealized sell value']) for df in asset_group_pnl_df.values())
+    total_unrealized_sell_value = sum(sum(df['unrealized sell value']) for df in asset_group_pnl_df.values() if df.size > 0)
     stats_data = list()
     for asset_group in asset_groups.keys():
-        stats_data.append({
-            'asset_group': asset_group,
-            '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized sell value']) / total_unrealized_sell_value * 100, 1),
-        })
+        if asset_group_pnl_df[asset_group].size > 0:
+            stats_data.append({
+                'asset_group': asset_group,
+                '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized sell value']) / total_unrealized_sell_value * 100, 1),
+            })
+        else:
+            stats_data.append({
+                'asset_group': asset_group,
+                '%' : 0,
+            })
     df = DataFrame.from_dict(stats_data)
     df = df.sort_values('%', ascending=False)
     print(df.to_string(index=False, header=False, columns=['asset_group', '%']))

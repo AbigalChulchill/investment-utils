@@ -45,7 +45,8 @@ asset_exchg:
   "#PYPL":            ftx  # PayPal Holdings
   "#TSLA":            ftx  # Tesla Inc.
   "#TWTR":            ftx  # Twitter Inc.
-
+  "@gold":            ftx
+  "@silver":          ftx
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:

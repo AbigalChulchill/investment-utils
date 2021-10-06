@@ -11,38 +11,3 @@ timeframe_to_interval_ms={
     "1M": 30*24*60*60*1000,
 }
 
-coingecko_id_to_ftx={
-    "bitcoin":  "BTC/USD",
-    "ethereum": "ETH/USD",
-}
-
-
-coingecko_id_to_binance={
-  "bitcoin":            "BTCUSDT",
-  "dogecoin":           "DOGEUSDT",
-  "ethereum":           "ETHUSDT",
-  "cardano":            "ADAUSDT",
-  "ripple":             "XRPUSDT",
-  "shiba-inu":          "SHIBUSDT",
-  "curve-dao-token":    "CRVUSDT",
-  "aave":               "AAVEUSDT",
-  "0x":                 "ZRXUSDT",
-  "havven":             "SNXUSDT",
-  "ethereum-classic":   "ETCUSDT",
-  "solana":             "SOLUSDT",
-  "ftx-token":          "FTTUSDT",
-  "decentraland":       "MANAUSDT",
-  "tezos":              "XTZUSDT",
-  "gitcoin":            "GTCUSDT",
-  "polkadot":           "DOTUSDT",
-  "basic-attention-token": "BATUSDT",
-  "enjincoin":          "ENJUSDT",
-  "fantom":             "FTMUSDT",
-  "hedera-hashgraph":   "HBARUSDT",
-  "avalanche-2":        "AVAXUSDT",
-  "arweave":            "ARUSDT",
-  "cosmos":             "ATOMUSDT",
-  "harmony":            "ONEUSDT",
-  "raydium":            "RAYUSDT",
-  "serum":              "SRMUSDT",
-}
