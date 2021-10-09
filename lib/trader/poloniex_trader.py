@@ -1,5 +1,5 @@
 import time, traceback
-from lib.common.msg import warn
+from lib.common.msg import info, warn
 from . import poloniex_api
 from .trader import Trader
 
@@ -35,6 +35,7 @@ class PoloniexTrader(Trader):
         self.api = poloniex_api.Poloniex(api_key, secret)
 
     def buy_market(self, qty_usd: float) -> float:
+        self._check_trx_balance()
         retries = MAX_RETRIES
         while retries >= 0:
             try:
@@ -49,6 +50,7 @@ class PoloniexTrader(Trader):
                     raise
 
     def sell_market(self, qty_tokens: float) -> float:
+        self._check_trx_balance()
         retries = MAX_RETRIES
         while retries >= 0:
             try:
@@ -83,3 +85,14 @@ class PoloniexTrader(Trader):
         market_price = float(self.api.returnOrderBook(self.pair)['bids'][1][0])
         response = self.api.sell(self.pair, market_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
+
+    def _check_trx_balance(self):
+        qty = float(self.api.returnBalances()['TRX'])
+        market_price = float(self.api.returnOrderBook("USDT_TRX")['asks'][1][0])
+        if qty * market_price < 50:
+            add_qty = round(10 / market_price)
+            info(f"PoloniexTrader: buying {add_qty:.1f} additional TRX tokens")
+            self.api.buy("USDT_TRX", market_price*1.01, add_qty, {'fillOrKill': True})
+            new_qty = float(self.api.returnBalances()['TRX'])
+            if new_qty < add_qty:
+                warn("PoloniexTrader: failed to buy TRX tokens")
