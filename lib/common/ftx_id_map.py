@@ -23,6 +23,7 @@ id_to_ftx={
     '#PYPL':  'PYPL/USD',
     '#TSLA':  'TSLA/USD',
     '#TWTR':  'TWTR/USD',
+    '#SQ':    'SQ/USD',
 
     #metals
     "@gold":   "PAXG/USD",

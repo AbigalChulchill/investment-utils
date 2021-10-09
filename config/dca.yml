@@ -45,6 +45,7 @@ asset_exchg:
   "#PYPL":            ftx  # PayPal Holdings
   "#TSLA":            ftx  # Tesla Inc.
   "#TWTR":            ftx  # Twitter Inc.
+  "#SQ":              ftx  # Square Inc. [digital payments]
   "@gold":            ftx
   "@silver":          ftx
 
