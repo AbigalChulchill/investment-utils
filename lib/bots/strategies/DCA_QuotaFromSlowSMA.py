@@ -3,8 +3,8 @@ import talib
 
 class StrategyImpl(Strategy):
     '''
-      A strategy to backtest the period of MA from which the quota multiplier for DCA is derived
-      quota_multiplier = MA(close, period) / close 
+      A strategy to backtest the period of MA from which the quota factor for DCA is derived
+      quota_factor = MA(close, period) / close 
     '''
     def __init__(self, args: dict):
         self._dca_base_quota = float(args['dca_base_quota'])

@@ -34,8 +34,8 @@ def create_trader(coin: str) -> Trader:
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_dummy(coin)
 
-def get_quota_fixed_multiplier(coin: str):
-    param = 'quota_fixed_multiplier'
+def get_quota_fixed_factor(coin: str):
+    param = 'quota_fixed_factor'
     if param in ds.keys():
         if coin in ds[param].keys():
             return ds[param][coin]
@@ -158,13 +158,13 @@ def print_account_balances():
 
 def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
     '''
-    return (daily_qty, quota_multiplier)
+    return (daily_qty, quota_factor)
     '''
-    quota_mul = get_quota_fixed_multiplier(asset)
-    avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_multiplier_average_days'])
+    quota_mul = get_quota_fixed_factor(asset)
+    avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_factor_average_days'])
     current_price = th.get_market_price(asset)
     quota_mul *= avg_price_last_n_days / current_price
-    quota_mul = min(quota_mul, ds['quota_multiplier_max'])
+    quota_mul = min(quota_mul, ds['quota_factor_max'])
     daily_qty = round(quota_asset * quota_mul)
     return (daily_qty,quota_mul)
 

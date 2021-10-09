@@ -97,47 +97,28 @@ quota_usd: 50
 # to ensure that sum of their usd value is not exceeding this parameter
 total_quota_usd: 500
 
-
-quota_fixed_multiplier:
-  0x:                       0.5
-  aave:                     1
-  arweave:                  0.5
-  avalanche-2:              1
-  basic-attention-token:    0.5
-  bitcoin:                  1
-  cosmos:                   0.5
-  curve-dao-token:          1
-  decentraland:             0.5
-  enjincoin:                0.5
-  ethereum:                 1.1
-  ethereum-classic:         0.5
-  fantom:                   1
-  ftx-token:                0.5
-  gitcoin:                  0.5
-  harmony:                  0.5
-  havven:                   0.5
-  hedera-hashgraph:         1
-  polkadot:                 1
-  ripple:                   0.5
-  solana:                   1
-  tezos:                    1
-  "#BABA":                  0.2
-  "#BILI":                  0.2
-  "#COIN":                  0.2
-  "#GBTC":                  0.2
-  "#MSTR":                  0.2
-  "#NIO":                   0.2
-  "#TSLA":                  0.3
-  "#TWTR":                  0.2
-
+# applied unconditinally to quota_usd. The final factor is a product of all active factors.
+quota_fixed_factor:
+  "#AAPL":            0.2
+  "#AMZN":            0.2
+  "#BABA":            0.2
+  "#BILI":            0.2
+  "#COIN":            0.2
+  "#FB":              0.2
+  "#GBTC":            0.2
+  "#GOOGL":           0.2
+  "#MSTR":            0.2
+  "#NIO":             0.2
+  "#PYPL":            0.2
+  "#TSLA":            0.2
+  "#TWTR":            0.2
+  "#SQ":              0.2
 
 # moving average period to calculate average price to compare current price to
-quota_multiplier_average_days: 200
+quota_factor_average_days: 200
 
-
-# quota multiplier is upper limited to quota_multiplier_max
-quota_multiplier_max: 2
-
+# quota factor is upper limited to quota_factor_max
+quota_factor_max: 2
 
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False

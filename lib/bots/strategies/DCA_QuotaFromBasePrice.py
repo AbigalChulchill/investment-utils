@@ -2,7 +2,7 @@ from lib.bots.interfaces import Strategy, Ticker, Broker
 
 class StrategyImpl(Strategy):
     '''
-      A strategy to backtest the average buy price when using quota multiplier for DCA
+      A strategy to backtest the average buy price when using quota factor for DCA
       based on level ratio
     '''
     def __init__(self, args: dict):
