@@ -204,7 +204,7 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
         if ds['check_overprice']:
             d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
             #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
-            if d > 1.:
+            if d > ds['check_overprice_threshold']:
                 return False, "maybe overpriced"
     return True, ""
 

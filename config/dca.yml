@@ -124,9 +124,11 @@ quota_factor_max: 2
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False
 
-# if True, asset from auto_accumulate_list is only processed if today price < SMA(check_overprice_avg_days)
+# if True, asset from auto_accumulate_list is only processed if close
+# is above SMA(close,`avg_days`) by no more than `threshold` %.
 check_overprice: True
 check_overprice_avg_days: 50
+check_overprice_threshold: 1.0
 
 # list of assets that are not filtered under any condition
 no_filter_list:
