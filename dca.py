@@ -331,7 +331,7 @@ def close(coin: str):
     print(f"{coin} position has been closed")
 
 
-def stats(hide_private_data: bool, sort_by: str):
+def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
     title("PnL")
     db = Db()
     th = TradeHelper(db.get_syms())
@@ -357,10 +357,10 @@ def stats(hide_private_data: bool, sort_by: str):
                 'break even price': pnl_data.break_even_price,
                 'current price': market_price,
                 #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_overprice_avg_days']),1),
-                'unrealized sell value': round(pnl_data.unrealized_sell_value,1),
-                'r pnl': round(pnl_data.realized_pnl,1),
+                'value': round(pnl_data.unrealized_sell_value,2),
+                'r pnl': round(pnl_data.realized_pnl,2),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
-                'u pnl': round(pnl_data.unrealized_pnl,1),
+                'u pnl': round(pnl_data.unrealized_pnl,2),
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
             })
         df_pnl = DataFrame.from_dict(stats_data)
@@ -373,7 +373,7 @@ def stats(hide_private_data: bool, sort_by: str):
             print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
         else:
             print("No assets")
-        print("")
+        print()
         asset_group_pnl_df[asset_group] = df_pnl
 
     title("Portfolio Structure")
@@ -381,31 +381,47 @@ def stats(hide_private_data: bool, sort_by: str):
         title2(asset_group)
         df = asset_group_pnl_df[asset_group]
         if df.size > 0:
-            df['%'] = round(df['unrealized sell value'] / sum(df['unrealized sell value']) * 100, 1)
+            df['%'] = round(df['value'] / sum(df['value']) * 100, 1)
+            df['USD'] = df['value']
+            df['BTC'] = round(df['USD'] / th.get_market_price("bitcoin"),6)
             df = df.sort_values('%', ascending=False)
-            print(df.to_string(index=False, header=False, columns=['asset', '%']))
+            if hide_private_data or hide_totals:
+                print(df.to_string(index=False, header=False, columns=['asset', '%']))
+            else:
+                print(df.to_string(index=False, columns=['asset', '%', 'USD', 'BTC']))
         else:
             print("No assets")
-        print("")
+        print()
 
     title2("By asset group")
-    total_unrealized_sell_value = sum(sum(df['unrealized sell value']) for df in asset_group_pnl_df.values() if df.size > 0)
+    total_unrealized_sell_value = sum(sum(df['value']) for df in asset_group_pnl_df.values() if df.size > 0)
     stats_data = list()
     for asset_group in asset_groups.keys():
         if asset_group_pnl_df[asset_group].size > 0:
+            this_group_unrealized_sell_value = sum(asset_group_pnl_df[asset_group]['value'])
             stats_data.append({
                 'asset_group': asset_group,
-                '%' : round(sum(asset_group_pnl_df[asset_group]['unrealized sell value']) / total_unrealized_sell_value * 100, 1),
+                '%' : round(this_group_unrealized_sell_value / total_unrealized_sell_value * 100, 1),
+                'USD': round(this_group_unrealized_sell_value,2),
+                'BTC': round(this_group_unrealized_sell_value / th.get_market_price("bitcoin"),6),
             })
         else:
             stats_data.append({
                 'asset_group': asset_group,
                 '%' : 0,
+                'USD' : 0,
+                'BTC' : 0,
             })
     df = DataFrame.from_dict(stats_data)
     df = df.sort_values('%', ascending=False)
-    print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
-    print("")
+    if hide_private_data or hide_totals:
+        print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
+        print()
+    else:
+        print(df.to_string(index=False))
+        print()
+        print(f"total value across all assets: {total_unrealized_sell_value:.2f} USD ({total_unrealized_sell_value / th.get_market_price('bitcoin'):.6f})")
+        print()
 
 
 def technicals():
@@ -468,17 +484,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
     parser.add_argument('--remove', type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
+    parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     parser.add_argument('--burn', type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
-    parser.add_argument('--qty', type=int, help='Quota in USD for every position')
+    parser.add_argument('--qty', type=int, help='Quota in USD for every position, used with --add')
     parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
-    parser.add_argument('--technicals', action='store_const', const='True', help='Print technicals for coins')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
-    parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
-    parser.add_argument('--balances', action='store_const', const='True', help='Print available balances on accouns')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
-    parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
+    parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats report')
+    parser.add_argument('--technicals', action='store_const', const='True', help='Print technicals for coins')
+    parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
+    parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     args = parser.parse_args()
 
     if args.add:
@@ -502,7 +519,7 @@ def main():
         else:
             print("burn: requires --coin")
     elif args.stats:
-        stats(args.hide_private_data, args.sort_by)
+        stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, sort_by=args.sort_by)
     elif args.technicals:
         technicals()
     elif args.order_replay:
