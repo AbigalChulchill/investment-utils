@@ -2,26 +2,20 @@ import time
 
 from typing import Tuple
 
-from .. common.msg import info,warn
-from . import mexc_api
-from .trader import Trader
+from lib.common.msg import info,warn
+from lib.common.id_map_mexc import id_to_mexc
+from lib.trader import mexc_api
+from lib.trader.trader import Trader
 
-
-coingecko_to_symbol={
-    'gitcoin':       'GTC_USDT',
-    'harmony':       'ONE_USDT',
-    'cosmos':        'ATOM_USDT',
-    'arweave':       'AR_USDT',
-}
 
 class MexcTrader(Trader):
 
     @staticmethod
     def handles_sym(sym: str) -> bool:
-        return sym in coingecko_to_symbol.keys()
+        return sym in id_to_mexc.keys()
 
     def __init__(self, sym: str, api_key: str, secret: str):
-        self._symbol = coingecko_to_symbol[sym]
+        self._symbol = id_to_mexc[sym]
         self._api = mexc_api.Mexc(api_key, secret)
 
     def buy_market(self, qty_usd: float) -> Tuple[float,float]:

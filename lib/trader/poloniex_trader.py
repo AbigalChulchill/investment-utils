@@ -1,25 +1,9 @@
 import time, traceback
 from lib.common.msg import info, warn
-from . import poloniex_api
-from .trader import Trader
+from lib.common.id_map_poloniex import id_to_poloniex
+from lib.trader import poloniex_api
+from lib.trader.trader import Trader
 
-sym_to_pair={
-    'bitcoin':          'USDT_BTC',
-    'dogecoin':         'USDT_DOGE',
-    'ethereum':         'USDT_ETH',
-    'matic-network':    'USDT_MATIC',
-    'ripple':           'USDT_XRP',
-    'cardano':          'USDT_ADA',
-    'gitcoin':          'USDT_GTC',
-    'shiba-inu':        'USDT_SHIB',
-    "curve-dao-token":  "USDT_CRV",
-    "aave":             "USDT_AAVE",
-    "0x":               "USDT_ZRX",
-    "havven":           "USDT_SNX",
-    "ethereum-classic": "USDT_ETC",
-    "polkadot":         "USDT_DOT",
-    'basic-attention-token': 'USDT_BAT',
-}
 
 MAX_RETRIES = 3
 DELAY = 5
@@ -28,10 +12,10 @@ class PoloniexTrader(Trader):
 
     @staticmethod
     def handles_sym(sym: str) -> bool:
-        return sym in sym_to_pair.keys()
+        return sym in id_to_poloniex.keys()
 
     def __init__(self, sym: str, api_key: str, secret: str):
-        self.pair = sym_to_pair[sym]
+        self.pair = id_to_poloniex[sym]
         self.api = poloniex_api.Poloniex(api_key, secret)
 
     def buy_market(self, qty_usd: float) -> float:

@@ -1,11 +1,8 @@
 import time
 from . import bitrue_api
 from .trader import Trader
+from ..common.id_map_bitrue import id_to_bitrue
 
-
-sym_to_pair={
-    'gitcoin':       'GTCUSDT',
-}
 
 sym_round_decimals={
     'gitcoin':       2,
@@ -15,10 +12,10 @@ class BitrueTrader(Trader):
 
     @staticmethod
     def handles_sym(sym: str) -> bool:
-        return sym in sym_to_pair.keys()
+        return sym in id_to_bitrue.keys()
 
     def __init__(self, sym: str, api_key: str, secret: str):
-        self._pair = sym_to_pair[sym]
+        self._pair = id_to_bitrue[sym]
         self._round_decimals = sym_round_decimals[sym]
         self._api = bitrue_api.Bitrue(api_key, secret)
 

@@ -26,5 +26,8 @@ id_to_binance={
   "harmony":            "ONEUSDT",
   "raydium":            "RAYUSDT",
   "serum":              "SRMUSDT",
+  "cosmos":             "ATOMUSDT",
+  "algorand":           "ALGOUSDT",
+  "axie-infinity":      "AXSUSDT",
 }
 

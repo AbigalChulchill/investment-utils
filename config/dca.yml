@@ -23,10 +23,12 @@ asset_exchg:
   fantom:             ftx
   raydium:            ftx
   serum:              ftx
+  axie-infinity:      ftx
   decentraland:       okex
   tezos:              okex
   hedera-hashgraph:   okex
   avalanche-2:        okex
+  algorand:           okex
   arweave:            mexc
   cosmos:             mexc
   gitcoin:            mexc
@@ -51,17 +53,17 @@ asset_exchg:
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
+  # - bitcoin
+  # - ethereum
   - 0x
   - aave
   - arweave
   - avalanche-2
   - basic-attention-token
-  - bitcoin
   - cosmos
   - curve-dao-token
   - decentraland
   - enjincoin
-  - ethereum
   - ethereum-classic
   - fantom
   - ftx-token
@@ -75,24 +77,22 @@ auto_accumulate_list:
   - tezos
   - raydium
   - serum
-  #- "#AAPL"
-  #- "#AMZN"
+  - algorand
+  - axie-infinity
   - "#BABA"
   - "#BILI"
   - "#COIN"
-  #- "#FB"
-  - "#GBTC"
-  #- "#GOOGL"
-  - "#MSTR"
   - "#NIO"
-  #- "#PYPL"
   - "#TSLA"
   - "#TWTR"
+  - "#SQ"
+  - "@gold"
+  - "@silver"
+
 
 
 # default quota for --add per asset if --qty is not specified
 quota_usd: 50
-
 
 # for auto-accumulate: quotas of individual assets will be lowered
 # to ensure that sum of their usd value is not exceeding this parameter
@@ -100,6 +100,8 @@ total_quota_usd: 500
 
 # applied unconditinally to quota_usd. The final factor is a product of all active factors.
 quota_fixed_factor:
+  bitcoin:            1.
+  ethereum:           1.
   "#AAPL":            0.2
   "#AMZN":            0.2
   "#BABA":            0.2
@@ -114,6 +116,8 @@ quota_fixed_factor:
   "#TSLA":            0.2
   "#TWTR":            0.2
   "#SQ":              0.2
+  "@gold":            1.
+  "@silver":          1.
 
 # moving average period to calculate average price to compare current price to
 quota_factor_average_days: 200
@@ -132,5 +136,4 @@ check_overprice_threshold: 1.0
 
 # list of assets that are not filtered under any condition
 no_filter_list:
-  - bitcoin
-  - ethereum
+  - dummy

@@ -202,9 +202,10 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
             if not (th.is_tradeable(asset)):
                 return False, "market is closed"
         if ds['check_overprice']:
+            d200 = th.get_distance_to_avg_percent(asset, 200)
             d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
             #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
-            if d > ds['check_overprice_threshold']:
+            if d > ds['check_overprice_threshold'] and d200 > 0: # not overpriced if below 200d
                 return False, "maybe overpriced"
     return True, ""
 

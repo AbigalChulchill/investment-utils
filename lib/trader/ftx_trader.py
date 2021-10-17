@@ -2,9 +2,9 @@ import time
 
 from typing import Tuple
 
-from . import ftx_api
-from .trader import Trader
-from ..common.ftx_id_map import id_to_ftx
+from lib.common.id_map_ftx import id_to_ftx
+from lib.trader import ftx_api
+from lib.trader.trader import Trader
 
 
 class FtxTrader(Trader):

@@ -1,6 +1,6 @@
 from .interface import MarketDataProvider
-from ..trader.ftx_api import FtxPublic
-from ..common.ftx_id_map import id_to_ftx
+from lib.trader.ftx_api import FtxPublic
+from lib.common.id_map_ftx import id_to_ftx
 import pandas as pd
 import datetime
 

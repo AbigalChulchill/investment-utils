@@ -1,22 +1,16 @@
 import time
-from . import okex_api
-from .trader import Trader
-
-sym_to_market={
-    'decentraland':       'MANA-USDT',
-    'tezos':              'XTZ-USDT',
-    'hedera-hashgraph':   'HBAR-USDT',
-    'avalanche-2':        'AVAX-USDT',
-}
+from lib.common.id_map_okex import id_to_okex
+from lib.trader import okex_api
+from lib.trader.trader import Trader
 
 class OkexTrader(Trader):
 
     @staticmethod
     def handles_sym(sym: str) -> bool:
-        return sym in sym_to_market.keys()
+        return sym in id_to_okex.keys()
 
     def __init__(self, sym: str, api_key: str, secret: str, passw: str):
-        self.market = sym_to_market[sym]
+        self.market = id_to_okex[sym]
         self.api = okex_api.Okex(api_key, secret, passw)
 
     def buy_market(self, qty_usd: float) -> float:

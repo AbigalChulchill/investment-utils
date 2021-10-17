@@ -3,8 +3,8 @@ from typing import List, Tuple
 
 from lib.common import pnl
 from lib.common import convert
-from ..common.binance_id_map import id_to_binance
-from ..common.ftx_id_map import id_to_ftx
+from lib.common.id_map_binance import id_to_binance
+from lib.common.id_map_ftx import id_to_ftx
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.trader import binance_api

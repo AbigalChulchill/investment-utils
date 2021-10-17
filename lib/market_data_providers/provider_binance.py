@@ -1,6 +1,6 @@
 from .interface import MarketDataProvider
-from ..common.binance_id_map import id_to_binance
-from .. trader.binance_api import Binance as BinanceAPI
+from lib.common.id_map_binance import id_to_binance
+from lib.trader.binance_api import Binance as BinanceAPI
 import pandas as pd
 
 
