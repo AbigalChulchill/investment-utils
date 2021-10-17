@@ -17,10 +17,8 @@ class MarketDataProviderYF(MarketDataProvider):
             self._ticker_cache[asset] = yf.Ticker(asset.replace("#", ""))
         return self._ticker_cache[asset]
 
-
     def get_market_price(self, asset: str) -> float:
-        ticker = self._get_ticker(asset)
-        return ticker.info['currentPrice']
+        return self.get_historical_bars(asset,1,True)['close'].to_numpy(float)[-1]
 
     def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
         ticker = self._get_ticker(asset)
