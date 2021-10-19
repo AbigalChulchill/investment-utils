@@ -409,6 +409,7 @@ class App:
         df = pd.DataFrame.from_dict([
                 { 'param' : f'account value MA{sma_period_days}', 'value': avg_account_value},
                 { 'param' : f'net profit MA{sma_period_days}', 'value': avg_net_profit },
+                { 'param' : f'APR %', 'value': round(avg_net_profit/avg_account_value * 24 * 365 * 100,1) },
                 { 'param' : f'cumulative profit since {len(net_profits)/24:.1f} days', 'value': sum(net_profits)},
             ] )
         print(df.to_string(index=False, header=False))
