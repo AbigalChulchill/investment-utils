@@ -26,11 +26,16 @@ class MarketData:
         return daily_change
 
 
-    def get_avg_price_n_days(self, asset: str, days_before: int) -> float:
+    def get_avg_price_n_days(self, asset: str, days_before: int, ma_type: str="auto") -> float:
         df = self._provider_flyweight.get(asset).get_historical_bars(asset, days_before)
         if len(df) > 0:
-            ma_type = talib.SMA if days_before > 10 else talib.EMA
-            df['ma'] = ma_type(df['close'], min(len(df), days_before))
+            if ma_type == "auto":
+                ta_ma_type = talib.SMA if days_before > 10 else talib.EMA
+            elif ma_type == "EMA":
+                ta_ma_type = talib.EMA
+            else:
+                ta_ma_type = talib.SMA
+            df['ma'] = ta_ma_type(df['close'], min(len(df), days_before))
             r = df['ma'][-1]
             if r != r:
                 raise ValueError("ma == NaN")

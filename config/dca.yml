@@ -131,9 +131,12 @@ check_market_open: False
 
 # if True, asset from auto_accumulate_list is only processed if close
 # is above SMA(close,`avg_days`) by no more than `threshold` %.
-check_overprice: True
+check_overprice: False
 check_overprice_avg_days: 50
 check_overprice_threshold: 1.0
+
+# if True, asset from auto_accumulate_list is only processed if downward movement is detected
+check_retracement: True
 
 # list of assets that are not filtered under any condition
 no_filter_list:

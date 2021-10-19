@@ -55,8 +55,8 @@ class TradeHelper:
     def get_daily_change(self, coin: str) -> float:
         return self.market_data.get_daily_change(coin)
 
-    def get_avg_price_n_days(self, coin: str, days_before: int) -> float:
-        return self.market_data.get_avg_price_n_days(coin, days_before)
+    def get_avg_price_n_days(self, coin: str, days_before: int, ma_type: str="auto") -> float:
+        return self.market_data.get_avg_price_n_days(coin, days_before, ma_type)
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         return self.market_data.get_distance_to_avg_percent(coin, days_before)
@@ -207,6 +207,11 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
             #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
             if d > ds['check_overprice_threshold'] and d200 > 0: # not overpriced if below 200d
                 return False, "maybe overpriced"
+        if ds['check_retracement']:
+            ma_short = th.get_avg_price_n_days(asset, 7, ma_type="EMA")
+            ma_long = th.get_avg_price_n_days(asset, 20, ma_type="EMA")
+            if ma_short > ma_long:
+                return False, "not retracing"
     return True, ""
 
 
