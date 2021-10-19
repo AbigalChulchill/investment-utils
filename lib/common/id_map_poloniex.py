@@ -14,4 +14,5 @@ id_to_poloniex={
     "ethereum-classic": "USDT_ETC",
     "polkadot":         "USDT_DOT",
     "basic-attention-token": "USDT_BAT",
+    "amp-token":        "USDT_AMP",
 }

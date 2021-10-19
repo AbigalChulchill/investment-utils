@@ -29,5 +29,6 @@ id_to_binance={
   "cosmos":             "ATOMUSDT",
   "algorand":           "ALGOUSDT",
   "axie-infinity":      "AXSUSDT",
+  "matic-network":      "MATICUSDT",
 }
 

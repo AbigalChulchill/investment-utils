@@ -17,6 +17,7 @@ asset_exchg:
   ethereum-classic:   poloniex
   polkadot:           poloniex
   basic-attention-token: poloniex
+  amp-token:          poloniex
   solana:             ftx
   ftx-token:          ftx
   enjincoin:          ftx
@@ -53,8 +54,6 @@ asset_exchg:
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
-  # - bitcoin
-  # - ethereum
   - 0x
   - aave
   - arweave
@@ -79,6 +78,8 @@ auto_accumulate_list:
   - serum
   - algorand
   - axie-infinity
+  - amp-token
+  - matic-network
   - "#BABA"
   - "#BILI"
   - "#COIN"
