@@ -1,7 +1,7 @@
 import json, datetime, argparse, re, yaml, traceback, math
 from pandas.core.frame import DataFrame
 from termcolor import cprint
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from lib.trader.trader_factory import TraderFactory
 from lib.trader.trader import Trader
@@ -160,13 +160,13 @@ def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[flo
     '''
     return (daily_qty, quota_factor)
     '''
-    quota_mul = get_quota_fixed_factor(asset)
+    quota_factor = get_quota_fixed_factor(asset)
     avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_factor_average_days'])
     current_price = th.get_market_price(asset)
-    quota_mul *= avg_price_last_n_days / current_price
-    quota_mul = min(quota_mul, ds['quota_factor_max'])
-    daily_qty = round(quota_asset * quota_mul)
-    return (daily_qty,quota_mul)
+    quota_factor *= avg_price_last_n_days / current_price
+    quota_factor = min(quota_factor, ds['quota_factor_max'])
+    daily_qty = round(quota_asset * quota_factor)
+    return (daily_qty,quota_factor)
 
 
 def accumulate_one(qty: float, asset: str, dry: bool):
@@ -175,7 +175,7 @@ def accumulate_one(qty: float, asset: str, dry: bool):
     db = Db()
     th = TradeHelper([asset])
 
-    daily_qty,quota_mul = (qty,1) if qty else calc_daily_qty(asset, th, ds['quota_usd'])
+    daily_qty,quota_factor = (qty,1) if qty else calc_daily_qty(asset, th, ds['quota_usd'])
 
     trader: Trader = create_trader(asset)
     if trader:
@@ -188,7 +188,7 @@ def accumulate_one(qty: float, asset: str, dry: bool):
         df = DataFrame.from_dict([{
             'asset': asset,
             'price': actual_price,
-            'quota_mul': round(quota_mul,2),
+            'quota_factor': round(quota_factor,2),
             'value': coin_qty*actual_price,
             'coins/shares': coin_qty,
         }])
@@ -210,11 +210,11 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
     return True, ""
 
 
-def accumulate_pre_pass(assets: List[str]) -> Tuple[float, List[str]]:
+def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
     th = TradeHelper(assets)
     total_value = 0
     i = 1
-    enabled = []
+    enabled = {}
     for asset in assets:
         print(f"\r{i} of {len(assets)}  ", end='', flush=True)
         i += 1
@@ -224,26 +224,25 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, List[str]]:
             cprint(f"{asset} filtered: {filter_reason}", "yellow")
             continue
 
-        daily_qty,_ = calc_daily_qty(asset, th, ds['quota_usd'])
+        daily_qty,quota_factor = calc_daily_qty(asset, th, ds['quota_usd'])
         price = th.get_market_price(asset)
         coin_qty = daily_qty / price
         value = coin_qty * price
         total_value += value
-        enabled.append(asset)
+        enabled[asset] = quota_factor
     print()
     return total_value,enabled
 
 
-def accumulate_main_pass(assets: List[str], dry: bool, quota_asset: float):
+def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota_asset: float):
     db = Db()
-    th = TradeHelper(assets)
+    th = TradeHelper(list(assets_quota_factors.keys()))
     a = list()
     
-    for asset in assets:
+    for asset,quota_factor in assets_quota_factors.items():
         msg_buying(asset)
         try:
-            daily_qty,quota_mul = calc_daily_qty(asset, th, quota_asset)
-
+            daily_qty = quota_asset * quota_factor
             trader: Trader = create_trader(asset)
             if trader:
                 if dry:
@@ -255,7 +254,7 @@ def accumulate_main_pass(assets: List[str], dry: bool, quota_asset: float):
                 a.append({
                     'asset': asset,
                     'price': actual_price,
-                    'quota_mul': round(quota_mul,2),
+                    'quota_factor': round(quota_factor,2),
                     'value': coin_qty*actual_price,
                     'coins/shares': coin_qty,
                 })
@@ -267,7 +266,7 @@ def accumulate_main_pass(assets: List[str], dry: bool, quota_asset: float):
         df = DataFrame.from_dict(a)
         df.sort_values("value", inplace=True, ascending=False)
         print(df.to_string(index=False))
-        print(f"accumulated value: ${sum(df['value']):.2f}")
+        print(f"accumulated value: {sum(df['value']):.2f} USD")
     else:
         print('nothing was added.')
     print_account_balances()
@@ -276,14 +275,14 @@ def accumulate_main_pass(assets: List[str], dry: bool, quota_asset: float):
 def accumulate(assets: List[str], dry: bool):
     quota_asset = ds['quota_usd']
     print("calculating value of assets to be bought...")
-    total_value, enabled_assets = accumulate_pre_pass(assets)
+    total_value, assets_quota_factors = accumulate_pre_pass(assets)
     print(f"estimated total value before limiting: {total_value}")
     if total_value > ds['total_quota_usd']:
         quota_asset *= ds['total_quota_usd'] / total_value
         quota_asset = round(quota_asset,2)
         print(f"lowering quota_usd to {quota_asset}")
     print("now buying assets...")
-    accumulate_main_pass(enabled_assets, dry, quota_asset)
+    accumulate_main_pass(assets_quota_factors, dry, quota_asset)
 
 
 def remove(coin: str, qty: str, dry: bool):
