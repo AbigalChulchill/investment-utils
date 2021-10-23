@@ -36,19 +36,33 @@ asset_exchg:
   harmony:            mexc
   #stocks:
   "#AAPL":            ftx  # Apple Inc.
+  "#ABNB":            ftx  # Airbnb
+  "#ACB":             ftx  # Aurora Cannabis Inc
   "#AMZN":            ftx  # Amazon.com Inc.
   "#BABA":            ftx  # Alibaba Group Hldg (ADR) [China]
   "#BILI":            ftx  # Bilibili Inc. [China] [game publisher]
+  "#BNTX":            ftx  # BioNTech
+  "#CGC":             ftx  # Canopy Growth Corp
   "#COIN":            ftx  # Coinbase Global Inc.
+  "#CRON":            ftx  # Chronos Group Inc
   "#FB":              ftx  # Facebook Inc.
-  "#GBTC":            ftx  # Grayscale bitcoin trust
+  "#GDX":             ftx  # VanEck Vectors Gold Miners Etf
+  "#GDXJ":            ftx  # VanEck Vectors Junior Gold Miners Etf
   "#GOOGL":           ftx  # Alphabet Inc.
+  "#HOOD":            ftx  # Robinhood
+  "#MRNA":            ftx  # Moderna
   "#MSTR":            ftx  # MicroStrategy Inc.
+  "#NFLX":            ftx  # Netflix
   "#NIO":             ftx  # NIO Inc. [China] [electrocars]
   "#PYPL":            ftx  # PayPal Holdings
-  "#TSLA":            ftx  # Tesla Inc.
-  "#TWTR":            ftx  # Twitter Inc.
   "#SQ":              ftx  # Square Inc. [digital payments]
+  "#TLRY":            ftx  # Tilray
+  "#TSLA":            ftx  # Tesla Inc.
+  "#TSM":             ftx  # Taiwan Semiconductor Mfg
+  "#TWTR":            ftx  # Twitter Inc.
+  "#USO":             ftx  # United States Oil Fund
+  "#ZM":              ftx  # Zoom
+  #metals:
   "@gold":            ftx
   "@silver":          ftx
 
