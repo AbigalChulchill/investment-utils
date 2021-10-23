@@ -140,4 +140,8 @@ check_retracement: True
 
 # list of assets that are not filtered under any condition
 no_filter_list:
-  - dummy
+  - na
+
+# list of asset categories that are not filtered under any condition
+no_filter_categories:
+  - na

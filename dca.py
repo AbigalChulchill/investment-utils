@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json, datetime, argparse, re, yaml, traceback, math
 from pandas.core.frame import DataFrame
 from termcolor import cprint
@@ -40,6 +41,14 @@ def get_quota_fixed_factor(coin: str):
         if coin in ds[param].keys():
             return ds[param][coin]
     return 1
+
+def get_asset_category(asset: str) -> str:
+    if is_stock(asset):
+        return "Stocks"
+    elif is_metal(asset):
+        return "Metals"
+    else:
+        return "Crypto"
 
 
 class TradeHelper:
@@ -169,35 +178,35 @@ def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[flo
     return (daily_qty,quota_factor)
 
 
-def accumulate_one(qty: float, asset: str, dry: bool):
+def accumulate_one(asset: str, quota: float, dry: bool):
     msg_buying(asset)
 
     db = Db()
     th = TradeHelper([asset])
 
-    daily_qty,quota_factor = (qty,1) if qty else calc_daily_qty(asset, th, ds['quota_usd'])
+    daily_quota,quota_factor = (quota,1) if quota else calc_daily_qty(asset, th, ds['quota_usd'])
 
     trader: Trader = create_trader(asset)
     if trader:
         if dry:
-            actual_price = th.get_market_price(asset)
-            coin_qty = daily_qty / actual_price
+            price = th.get_market_price(asset)
+            qty = daily_quota / price
         else:
-            actual_price, coin_qty = trader.buy_market(daily_qty)
-            db.add(asset, coin_qty, actual_price)
+            price, qty = trader.buy_market(daily_quota)
+            db.add(asset, qty, price)
         df = DataFrame.from_dict([{
             'asset': asset,
-            'price': actual_price,
+            'price': price,
             'quota_factor': round(quota_factor,2),
-            'value': coin_qty*actual_price,
-            'coins/shares': coin_qty,
+            'value': qty * price,
+            'coins/shares': qty,
         }])
         print(df.to_string(index=False))
         print_account_balances()
 
 
 def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
-    if asset not in ds['no_filter_list']:
+    if asset not in ds['no_filter_list'] and get_asset_category(asset) not in ds['no_filter_categories']:
         if ds['check_market_open']:
             if not (th.is_tradeable(asset)):
                 return False, "market is closed"
@@ -335,28 +344,30 @@ def close(coin: str):
     db.delete_all(coin)
     print(f"{coin} position has been closed")
 
-
-def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
+def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_by: str):
     title("PnL")
     db = Db()
     th = TradeHelper(db.get_syms())
     assets = db.get_syms()
-    asset_groups= {
-        'Crypto': [x for x in assets if not is_stock(x) and not is_metal(x)],
-        'Stocks': [x for x in assets if is_stock(x)],
-        'Metals': [x for x in assets if is_metal(x)]
-    }
+    asset_groups = defaultdict(list)
+    for a in assets: asset_groups[get_asset_category(a)].append(a)
     asset_group_pnl_df={}
+    stats_data_one_table = []
+    columns=["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
+    formatters={
+        'available qty':    lambda x: f'{x:8.8f}',
+    }
+    sort_key=lambda x: [-101 if a == "~" else a for a in x]
     for asset_group in asset_groups.keys():
         title2(asset_group)
-        stats_data = list()
+        stats_data = []
         for coin in asset_groups[asset_group]:
 
             market_price = th.get_market_price(coin)
             available_qty = db.get_sym_available_qty(coin)
             pnl_data = pnl.calculate_inc_pnl(db.get_sym_trades_for_pnl(coin), market_price)
 
-            stats_data.append({
+            d={
                 'asset': coin,
                 'available qty': available_qty,
                 'break even price': pnl_data.break_even_price,
@@ -367,19 +378,27 @@ def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
                 'u pnl': round(pnl_data.unrealized_pnl,2),
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
-            })
+            }
+            stats_data.append(d)
+            stats_data_one_table.append(d)
         df_pnl = DataFrame.from_dict(stats_data)
-        df_pnl.sort_values(sort_by, inplace=True, ascending=False, key=lambda x: [-101 if a == "~" else a for a in x])
-        columns=["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
-        formatters={
-            'available qty':    lambda x: f'{x:8.8f}',
-        }
-        if df_pnl.size > 0:
-            print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+        df_pnl.sort_values(sort_by, inplace=True, ascending=False, key=sort_key)
+
+        if not single_table:
+            if df_pnl.size > 0:
+                print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+            else:
+                print("No assets")
+            print()
+        asset_group_pnl_df[asset_group] = df_pnl
+    if single_table:
+        df_pnl_one_table = DataFrame.from_dict(stats_data_one_table)
+        df_pnl_one_table.sort_values(sort_by, inplace=True, ascending=False, key=sort_key)
+        if df_pnl_one_table.size > 0:
+            print(df_pnl_one_table.to_string(index=False,formatters=formatters,columns=columns))
         else:
             print("No assets")
         print()
-        asset_group_pnl_df[asset_group] = df_pnl
 
     title("Portfolio Structure")
     for asset_group in asset_groups.keys():
@@ -487,30 +506,30 @@ def main():
     ds = read_settings()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--add', action='store_const', const='True',  help='Accumulate positions')
-    parser.add_argument('--remove', type=str,  help='Partially remove from a position. Arg: amount or %% of coins to remove. Requires --coin')
+    parser.add_argument('--add', action='store_const', const='True', help='Accumulate positions. Optional arg: USD quota, valid only if --coin also specified')
+    parser.add_argument('--remove', action='store_const', const='True', help='Partially remove from a position')
     parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     parser.add_argument('--burn', type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
-    parser.add_argument('--qty', type=int, help='Quota in USD for every position, used with --add')
     parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
+    parser.add_argument('--qty', type=str,  help='USD quota to add, quantity or %% of coins/shares to remove. Requires --coin. Requires --add or --remove')
     parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
-    parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stat output')
-    parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats report')
-    parser.add_argument('--technicals', action='store_const', const='True', help='Print technicals for coins')
+    parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
+    parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
+    parser.add_argument('--single-table', action='store_const', const='True', help='Combine PnL of all assets into single table in --stats. By default uses separate table for each asset group')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     args = parser.parse_args()
 
     if args.add:
         if args.coin:
-            accumulate_one(qty=args.qty, asset=args.coin, dry=args.dry)
+            accumulate_one(asset=args.coin, quota=float(args.qty), dry=args.dry)
         else:
             accumulate(assets=ds['auto_accumulate_list'], dry=args.dry)
     elif args.remove:
         if args.coin:
-            remove(coin=args.coin, qty=args.remove, dry=args.dry)
+            remove(coin=args.coin, qty=args.qty, dry=args.dry)
         else:
             print("remove: requires --coin")
     elif args.close:
@@ -524,9 +543,7 @@ def main():
         else:
             print("burn: requires --coin")
     elif args.stats:
-        stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, sort_by=args.sort_by)
-    elif args.technicals:
-        technicals()
+        stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:
