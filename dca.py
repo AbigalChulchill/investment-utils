@@ -70,6 +70,9 @@ class TradeHelper:
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         return self.market_data.get_distance_to_avg_percent(coin, days_before)
 
+    def get_fundamentals(self, asset: str) -> dict:
+        return self.market_data.get_fundamentals(asset)
+
     def get_rsi(self, asset: str) -> float:
         return self.market_data.get_rsi(asset)
 
@@ -449,26 +452,40 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
         print(f"total value across all assets: {total_unrealized_sell_value:.2f} USD ({total_unrealized_sell_value / th.get_market_price('bitcoin'):.6f})")
         print()
 
+def statusbar(pos: int, count: int, width_chars: int):
+    fill = "#"
+    space = "."
+    fill_chars = int(pos / count * width_chars)
+    print("\rloading [", end="", flush=False)
+    print(fill * fill_chars, end="", flush=False)
+    print(space * (width_chars - fill_chars), end="", flush=False)
+    print("]", end="", flush=True)
 
-def technicals():
-    title("Technicals")
-    db = Db()
-    assets = list(set( db.get_syms() + ds['auto_accumulate_list'] ))
-    th = TradeHelper(assets)
-    data = list()
-    op_sma_len = ds['check_overprice_avg_days']
-    op_header = f"distance to {op_sma_len}-day SMA %"
-    print("reading data...")
-    for coin in assets:
-        print(".", end="", flush=True)
-        data.append({
-            'asset': coin,
-            op_header: round(th.get_distance_to_avg_percent(coin, op_sma_len),1),
-        })
-    print()
-    df = DataFrame.from_dict(data)
-    df.sort_values(op_header, inplace=True, ascending=False)
-    print(df.to_string(index=False))
+def asset_analysis():
+    title("Asset Analysis")
+    assets = ds['asset_exchg'].keys()
+    th = TradeHelper([])
+    asset_groups = defaultdict(list)
+    for a in assets: asset_groups[get_asset_category(a)].append(a)
+    for asset_group in asset_groups.keys():
+        data = []
+        title2(asset_group)
+        i = 1
+        for asset in asset_groups[asset_group]:
+            statusbar(i, len(asset_groups[asset_group]), 50)
+            i += 1
+            d ={
+                'asset': asset,
+                '>200d': round(th.get_distance_to_avg_percent(asset, 200),1),
+            }
+            if is_stock(asset):
+                fundamental_data = th.get_fundamentals(asset)
+                for k,v in fundamental_data.items(): d[k] = v
+            data.append(d)
+        print()
+        df = DataFrame.from_dict(data)
+        df.sort_values(">200d", inplace=True, ascending=False)
+        print(df.to_string(index=False))
 
 
 def order_replay(coin: str):
@@ -520,6 +537,7 @@ def main():
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
     parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
     parser.add_argument('--single-table', action='store_const', const='True', help='Combine PnL of all assets into single table in --stats. By default uses separate table for each asset group')
+    parser.add_argument('--analysis', action='store_const', const='True', help='Print fundamental and technical analysis data for assets')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     args = parser.parse_args()
@@ -546,6 +564,8 @@ def main():
             print("burn: requires --coin")
     elif args.stats:
         stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
+    elif args.analysis:
+        asset_analysis()
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:

@@ -58,3 +58,6 @@ class MarketData:
         avg = self.get_avg_price_n_days(coin, days_before)
         current = self.get_market_price(coin)
         return (current - avg) / current * 100.
+
+    def get_fundamentals(self, asset: str) -> dict:
+        return self._provider_flyweight.get(asset).get_fundamentals(asset)

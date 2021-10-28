@@ -37,3 +37,19 @@ class MarketDataProviderYF(MarketDataProvider):
         df = ticker.history(period=period, interval="1d")
         df.rename(columns={ "Open": "open", "Close": "close", "High": "high", "Low": "low", }, inplace=True)
         return df
+
+    def get_fundamentals(self, asset: str) -> dict:
+        ticker = self._get_ticker(asset)
+        info = ticker.info
+        d = {}
+        if "trailingPE" in info.keys():
+            d['P/E trailing'] = info['trailingPE']
+        if "forwardPE" in info.keys():
+            d['P/E forward'] = info['forwardPE']
+        if "pegRatio" in info.keys():
+            d['PEG'] = info['pegRatio']
+        if "priceToBook" in info.keys():
+            d['P/B'] = info['priceToBook']
+        if "priceToSalesTrailing12Months" in info.keys():
+            d['P/S'] = info['priceToSalesTrailing12Months']
+        return d
