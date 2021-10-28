@@ -5,5 +5,5 @@ cache/
 *.db
 keys.yml
 config/dca.yml
+config/fundingrate.yml
 lib/bots/strategies/custom
-

@@ -1,4 +1,4 @@
-import argparse, time, datetime, math, talib
+import argparse, time, datetime, math, talib, yaml
 from collections import defaultdict
 from typing import List, Tuple
 import pandas as pd
@@ -54,6 +54,8 @@ def section(name: str):
 
 def convert_symbol_futures_spot(symbol: str):
     return symbol.replace("-PERP", "/USD")
+
+conf = yaml.safe_load(open('config/fundingrate.yml', 'r'))
 
 
 class Client:
@@ -218,7 +220,7 @@ class App:
         print(df_negatives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
 
     def _calc_account_value(self):
-        return  sum([x['usdValue'] for x in self.cl.balances]) + sum([x['unrealizedPnl'] for x in self.cl.positions])
+        return sum([x['usdValue'] for x in self.cl.balances]) + sum([x['unrealizedPnl'] for x in self.cl.positions]) - conf['airbag_collateral']
 
     def list_positions(self, silent_alert: bool = False):
         cl = self.cl

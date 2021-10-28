@@ -1,0 +1,3 @@
+# extra collateral that has been added to account to prevent margin calls
+# when price moves too quickly. Not included in the account value stats
+airbag_collateral: 0
