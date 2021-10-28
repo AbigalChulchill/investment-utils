@@ -3,18 +3,22 @@ from ..common.misc import is_stock
 import pandas as pd
 import yfinance as yf
 
+yf_exclude_stocks =[ 
+    "PAXG"
+]
+
 class MarketDataProviderYF(MarketDataProvider):
 
     @staticmethod
     def handles(asset: str):
-        return is_stock(asset)
+        return is_stock(asset) and asset not in yf_exclude_stocks
 
     def __init__(self):
         self._ticker_cache = dict()
 
     def _get_ticker(self, asset: str):
         if asset not in self._ticker_cache.keys():
-            self._ticker_cache[asset] = yf.Ticker(asset.replace("#", ""))
+            self._ticker_cache[asset] = yf.Ticker(asset)
         return self._ticker_cache[asset]
 
     def get_market_price(self, asset: str) -> float:

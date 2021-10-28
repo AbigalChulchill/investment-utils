@@ -1,8 +1,6 @@
 def is_stock(asset: str):
-    return asset[0] == "#"
-
-def is_metal(asset: str):
-    return asset[0] == "@"
+    # stock tickers are all uppercase
+    return asset.upper() == asset
 
 def get_decimal_count(n: float) -> int:
     return len(str(n).split(".")[1])

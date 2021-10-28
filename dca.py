@@ -1,5 +1,5 @@
 from collections import defaultdict
-import json, datetime, argparse, re, yaml, traceback, math
+import datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
 from termcolor import cprint
 from typing import List, Tuple, Dict
@@ -9,8 +9,8 @@ from lib.trader.trader import Trader
 from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
-from lib.common.msg import err, warn
-from lib.common.misc import is_stock, is_metal
+from lib.common.msg import err
+from lib.common.misc import is_stock
 
 
 ds = dict()
@@ -45,8 +45,6 @@ def get_quota_fixed_factor(coin: str):
 def get_asset_category(asset: str) -> str:
     if is_stock(asset):
         return "Stocks"
-    elif is_metal(asset):
-        return "Metals"
     else:
         return "Crypto"
 
