@@ -1,8 +1,8 @@
 import talib
-#import pandas as pd
 import numpy as np
 from typing import List
 from .. market_data_providers.flyweight import MarketDataProviderFlyweight
+from lib.common.msg import warn
 
 
 class MarketData:
@@ -25,10 +25,9 @@ class MarketData:
             daily_change = (current_price - previous_close) / current_price * 100
         return daily_change
 
-
     def get_avg_price_n_days(self, asset: str, days_before: int, ma_type: str="auto") -> float:
-        df = self._provider_flyweight.get(asset).get_historical_bars(asset, days_before)
-        if len(df) > 0:
+        df = self._provider_flyweight.get(asset).get_historical_bars(asset, days_before, with_partial_today_bar=True)
+        if df.size > 0:
             if ma_type == "auto":
                 ta_ma_type = talib.SMA if days_before > 10 else talib.EMA
             elif ma_type == "EMA":
@@ -36,11 +35,24 @@ class MarketData:
             else:
                 ta_ma_type = talib.SMA
             df['ma'] = ta_ma_type(df['close'], min(len(df), days_before))
-            r = df['ma'][-1]
+            r = df['ma'].to_numpy(dtype=np.double)[-1]
             if r != r:
-                raise ValueError("ma == NaN")
+                raise ValueError("r == NaN")
             return r
         return self.get_market_price(asset)
+
+    def get_rsi(self, asset: str) -> float:
+        rsi_period = 14
+        df = self._provider_flyweight.get(asset).get_historical_bars(asset, rsi_period + 1, with_partial_today_bar=True)
+        if df.size >= rsi_period:
+            s_rsi = talib.RSI(df['close'], rsi_period)
+            r = s_rsi.iat[-1]
+            if r != r:
+                raise ValueError("r == NaN")
+            return r
+        else:
+            warn(f"get_rsi ({asset}) failed")
+            return None
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         avg = self.get_avg_price_n_days(coin, days_before)

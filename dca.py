@@ -70,8 +70,8 @@ class TradeHelper:
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         return self.market_data.get_distance_to_avg_percent(coin, days_before)
 
-    def is_dipping(self, coin: str) -> float:
-        return self.market_data.is_dipping(coin)
+    def get_rsi(self, asset: str) -> float:
+        return self.market_data.get_rsi(asset)
 
 class Db:
     def __init__(self):
@@ -210,17 +210,19 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
         if ds['check_market_open']:
             if not (th.is_tradeable(asset)):
                 return False, "market is closed"
-        if ds['check_overprice']:
+        if ds['check_level_cutoff']:
             d200 = th.get_distance_to_avg_percent(asset, 200)
-            d = th.get_distance_to_avg_percent(asset, ds['check_overprice_avg_days'])
-            #print(f"{asset} distance to {ds['check_overprice_avg_days']}-day SMA : {d:.1f}%")
-            if d > ds['check_overprice_threshold'] and d200 > 0: # not overpriced if below 200d
-                return False, "maybe overpriced"
-        if ds['check_retracement']:
-            ma_short = th.get_avg_price_n_days(asset, 7, ma_type="EMA")
-            ma_long = th.get_avg_price_n_days(asset, 20, ma_type="EMA")
-            if ma_short > ma_long:
-                return False, "not retracing"
+            d = th.get_distance_to_avg_percent(asset, ds['check_level_cutoff_avg_days'])
+            #print(f"{asset} distance to {ds['check_level_cutoff_avg_days']}-day SMA : {d:.1f}%")
+            if d > ds['check_level_cutoff_threshold'] and d200 > 0: # not overpriced if below 200d
+                return False, "probably too high"
+        if ds['check_pump']:
+            if th.get_daily_change(asset) > ds['check_pump_threshold']:
+                return False, "probably pump today"
+        if ds['check_rsi']:
+            rsi = th.get_rsi(asset)
+            if rsi is not None and rsi > ds['check_rsi_threshold']:
+                return False, f"RSI {round(rsi,2)} too high"
     return True, ""
 
 
@@ -235,7 +237,7 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
 
         filter_result, filter_reason = passes_acc_filter(asset, th)
         if not filter_result:
-            cprint(f"{asset} filtered: {filter_reason}", "yellow")
+            cprint(f"{asset} filtered: {filter_reason}", "cyan")
             continue
 
         daily_qty,quota_factor = calc_daily_qty(asset, th, ds['quota_usd'])
@@ -372,7 +374,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
                 'available qty': available_qty,
                 'break even price': pnl_data.break_even_price,
                 'current price': market_price,
-                #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_overprice_avg_days']),1),
+                #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_level_cutoff_avg_days']),1),
                 'value': round(pnl_data.unrealized_sell_value,2),
                 'r pnl': round(pnl_data.realized_pnl,2),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,

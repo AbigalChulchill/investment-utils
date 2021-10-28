@@ -1,0 +1,55 @@
+---
+
+# map asset to exchange. For list of supported assets by each exchange, see id_map_<exchange>.py
+asset_exchg:
+  bitcoin:            ftx
+  ethereum:           ftx
+
+# list of assets to be accumulated when using --add with no additional parameters
+auto_accumulate_list:
+  - bitcoin
+  - ethereum
+
+# default quota for --add per asset if --qty is not specified
+quota_usd: 10
+
+# for auto-accumulate: quotas of individual assets will be lowered
+# to ensure that sum of their usd value is not exceeding this parameter
+total_quota_usd: 100
+
+# applied unconditinally to quota_usd. The final factor is a product of all active factors.
+# Default is 1.0 if not specified
+quota_fixed_factor:
+  bitcoin:            1.2
+  ethereum:           1.2
+
+# moving average period to calculate average price to compare current price to
+quota_factor_average_days: 200
+
+# quota factor is upper limited to quota_factor_max
+quota_factor_max: 2
+
+# is True, asset from auto_accumulate_list is only processed if market is open at the moment
+check_market_open: False
+
+# if True, asset from auto_accumulate_list is only processed if close
+# is above SMA(close,`avg_days`) by no more than `threshold` %.
+check_level_cutoff: False
+check_level_cutoff_avg_days: 50
+check_level_cutoff_threshold: 1.0
+
+# if True, asset from auto_accumulate_list is only processed if daily growth does not exceed threshold %
+check_pump: False
+check_pump_threshold: 8
+
+# if True, asset from auto_accumulate_list is only processed if rsi < rsi_threshold
+check_rsi: False
+check_rsi_threshold: 65
+
+# list of assets that are not filtered under any condition
+no_filter_list:
+  - na
+
+# list of asset categories that are not filtered under any condition
+no_filter_categories:
+  - na

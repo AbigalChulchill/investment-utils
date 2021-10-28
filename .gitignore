@@ -4,5 +4,6 @@ reports/
 cache/
 *.db
 keys.yml
+config/dca.yml
 lib/bots/strategies/custom
 
