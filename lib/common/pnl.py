@@ -2,7 +2,7 @@ from collections import namedtuple
 from typing import List
 
 PnL = namedtuple('PnL', ['realized_pnl', 'realized_pnl_percent', 'break_even_price', 'unrealized_sell_value', 'unrealized_pnl', 'unrealized_pnl_percent'])
-INVALID_PERCENT = "~"
+INVALID_PERCENT = -999
 
 Order = namedtuple('Order', ['side', 'value', 'qty'])
 

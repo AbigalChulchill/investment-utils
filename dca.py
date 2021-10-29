@@ -1,6 +1,7 @@
 from collections import defaultdict
 import datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
+from math import nan
 from termcolor import cprint
 from typing import List, Tuple, Dict
 
@@ -381,9 +382,9 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
                 #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_level_cutoff_avg_days']),1),
                 'value': round(pnl_data.unrealized_sell_value,2),
                 'r pnl': round(pnl_data.realized_pnl,2),
-                'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+                'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
                 'u pnl': round(pnl_data.unrealized_pnl,2),
-                'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+                'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
             }
             stats_data.append(d)
             stats_data_one_table.append(d)
@@ -392,7 +393,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
 
         if not single_table:
             if df_pnl.size > 0:
-                print(df_pnl.to_string(index=False,formatters=formatters,columns=columns))
+                print(df_pnl.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
             else:
                 print("No assets")
             print()
@@ -401,7 +402,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
         df_pnl_one_table = DataFrame.from_dict(stats_data_one_table)
         df_pnl_one_table.sort_values(sort_by, inplace=True, ascending=False, key=sort_key)
         if df_pnl_one_table.size > 0:
-            print(df_pnl_one_table.to_string(index=False,formatters=formatters,columns=columns))
+            print(df_pnl_one_table.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
         else:
             print("No assets")
         print()
@@ -486,7 +487,8 @@ def asset_analysis():
         print()
         df = DataFrame.from_dict(data)
         df.sort_values(">200d", inplace=True, ascending=False)
-        print(df.to_string(index=False))
+        print(df.to_string(index=False, na_rep="~"))
+        print()
 
 
 def order_replay(coin: str):
@@ -506,13 +508,13 @@ def order_replay(coin: str):
             'current_price': market_price,
             'unrealized_sell_value': pnl_data.unrealized_sell_value,
             'r pnl': pnl_data.realized_pnl,
-            'r pnl %': pnl_data.realized_pnl_percent if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            'r pnl %': pnl_data.realized_pnl_percent if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
             'u pnl': pnl_data.unrealized_pnl,
-            'u pnl %': pnl_data.unrealized_pnl_percent if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else pnl.INVALID_PERCENT,
+            'u pnl %': pnl_data.unrealized_pnl_percent if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
         })
         
         df_pnl = DataFrame.from_dict(stats_data)
-        print(df_pnl.to_string(index=False))
+        print(df_pnl.to_string(index=False, na_rep="~"))
         print("\n")
 
 
