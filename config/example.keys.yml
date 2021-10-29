@@ -1,0 +1,24 @@
+---
+bitrue:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
+
+ftx:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
+  SUBACCOUNT_DCA: <your_subaccout_name>
+  SUBACCOUNT_TRADE: <your_subaccout_name>
+  SUBACCOUNT_FUNDINGRATEFARM: <your_subaccout_name>
+
+okex:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
+  PASS: <your_api_password>
+
+poloniex:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
+
+mexc:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
