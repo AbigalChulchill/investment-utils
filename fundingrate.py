@@ -359,22 +359,30 @@ class App:
 
 
     def update_db(self):
-        db = Db()
-        net_profit_per_hour = 0
-        for x in self.cl.positions:
-            future_name = x['future']
-            if x['size'] > 0:
-                future_data = self.cl.get_future_data(future_name)
-                fr = future_data['nextFundingRate']*100
-                pos_side = "SHORT" if x['side'] == "sell" else "LONG"
-                future_close_price =  self.cl.get_market(future_name)['bid'] if pos_side == "LONG" else self.cl.get_market(future_name)['ask']
-                value = x['netSize']*future_close_price
-                get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
-                is_profitable = get_fr_profitable(fr)
-                profit_per_hour = -value*fr*0.01
-                net_profit_per_hour += profit_per_hour
-                db.add_fr(future_name, fr, is_profitable)
-        db.add_net_profit(account_value=round(self._calc_account_value()), net_profit=round(net_profit_per_hour,2))
+        print("** press Ctrl-C to terminate! **")
+        while True:
+            ts = int(datetime.datetime.now().timestamp())
+            remaining_seconds = max(0, 3600 - 55 - (ts % 3600))
+            print(f"sleeping for {remaining_seconds} seconds")
+            time.sleep(remaining_seconds)
+            print("updating db")
+            db = Db()
+            net_profit_per_hour = 0
+            for x in self.cl.positions:
+                future_name = x['future']
+                if x['size'] > 0:
+                    future_data = self.cl.get_future_data(future_name)
+                    fr = future_data['nextFundingRate']*100
+                    pos_side = "SHORT" if x['side'] == "sell" else "LONG"
+                    future_close_price =  self.cl.get_market(future_name)['bid'] if pos_side == "LONG" else self.cl.get_market(future_name)['ask']
+                    value = x['netSize']*future_close_price
+                    get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
+                    is_profitable = get_fr_profitable(fr)
+                    profit_per_hour = -value*fr*0.01
+                    net_profit_per_hour += profit_per_hour
+                    db.add_fr(future_name, fr, is_profitable)
+            db.add_net_profit(account_value=round(self._calc_account_value()), net_profit=round(net_profit_per_hour,2))
+            time.sleep(100)
 
 
     def stats(self):
