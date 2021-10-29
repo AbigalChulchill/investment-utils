@@ -34,3 +34,5 @@ class MarketDataProviderFTX(MarketDataProvider):
         df.set_index('timestamp', inplace=True)
         return df
 
+    def get_fundamentals(self, asset: str) -> dict:
+        return {}
