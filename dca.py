@@ -43,10 +43,13 @@ def get_quota_fixed_factor(coin: str):
     return 1
 
 def get_asset_category(asset: str) -> str:
-    if is_stock(asset):
-        return "Stocks"
-    else:
-        return "Crypto"
+    default_category = "other"
+    if "categories" not in ds.keys():
+        return default_category
+    for cat,members in ds['categories'].items():
+        if asset in members:
+            return cat
+    return default_category
 
 
 class TradeHelper:

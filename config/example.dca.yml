@@ -2,13 +2,26 @@
 
 # map asset to exchange. For list of supported assets by each exchange, see id_map_<exchange>.py
 asset_exchg:
-  bitcoin:            ftx
-  ethereum:           ftx
+  bitcoin:            poloniex
+  ethereum:           poloniex
+  solana:             ftx
+  AAPL:               ftx
+  
 
 # list of assets to be accumulated when using --add with no additional parameters
 auto_accumulate_list:
   - bitcoin
   - ethereum
+
+# asset grouping as shown in portfolio structure
+categories:
+  hedge_crypto:
+    - bitcoin
+    - ethereum
+  altcoins:
+    - solana
+  stocks:
+    - AAPL
 
 # default quota for --add per asset if --qty is not specified
 quota_usd: 10
