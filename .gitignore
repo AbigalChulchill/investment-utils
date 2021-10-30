@@ -4,6 +4,6 @@ reports/
 cache/
 *.db
 keys.yml
-config/dca.yml
-config/fundingrate.yml
+config/*.yml
+!config/example.*.yml
 lib/bots/strategies/custom

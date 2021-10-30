@@ -9,9 +9,12 @@ id_to_ftx={
     "raydium":         "RAY/USD",
     "serum":           "SRM/USD",
     "axie-infinity":   "AXS/USD",
+    "star-atlas":      "ATLAS/USD",
+    "media-network":   "MEDIA/USD",
+    "star-atlas-dao":  "POLIS/USD",
+    "solfarm":         "TULIP/USD",
 
     #stocks
-
     "AAPL":    "AAPL/USD",
     "ABNB":    "ABNB/USD",
     "ACB":     "ACB/USD",

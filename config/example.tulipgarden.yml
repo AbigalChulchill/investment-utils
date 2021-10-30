@@ -1,0 +1,5 @@
+---
+# list of assets to analyze, besides assets from dca.yml 'asset_exchg'
+# asset categories are defined in dca.yml 'categories'
+assets:
+  - na
