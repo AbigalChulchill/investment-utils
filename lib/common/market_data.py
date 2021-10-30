@@ -57,7 +57,8 @@ class MarketData:
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         avg = self.get_avg_price_n_days(coin, days_before)
         current = self.get_market_price(coin)
-        return (current - avg) / current * 100.
+        distance = (current - avg) / avg * 100.
+        return distance
 
     def get_fundamentals(self, asset: str) -> dict:
         return self._provider_flyweight.get(asset).get_fundamentals(asset)
