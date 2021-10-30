@@ -12,6 +12,7 @@ from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import err
 from lib.common.misc import is_stock
+from lib.common.widgets import StatusBar
 
 
 ds = dict()
@@ -54,8 +55,8 @@ def get_asset_category(asset: str) -> str:
 
 
 class TradeHelper:
-    def __init__(self, ids: list):
-        self.market_data = MarketData(list(set(ids + list(ds['asset_exchg'].keys()))))
+    def __init__(self):
+        self.market_data = MarketData()
 
     def get_market_price(self, coin: str) -> float:
         return self.market_data.get_market_price(coin)
@@ -187,7 +188,7 @@ def accumulate_one(asset: str, quota: float, dry: bool):
     msg_buying(asset)
 
     db = Db()
-    th = TradeHelper([asset])
+    th = TradeHelper()
 
     daily_quota,quota_factor = (quota,1) if quota else calc_daily_qty(asset, th, ds['quota_usd'])
 
@@ -232,7 +233,7 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
 
 
 def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
-    th = TradeHelper(assets)
+    th = TradeHelper()
     total_value = 0
     i = 1
     enabled = {}
@@ -257,7 +258,7 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
 
 def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota_asset: float):
     db = Db()
-    th = TradeHelper(list(assets_quota_factors.keys()))
+    th = TradeHelper()
     a = list()
     
     for asset,quota_factor in assets_quota_factors.items():
@@ -310,7 +311,7 @@ def remove(coin: str, qty: str, dry: bool):
     msg_selling(coin)
 
     db = Db()
-    th = TradeHelper(db.get_syms())
+    th = TradeHelper()
     available_sell_qty = db.get_sym_available_qty(coin)
     sell_qty = 0
     m = re.match(r"([0-9]+)%", qty)
@@ -354,7 +355,7 @@ def close(coin: str):
 def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_by: str):
     title("PnL")
     db = Db()
-    th = TradeHelper(db.get_syms())
+    th = TradeHelper()
     assets = db.get_syms()
     asset_groups = defaultdict(list)
     for a in assets: asset_groups[get_asset_category(a)].append(a)
@@ -454,27 +455,19 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
         print(f"total value across all assets: {total_unrealized_sell_value:.2f} USD ({total_unrealized_sell_value / th.get_market_price('bitcoin'):.6f})")
         print()
 
-def statusbar(pos: int, count: int, width_chars: int):
-    fill = "#"
-    space = "."
-    fill_chars = int(pos / count * width_chars)
-    print("\rloading [", end="", flush=False)
-    print(fill * fill_chars, end="", flush=False)
-    print(space * (width_chars - fill_chars), end="", flush=False)
-    print("]", end="", flush=True)
-
 def asset_analysis():
     title("Asset Analysis")
-    assets = ds['asset_exchg'].keys()
-    th = TradeHelper([])
+    assets = list(set(list(ds['asset_exchg'].keys())))
+    th = TradeHelper()
     asset_groups = defaultdict(list)
     for a in assets: asset_groups[get_asset_category(a)].append(a)
     for asset_group in asset_groups.keys():
+        statusbar = StatusBar(len(asset_groups[asset_group]), 50)
         data = []
         title2(asset_group)
         i = 1
         for asset in asset_groups[asset_group]:
-            statusbar(i, len(asset_groups[asset_group]), 50)
+            statusbar.progress(i)
             i += 1
             d ={
                 'asset': asset,
@@ -484,7 +477,7 @@ def asset_analysis():
                 fundamental_data = th.get_fundamentals(asset)
                 for k,v in fundamental_data.items(): d[k] = v
             data.append(d)
-        print()
+        statusbar.clear()
         df = DataFrame.from_dict(data)
         df.sort_values(">200d", inplace=True, ascending=False)
         print(df.to_string(index=False, na_rep="~"))

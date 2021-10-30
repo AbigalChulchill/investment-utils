@@ -6,7 +6,7 @@ from lib.common.msg import warn
 
 
 class MarketData:
-    def __init__(self, asset_ids: List[str] = None):
+    def __init__(self):
         self._provider_flyweight = MarketDataProviderFlyweight()
 
     def get_market_price(self, asset: str) -> float:
