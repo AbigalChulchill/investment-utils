@@ -55,8 +55,8 @@ def section(name: str):
 def convert_symbol_futures_spot(symbol: str):
     return symbol.replace("-PERP", "/USD")
 
-conf = yaml.safe_load(open('config/fundingrate.yml', 'r'))
-
+def load_conf():
+    return yaml.safe_load(open('config/fundingrate.yml', 'r'))
 
 class Client:
     def __init__(self, restrict_non_usd_collateral=False):
@@ -153,7 +153,7 @@ class Db:
         import sqlite3
         self.con = sqlite3.connect('config/fundingrate.db')
         self.con.execute('''CREATE TABLE IF NOT EXISTS historical_frs (date text, market text, fr real, is_gainer integer)''')
-        self.con.execute('''CREATE TABLE IF NOT EXISTS payments (date text, account_value real, net_profit real)''')
+        self.con.execute('''CREATE TABLE IF NOT EXISTS payments (date text, positions_value real, net_profit real)''')
         self.con.commit()
 
     def add_fr(self, market: str, fr: float, is_gainer: bool ):
@@ -161,9 +161,9 @@ class Db:
         self.con.execute("INSERT INTO historical_frs VALUES (?,?,?,?)", (now, market, fr, is_gainer))
         self.con.commit()
 
-    def add_net_profit(self, account_value: float, net_profit: float):
+    def add_net_profit(self, positions_value: float, net_profit: float):
         now = datetime.datetime.now()
-        self.con.execute("INSERT INTO payments VALUES (?,?,?)", (now, account_value, net_profit))
+        self.con.execute("INSERT INTO payments VALUES (?,?,?)", (now, positions_value, net_profit))
         self.con.commit()
 
     def get_markets(self) -> List[str]:
@@ -173,7 +173,20 @@ class Db:
         return [ {'fr': row[0], 'is_gainer': row[1] > 0} for row in self.con.execute(f"SELECT fr, is_gainer FROM historical_frs WHERE market = '{market}' ORDER BY date") ]
 
     def get_payments(self) -> List[Tuple[float, float]]:
-        return [ {'account_value': row[0], 'net_profit': row[1]} for row in self.con.execute(f"SELECT account_value, net_profit FROM payments ORDER BY date") ]
+        return [ {'positions_value': row[0], 'net_profit': row[1]} for row in self.con.execute(f"SELECT positions_value, net_profit FROM payments ORDER BY date") ]
+
+
+class AccountValueCalc:
+    def __init__(self):
+        self._cl = Client()
+
+    @property
+    def account_value(self):
+        return sum([x['usdValue'] for x in self._cl.balances]) + sum([x['unrealizedPnl'] for x in self._cl.positions])
+
+    @property
+    def positions_value(self):
+        return sum([x['size']*self._cl.get_market(x['future'])['bid'] for x in self._cl.positions])
 
 
 class App:
@@ -219,14 +232,13 @@ class App:
         df_negatives['cl spread %'] = round( ( df_negatives['future cl p'] - df_negatives['spot cl p'] )/ df_negatives['future cl p'] * 100,2)
         print(df_negatives.to_string(header=True, index=False, columns=["future","rate","change","stability","future op p","spot op p","op spread %","cl spread %"]))
 
-    def _calc_account_value(self):
-        return sum([x['usdValue'] for x in self.cl.balances]) + sum([x['unrealizedPnl'] for x in self.cl.positions]) - conf['airbag_collateral']
-
     def list_positions(self, silent_alert: bool = False):
         cl = self.cl
         alert_list = list()
+        acc_calc = AccountValueCalc()
 
-        print(f"Account Value:    {self._calc_account_value():.2f}")
+        print(f"Account Value:    {acc_calc.account_value:.2f}")
+        print(f"Positions Value:  {acc_calc.positions_value:.2f}")
         print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
         print(f"Margin:           {cl.account['marginFraction']*100:.1f}%/{cl.account['maintenanceMarginRequirement']*100:.1f}%")
         print(f"Fees:             Taker {cl.account['takerFee']*100}%, Maker {cl.account['makerFee']*100}%")
@@ -367,6 +379,7 @@ class App:
             time.sleep(remaining_seconds)
             print("updating db")
             db = Db()
+            acc_calc = AccountValueCalc()
             net_profit_per_hour = 0
             for x in self.cl.positions:
                 future_name = x['future']
@@ -381,7 +394,7 @@ class App:
                     profit_per_hour = -value*fr*0.01
                     net_profit_per_hour += profit_per_hour
                     db.add_fr(future_name, fr, is_profitable)
-            db.add_net_profit(account_value=round(self._calc_account_value()), net_profit=round(net_profit_per_hour,2))
+            db.add_net_profit(positions_value=round(acc_calc.positions_value), net_profit=round(net_profit_per_hour,2))
             time.sleep(100)
 
 
@@ -410,16 +423,16 @@ class App:
         print(df.to_string(index=False))
         print()
         payments = db.get_payments()
-        account_values = [x['account_value'] for x in payments]
+        positions_values = [x['positions_value'] for x in payments]
         net_profits = [x['net_profit'] for x in payments]
 
-        avg_account_value = talib.SMA(np.array(account_values),min(sma_period_days*24,len(account_values)))[-1]
+        avg_positions_value = talib.SMA(np.array(positions_values),min(sma_period_days*24,len(positions_values)))[-1]
         avg_net_profit = talib.SMA(np.array(net_profits),min(sma_period_days*24,len(net_profits)))[-1]
         
         df = pd.DataFrame.from_dict([
-                { 'param' : f'account value MA{sma_period_days}', 'value': avg_account_value},
+                { 'param' : f'positions value MA{sma_period_days}', 'value': avg_positions_value},
                 { 'param' : f'net profit MA{sma_period_days}', 'value': avg_net_profit },
-                { 'param' : f'APR %', 'value': round(avg_net_profit/avg_account_value * 24 * 365 * 100,1) },
+                { 'param' : f'APR %', 'value': round(avg_net_profit/avg_positions_value * 24 * 365 * 100,1) },
                 { 'param' : f'cumulative profit since {len(net_profits)/24:.1f} days', 'value': sum(net_profits)},
             ] )
         print(df.to_string(index=False, header=False))
