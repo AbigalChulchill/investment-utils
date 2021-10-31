@@ -44,15 +44,15 @@ class MarketData:
     def get_rsi(self, asset: str) -> float:
         rsi_period = 14
         df = self._provider_flyweight.get(asset).get_historical_bars(asset, rsi_period + 1, with_partial_today_bar=True)
+        r = None
         if df.size >= rsi_period:
             s_rsi = talib.RSI(df['close'], rsi_period)
             r = s_rsi.iat[-1]
             if r != r:
-                raise ValueError("r == NaN")
-            return r
-        else:
+                r = None
+        if r is None:
             warn(f"get_rsi ({asset}) failed")
-            return None
+        return r
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         avg = self.get_avg_price_n_days(coin, days_before)
