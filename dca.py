@@ -163,6 +163,12 @@ class Db:
             avg_price = None
         #print(f"sym {sym} avgprice {n} = {avg_price}")
         return avg_price
+    
+    def get_last_buy_timestamp(self) -> datetime.datetime:
+        ts = None
+        for row in self.con.execute(f"SELECT date FROM dca WHERE qty > 0 ORDER BY date DESC LIMIT 1"):
+            ts = datetime.datetime.fromisoformat(row[0])
+        return ts
 
 
 def print_account_balances():
@@ -511,6 +517,17 @@ def order_replay(coin: str):
         print("\n")
 
 
+def print_last_dca_time():
+    db = Db()
+    ts = db.get_last_buy_timestamp()
+    if ts is not None:
+        ts_now = datetime.datetime.now()
+        tdelta = (ts_now - ts)
+        print(f"last buy order was {ts} ({tdelta.total_seconds() / 3600:.1f} hours ago)")
+    else:
+        print("no buy orders found")
+
+
 def read_settings() -> dict:
     with open('config/dca.yml', 'r') as file:
         return yaml.safe_load(file)
@@ -536,6 +553,7 @@ def main():
     parser.add_argument('--analysis', action='store_const', const='True', help='Print fundamental and technical analysis data for assets')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
+    parser.add_argument('--last', action='store_const', const='True', help='Print date of last DCA bulk purchase')
     args = parser.parse_args()
 
     if args.add:
@@ -566,6 +584,8 @@ def main():
         order_replay(args.coin)
     elif args.balances:
         print_account_balances()
+    elif args.last:
+        print_last_dca_time()
 
 if __name__ == '__main__':
     main()
