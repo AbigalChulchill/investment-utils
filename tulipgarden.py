@@ -2,6 +2,7 @@ import argparse, yaml
 from pandas.core.frame import DataFrame
 from termcolor import cprint
 from lib.common.market_data import MarketData
+from lib.common.id_ticker_map import id_to_ticker
 from lib.common.widgets import StatusBar
 
 
@@ -48,7 +49,7 @@ def technicals():
         statusbar.progress(i)
         i += 1
         data.append({
-            'asset': asset,
+            'ticker': id_to_ticker[asset],
             '>200d': round(th.get_distance_to_avg_percent(asset, 200),1),
         })
     statusbar.clear()
