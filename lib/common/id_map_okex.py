@@ -4,4 +4,5 @@ id_to_okex={
     "hedera-hashgraph":   "HBAR-USDT",
     "avalanche-2":        "AVAX-USDT",
     "algorand":           "ALGO-USDT",
+    "illuvium":           "ILV-USDT",
 }

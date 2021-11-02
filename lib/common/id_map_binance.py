@@ -30,5 +30,7 @@ id_to_binance={
   "algorand":           "ALGOUSDT",
   "axie-infinity":      "AXSUSDT",
   "matic-network":      "MATICUSDT",
+  "the-sandbox":        "SANDUSDT",
+  "illuvium":           "ILVUSDT",
 }
 
