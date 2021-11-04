@@ -1,4 +1,5 @@
-import time, traceback
+import time
+#import traceback
 from lib.common.msg import info, warn
 from lib.common.id_map_poloniex import id_to_poloniex
 from lib.trader import poloniex_api
@@ -7,6 +8,10 @@ from lib.trader.trader import Trader
 
 MAX_RETRIES = 3
 DELAY = 5
+
+class PoloniexTraderError(RuntimeError):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 class PoloniexTrader(Trader):
 
@@ -27,7 +32,7 @@ class PoloniexTrader(Trader):
             except Exception:
                 if retries > 0:
                     retries -= 1
-                    traceback.print_exc()
+                    #traceback.print_exc()
                     warn(f"PoloniexTrader: buy: failed, retrying in {DELAY} seconds...")
                     time.sleep(DELAY)
                 else:
@@ -42,32 +47,32 @@ class PoloniexTrader(Trader):
             except Exception:
                 if retries > 0:
                     retries -= 1
-                    traceback.print_exc()
+                    #traceback.print_exc()
                     warn(f"PoloniexTrader: sell: failed, retrying in {DELAY} seconds...")
                     time.sleep(DELAY)
                 else:
                     raise
 
     def _handle_trade(self, response: dict):
-        try:
+        if 'resultingTrades' in response.keys():
             trades = response['resultingTrades']
-        except:
-            print(f"response : {response}")
-            raise
-        else:
             total_qty_coin = sum( [float(x['amount']) for x in trades] )
             total_qty_usd = sum( [float(x['total']) for x in trades] )
             fill_price = total_qty_usd / total_qty_coin
             return [fill_price, total_qty_coin]
+        elif 'error' in response.keys():
+            raise PoloniexTraderError(response['error'])
+        else:
+            raise PoloniexTraderError(f"unknown error : {response}")
 
     def _buy_market(self, qty_usd: float) -> float:
-        market_price = float(self.api.returnOrderBook(self.pair)['asks'][1][0])
-        response = self.api.buy(self.pair, market_price, qty_usd / market_price, {'fillOrKill': True})
+        max_price = self.api.returnTicker(self.pair) * 1.01
+        response = self.api.buy(self.pair, max_price, qty_usd / max_price, {'fillOrKill': True})
         return self._handle_trade(response)
 
     def _sell_market(self, qty_tokens: float) -> float:
-        market_price = float(self.api.returnOrderBook(self.pair)['bids'][1][0])
-        response = self.api.sell(self.pair, market_price, qty_tokens, {'fillOrKill': True})
+        min_price = self.api.returnTicker(self.pair) * 0.99
+        response = self.api.sell(self.pair, min_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
 
     def _check_trx_balance(self):

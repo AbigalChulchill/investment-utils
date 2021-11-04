@@ -49,12 +49,12 @@ class Poloniex:
             raise PoloniexQueryError(status_code=resp.status_code, data=resp.json())
         return resp.json()
 
-    def returnTicker(self, currencyPair: str) -> str:
+    def returnTicker(self, currencyPair: str) -> float:
         '''
         https://docs.poloniex.com/#returnticker
         '''
         data = self._get("returnTicker")
-        return data.get(currencyPair, {}).get("last")
+        return float(data.get(currencyPair, {})["last"])
 
     def return24hVolume(self) -> dict:
         '''
