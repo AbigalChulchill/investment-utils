@@ -431,26 +431,29 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
             print("No assets")
         print()
 
-    title2("By asset group")
-    total_unrealized_sell_value = sum(sum(df['value']) for df in asset_group_pnl_df.values() if df.size > 0)
+    title2("By asset category")
+    #total_unrealized_sell_value = sum(sum(df['value']) for df in asset_group_pnl_df.values() if df.size > 0)
     stats_data = list()
     for asset_group in asset_groups.keys():
         if asset_group_pnl_df[asset_group].size > 0:
-            this_group_unrealized_sell_value = sum(asset_group_pnl_df[asset_group]['value'])
             stats_data.append({
                 'asset_group': asset_group,
-                '%' : round(this_group_unrealized_sell_value / total_unrealized_sell_value * 100, 1),
-                'USD': round(this_group_unrealized_sell_value,2),
-                'BTC': round(this_group_unrealized_sell_value / th.get_market_price("bitcoin"),6),
+                'USD': round(sum(asset_group_pnl_df[asset_group]['value']),2),
             })
         else:
             stats_data.append({
                 'asset_group': asset_group,
-                '%' : 0,
                 'USD' : 0,
-                'BTC' : 0,
+            })
+    if 'unmanaged_categories' in ds.keys():
+        for c,size in ds['unmanaged_categories'].items():
+            stats_data.append({
+                'asset_group': c,
+                'USD': size,
             })
     df = DataFrame.from_dict(stats_data)
+    df['%'] = round(df['USD'] / sum(df['USD']) * 100,1)
+    df['BTC'] = df['USD'] / th.get_market_price("bitcoin")
     df = df.sort_values('%', ascending=False)
     if hide_private_data or hide_totals:
         print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
@@ -458,7 +461,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
     else:
         print(df.to_string(index=False))
         print()
-        print(f"total value across all assets: {total_unrealized_sell_value:.2f} USD ({total_unrealized_sell_value / th.get_market_price('bitcoin'):.6f})")
+        print(f"total value across all assets: {sum(df['USD']):.2f} USD ({sum(df['BTC']):.6f} BTC)")
         print()
 
 def asset_analysis():
