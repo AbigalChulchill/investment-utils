@@ -11,6 +11,7 @@ id_to_ticker={
     "basic-attention-token": "BAT",
     "bitcoin":              "BTC",
     "cardano":              "ADA",
+    "cope":                 "COPE",
     "cosmos":               "ATOM",
     "curve-dao-token":      "CRV",
     "decentraland":         "MANA",
