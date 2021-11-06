@@ -50,8 +50,6 @@ class MarketData:
             r = s_rsi.iat[-1]
             if r != r:
                 r = None
-        if r is None:
-            warn(f"get_rsi ({asset}) failed")
         return r
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:

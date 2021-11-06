@@ -2,34 +2,38 @@ from collections import defaultdict
 import datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
 from math import nan
-from termcolor import cprint
 from typing import List, Tuple, Dict
+
+from rich.columns import Columns
+from rich.table import Table
+from rich import box
+from rich import print as rprint, reconfigure
+reconfigure(highlight=False)
 
 from lib.trader.trader_factory import TraderFactory
 from lib.trader.trader import Trader
 from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
-from lib.common.msg import err
+from lib.common.msg import *
 from lib.common.misc import is_stock
-from lib.common.widgets import StatusBar
+from lib.common.widgets import track
+
 
 
 ds = dict()
 
 def title(name: str):
-    cprint(f"\n{name}\n", 'red', attrs=['bold'])
+    rprint(f"\n[bold red]{name}[/]\n")
 
 def title2(name: str):
-    cprint(f"  {name}", 'white', attrs=['bold'])
+    rprint(f"[bold white]{name}[/]")
 
 def msg_buying(coin: str):
-    print("buying : ", end="")
-    cprint(coin, "green")
+    rprint(f"[bold green]buying[/] : {coin}")
 
 def msg_selling(coin: str):
-    print("selling : ", end="")
-    cprint(coin, "green")
+    rprint(f"[bold red]selling[/] : {coin}")
 
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
@@ -174,7 +178,7 @@ class Db:
 def print_account_balances():
     title("Account Balances, USD")
     df_balances = DataFrame.from_dict(accounts_balance.get_available_usd_balances_dca())
-    print(df_balances.to_string(index=False))
+    rprint(df_balances.to_string(index=False))
 
 
 def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
@@ -213,7 +217,7 @@ def accumulate_one(asset: str, quota: float, dry: bool):
             'value': qty * price,
             'coins/shares': qty,
         }])
-        print(df.to_string(index=False))
+        rprint(df.to_string(index=False))
         print_account_balances()
 
 
@@ -233,7 +237,9 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
                 return False, "probably pump today"
         if ds['check_rsi']:
             rsi = th.get_rsi(asset)
-            if rsi is not None and rsi > ds['check_rsi_threshold']:
+            if rsi is None:
+                warn(f"{asset}: RSI calculation error")
+            elif rsi > ds['check_rsi_threshold']:
                 return False, f"RSI {round(rsi,2)} too high"
     return True, ""
 
@@ -241,17 +247,12 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
 def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
     th = TradeHelper()
     total_value = 0
-    i = 1
     enabled = {}
-    for asset in assets:
-        print(f"\r{i} of {len(assets)}  ", end='', flush=True)
-        i += 1
-
+    for asset in track(assets):
         filter_result, filter_reason = passes_acc_filter(asset, th)
         if not filter_result:
-            cprint(f"{asset} filtered: {filter_reason}", "cyan")
+            rprint(f"[bold]{asset}[/] filtered: {filter_reason}")
             continue
-
         daily_qty,quota_factor = calc_daily_qty(asset, th, ds['quota_usd'])
         price = th.get_market_price(asset)
         coin_qty = daily_qty / price
@@ -267,7 +268,7 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     th = TradeHelper()
     a = list()
     
-    for asset,quota_factor in assets_quota_factors.items():
+    for asset,quota_factor in track(assets_quota_factors.items()):
         msg_buying(asset)
         try:
             daily_qty = quota_asset * quota_factor
@@ -293,22 +294,22 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     if len(a):
         df = DataFrame.from_dict(a)
         df.sort_values("value", inplace=True, ascending=False)
-        print(df.to_string(index=False))
-        print(f"accumulated value: {sum(df['value']):.2f} USD")
+        rprint(df.to_string(index=False))
+        rprint(f"accumulated value: {sum(df['value']):.2f} USD")
     else:
         print('nothing was added.')
-    print_account_balances()
+    #print_account_balances()
 
 
 def accumulate(assets: List[str], dry: bool):
     quota_asset = ds['quota_usd']
-    print("calculating value of assets to be bought...")
+    print("estimating value of assets to be bought...")
     total_value, assets_quota_factors = accumulate_pre_pass(assets)
-    print(f"estimated total value before limiting: {total_value}")
+    rprint(f"estimated total value before limiting: {total_value} USD")
     if total_value > ds['total_quota_usd']:
         quota_asset *= ds['total_quota_usd'] / total_value
         quota_asset = round(quota_asset,2)
-        print(f"lowering quota_usd to {quota_asset}")
+        rprint(f"lowering quota to {quota_asset} USD")
     print("now buying assets...")
     accumulate_main_pass(assets_quota_factors, dry, quota_asset)
 
@@ -342,7 +343,7 @@ def remove(coin: str, qty: str, dry: bool):
             'coins avail': available_sell_qty - actual_qty,
             'usd avail': (available_sell_qty - actual_qty)*actual_price,
         }])
-        print(df.to_string(index=False))
+        rprint(df.to_string(index=False))
     else:
         print('not removed.')
 
@@ -350,13 +351,15 @@ def remove(coin: str, qty: str, dry: bool):
 def burn(coin: str, qty: float):
     db = Db()
     db.burn(coin, qty)
-    print(f"burned {qty} {coin}")
+    rprint(f"burned {qty} {coin}")
 
 
 def close(coin: str):
     db = Db()
     db.delete_all(coin)
     print(f"{coin} position has been closed")
+
+
 
 def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_by: str):
     title("PnL")
@@ -373,7 +376,8 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
     }
     sort_key=lambda x: [-101 if a == "~" else a for a in x]
     for asset_group in asset_groups.keys():
-        title2(asset_group)
+        if not single_table:
+            title2(asset_group)
         stats_data = []
         for coin in asset_groups[asset_group]:
 
@@ -400,7 +404,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
 
         if not single_table:
             if df_pnl.size > 0:
-                print(df_pnl.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
+                print_hi_negatives(df_pnl.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
             else:
                 print("No assets")
             print()
@@ -409,31 +413,25 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
         df_pnl_one_table = DataFrame.from_dict(stats_data_one_table)
         df_pnl_one_table.sort_values(sort_by, inplace=True, ascending=False, key=sort_key)
         if df_pnl_one_table.size > 0:
-            print(df_pnl_one_table.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
+            print_hi_negatives(df_pnl_one_table.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
         else:
             print("No assets")
         print()
 
     title("Portfolio Structure")
+
+    # % of each asset in a category to sum of all assets in category
     for asset_group in asset_groups.keys():
-        title2(asset_group)
         df = asset_group_pnl_df[asset_group]
         if df.size > 0:
             df['%'] = round(df['value'] / sum(df['value']) * 100, 1)
             df['USD'] = df['value']
             df['BTC'] = round(df['USD'] / th.get_market_price("bitcoin"),6)
-            df = df.sort_values('%', ascending=False)
-            if hide_private_data or hide_totals:
-                print(df.to_string(index=False, header=False, columns=['asset', '%']))
-            else:
-                print(df.to_string(index=False, columns=['asset', '%', 'USD', 'BTC']))
-        else:
-            print("No assets")
-        print()
+            df.sort_values('%', ascending=False, inplace=True)
 
-    title2("By asset category")
-    #total_unrealized_sell_value = sum(sum(df['value']) for df in asset_group_pnl_df.values() if df.size > 0)
-    stats_data = list()
+
+    # % of each group to all portfolio
+    stats_data = []
     for asset_group in asset_groups.keys():
         if asset_group_pnl_df[asset_group].size > 0:
             stats_data.append({
@@ -451,18 +449,44 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
                 'asset_group': c,
                 'USD': size,
             })
-    df = DataFrame.from_dict(stats_data)
-    df['%'] = round(df['USD'] / sum(df['USD']) * 100,1)
-    df['BTC'] = df['USD'] / th.get_market_price("bitcoin")
-    df = df.sort_values('%', ascending=False)
+    df_cats = DataFrame.from_dict(stats_data)
+    df_cats['%'] = round(df_cats['USD'] / sum(df_cats['USD']) * 100,1)
+    df_cats['BTC'] = df_cats['USD'] / th.get_market_price("bitcoin")
+    df_cats = df_cats.sort_values('%', ascending=False)
+
+
+    # for every caategory print a table
+    col_list = []
+    for asset_group in df_cats['asset_group']:
+        if asset_group in asset_group_pnl_df.keys():
+            df = asset_group_pnl_df[asset_group]
+            if df.size > 0:
+                if hide_private_data or hide_totals:
+                    df_str = df.to_string(index=False, header=False, columns=['asset', '%'])
+                else:
+                    df_str = df.to_string(index=False, columns=['asset', '%', 'USD', 'BTC'])
+            else:
+                df_str = "(none)"
+            table = Table(box=box.SIMPLE_HEAD)
+            table.add_column(f"[bold white]{asset_group}[/]", justify="center")
+            table.add_row(df_str)
+            col_list.append(table)
+    rprint(Columns(col_list, equal=True, expand=False, padding=(0, 1)))
+
+    # print categories table
     if hide_private_data or hide_totals:
-        print(df.to_string(index=False, header=False, columns=['asset_group', '%']))
-        print()
+        df_str = df_cats.to_string(index=False, header=False, columns=['asset_group', '%'])
     else:
-        print(df.to_string(index=False))
-        print()
-        print(f"total value across all assets: {sum(df['USD']):.2f} USD ({sum(df['BTC']):.6f} BTC)")
-        print()
+        df_str = df_cats.to_string(index=False)
+    table = Table(box=box.SIMPLE_HEAD)
+    table.add_column("[bold green]by asset category[/]", justify="center")
+    table.add_row(df_str)
+    rprint(table)
+    #rprint(Panel(df_str, title="[bold underline green]by asset category[/]", expand=False, box=box.MINIMAL))
+    if not (hide_private_data or hide_totals):
+        rprint(f"total value across all assets: {sum(df_cats['USD']):.2f} USD ({sum(df_cats['BTC']):.6f} BTC)")
+    print()
+
 
 def asset_analysis():
     title("Asset Analysis")
@@ -471,12 +495,11 @@ def asset_analysis():
     asset_groups = defaultdict(list)
     for a in assets: asset_groups[get_asset_category(a)].append(a)
     for asset_group in asset_groups.keys():
-        statusbar = StatusBar(len(asset_groups[asset_group]), 50)
+        #statusbar = StatusBar(len(asset_groups[asset_group]), 50)
         data = []
         title2(asset_group)
         i = 1
-        for asset in asset_groups[asset_group]:
-            statusbar.progress(i)
+        for asset in track(asset_groups[asset_group]):
             i += 1
             d ={
                 'asset': asset,
@@ -486,26 +509,25 @@ def asset_analysis():
                 fundamental_data = th.get_fundamentals(asset)
                 for k,v in fundamental_data.items(): d[k] = v
             data.append(d)
-        statusbar.clear()
         df = DataFrame.from_dict(data)
         df.sort_values(">200d", inplace=True, ascending=False)
-        print(df.to_string(index=False, na_rep="~"))
+        rprint(df.to_string(index=False, na_rep="~"))
         print()
 
 
-def order_replay(coin: str):
+def order_replay(asset: str):
     db = Db()
-    orders = db.get_sym_trades_for_pnl(coin)
+    orders = db.get_sym_trades_for_pnl(asset)
     for i in range(1,len(orders)+1):
         stats_data = list()
         orders_slice = orders[:i]
         last_order = orders_slice[-1]
         market_price = abs(last_order.value / last_order.qty)
-        print(f"order: {last_order.side} value={last_order.value} qty={last_order.qty}")
+        rprint(f"order: {last_order.side} value={last_order.value} qty={last_order.qty}")
         pnl_data = pnl.calculate_inc_pnl(orders_slice, market_price)
 
         stats_data.append({
-            'coin': coin,
+            'asset': asset,
             'break_even_price': pnl_data.break_even_price,
             'current_price': market_price,
             'unrealized_sell_value': pnl_data.unrealized_sell_value,
@@ -516,8 +538,8 @@ def order_replay(coin: str):
         })
         
         df_pnl = DataFrame.from_dict(stats_data)
-        print(df_pnl.to_string(index=False, na_rep="~"))
-        print("\n")
+        rprint(df_pnl.to_string(index=False, na_rep="~"))
+        print()
 
 
 def print_last_dca_time():
@@ -526,7 +548,7 @@ def print_last_dca_time():
     if ts is not None:
         ts_now = datetime.datetime.now()
         tdelta = (ts_now - ts)
-        print(f"last buy order was {ts} ({tdelta.total_seconds() / 3600:.1f} hours ago)")
+        rprint(f"last buy order was {ts} ({tdelta.total_seconds() / 3600:.1f} hours ago)")
     else:
         print("no buy orders found")
 
@@ -568,17 +590,17 @@ def main():
         if args.coin:
             remove(coin=args.coin, qty=args.qty, dry=args.dry)
         else:
-            print("remove: requires --coin")
+            err("remove: requires --coin")
     elif args.close:
         if args.coin:
             close(coin=args.coin)
         else:
-            print("close: requires --coin")
+            err("close: requires --coin")
     elif args.burn:
         if args.coin:
             burn(coin=args.coin, qty=args.burn)
         else:
-            print("burn: requires --coin")
+            err("burn: requires --coin")
     elif args.stats:
         stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
     elif args.analysis:

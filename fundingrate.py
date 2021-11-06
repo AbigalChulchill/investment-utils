@@ -3,12 +3,12 @@ from collections import defaultdict
 from typing import List, Tuple
 import pandas as pd
 import numpy as np
-from termcolor import cprint
 
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.common.sound_notification import SoundNotification
 from lib.common.misc import get_decimal_count
+from lib.common.msg import *
 
 
 FUTURE_IGNORE=[
@@ -49,8 +49,6 @@ MIN_LOT_SIZE={
 }
 
 
-def section(name: str):
-    cprint(f"{name}", 'white', attrs=['bold'])
 
 def convert_symbol_futures_spot(symbol: str):
     return symbol.replace("-PERP", "/USD")
@@ -240,10 +238,10 @@ class App:
         print(f"Account Value:    {acc_calc.account_value:.2f}")
         print(f"Positions Value:  {acc_calc.positions_value:.2f}")
         print(f"Free Collateral:  {cl.account['freeCollateral']:.2f}")
-        print(f"Margin:           {cl.account['marginFraction']*100:.1f}%/{cl.account['maintenanceMarginRequirement']*100:.1f}%")
+        print(f"Margin:           {cl.account['marginFraction']*100:.1f}% (liquidation if < {cl.account['maintenanceMarginRequirement']*100:.1f}%)")
         print(f"Fees:             Taker {cl.account['takerFee']*100}%, Maker {cl.account['makerFee']*100}%")
         spot_usd_data = [a for a in cl.balances if a['coin'] == "USD"][0]
-        print(f"USD Balance:      {spot_usd_data['total']:.2f} ({spot_usd_data['total']/cl.account['collateral']:.1f}x of net collateral)")
+        print(f"USD Balance:      {spot_usd_data['total']:.2f} (net_collateral x{spot_usd_data['total']/cl.account['collateral']:.1f})")
         ####
         if cl.account['freeCollateral'] < 200:
             alert_list.append("collateral")
@@ -260,10 +258,11 @@ class App:
                 fr = future_data['nextFundingRate']*100
                 historical_frs = [a for a in cl.funding_rates if a['future'] == future_name][0]
                 pos_side = "SHORT" if x['side'] == "sell" else "LONG"
-                future_op_price =  cl.get_market(future_name)['ask'] if pos_side == "LONG" else cl.get_market(future_name)['bid']
-                spot_op_price =  cl.get_market(convert_symbol_futures_spot(future_name))['bid'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['ask']
-                future_close_price =  cl.get_market(future_name)['bid'] if pos_side == "LONG" else cl.get_market(future_name)['ask']
-                spot_close_price =  cl.get_market(convert_symbol_futures_spot(future_name))['ask'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['bid']
+                future_op_price = cl.get_market(future_name)['ask'] if pos_side == "LONG" else cl.get_market(future_name)['bid']
+                spot_op_price = cl.get_market(convert_symbol_futures_spot(future_name))['bid'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['ask']
+                future_close_price = cl.get_market(future_name)['bid'] if pos_side == "LONG" else cl.get_market(future_name)['ask']
+                spot_close_price = cl.get_market(convert_symbol_futures_spot(future_name))['ask'] if pos_side == "LONG" else cl.get_market(convert_symbol_futures_spot(future_name))['bid']
+                avg_close_price = (future_close_price + spot_close_price) / 2
                 value = x['netSize']*future_close_price
                 net_qty = spot_coin_data['total'] + x['netSize']
                 floor_net_qty = math.floor(abs(spot_coin_data['total'] + x['netSize']))
@@ -281,8 +280,8 @@ class App:
                     'future': future_name,
                     'fr': fr,
                     'side': pos_side,
-                    'qty': x['netSize'],
-                    'price': round((future_close_price+spot_close_price)/2,2),
+                    'qty': x['size'],
+                    'price': round(avg_close_price,2),
                     'value': round(abs(value),2),
                     # 'f op p': round(future_op_price,2),
                     # 's op p': round(spot_op_price,2),
@@ -290,16 +289,16 @@ class App:
                     # 's cl p': round(spot_close_price,2),
                     'op spread %': round( (future_op_price - spot_op_price)/future_op_price * 100 * [1,-1][pos_side == "LONG"] ,2),
                     'cl spread %': round( (future_close_price - spot_close_price)/future_close_price * 100 * [1,-1][pos_side == "SHORT"] ,2),
-                    'net qty': net_qty,
+                    'neutral': net_qty if (abs(net_qty) * avg_close_price) > 1 else math.nan,
                     'profit/h': round(profit_per_hour,2),
                     'stability': "".join([ ['-','+'][x]  for x in stability]),
                 }
                 positions_data.append(position_data)
         df = pd.DataFrame.from_dict(positions_data)
         df.sort_values('value', ascending=False, inplace=True)
-        print(df.to_string(index=False))
+        print_hi_negatives(df.to_string(index=False,na_rep="~"))
         net_profit_per_hour = sum(df['profit/h'])
-        print(f"net profit/h: {net_profit_per_hour:.2f}")
+        print_hi_negatives(f"net profit/h: {net_profit_per_hour:.2f}")
         if net_profit_per_hour < 0:
             alert_list.append("net_profit")
 

@@ -1,7 +1,7 @@
 requests >= 2.26
 pandas >= 1.2.1
-termcolor >= 1.1
 pycoingecko >= 1.4
 TA_Lib >= 0.4.19
 mplfinance >= 0.12
 yfinance >= 0.1.63
+rich >= 10.12

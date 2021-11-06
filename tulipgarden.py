@@ -1,16 +1,22 @@
 import argparse, yaml
 from pandas.core.frame import DataFrame
-from termcolor import cprint
+
+from rich import print as rprint
+from rich import reconfigure
+reconfigure(highlight=False)
+
 from lib.common.market_data import MarketData
 from lib.common.id_ticker_map import id_to_ticker
-from lib.common.widgets import StatusBar
+from lib.common.widgets import track
+from lib.common.msg import *
+
 
 
 conf = yaml.safe_load(open('config/tulipgarden.yml', 'r'))
 
 
 def title(name: str):
-    cprint(f"\n{name}\n", 'red', attrs=['bold'])
+    rprint(f"\n[bold red]{name}[/]\n")
 
 
 def technicals():
@@ -19,18 +25,15 @@ def technicals():
     market_data = MarketData()
     data = []
     i = 1
-    statusbar = StatusBar(len(assets), 50)
-    for asset in assets:
-        statusbar.progress(i)
+    for asset in track(assets):
         i += 1
         data.append({
             'ticker': id_to_ticker[asset],
             '>200d': round(market_data.get_distance_to_avg_percent(asset, 200),1),
         })
-    statusbar.clear()
     df = DataFrame.from_dict(data)
     df.sort_values(">200d", inplace=True, ascending=False)
-    print(df.to_string(index=False, na_rep="~"))
+    print_hi_negatives(df.to_string(index=False, na_rep="~"))
     print()
 
 
