@@ -2,7 +2,7 @@ from collections import defaultdict
 import datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
 from math import nan
-from typing import List, Tuple, Dict
+from typing import List, NamedTuple, Tuple, Dict, Any
 
 from rich.columns import Columns
 from rich.table import Table
@@ -58,6 +58,13 @@ def get_asset_category(asset: str) -> str:
     return default_category
 
 
+class HistoricalOrder(NamedTuple):
+    side:   str
+    value:  float
+    qty:    float
+    timestamp: datetime.datetime
+
+
 class TradeHelper:
     def __init__(self):
         self.market_data = MarketData()
@@ -77,7 +84,7 @@ class TradeHelper:
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         return self.market_data.get_distance_to_avg_percent(coin, days_before)
 
-    def get_fundamentals(self, asset: str) -> dict:
+    def get_fundamentals(self, asset: str) -> Dict[str, Any]:
         return self.market_data.get_fundamentals(asset)
 
     def get_rsi(self, asset: str) -> float:
@@ -109,65 +116,36 @@ class Db:
         self.con.execute("DELETE FROM dca WHERE sym = ?", (sym,))
         self.con.commit()
 
-    def get_syms(self) -> list:
-        syms = list()
-        for row in self.con.execute(f"SELECT sym FROM dca"):
+    def get_syms(self) -> List:
+        syms = []
+        for row in self.con.execute(f"SELECT DISTINCT sym FROM dca"):
             syms.append(row[0])
-        return list(set(syms))
+        return syms
 
-    def _get_sym_trades(self, sym: str) -> tuple:
-        #
-        # returns list [ ( [+-]coin_qty, price ) ]
-        #
+    def _get_sym_trades(self, sym: str) -> Tuple[float, float, str]:
+        """returns [ [ [+-]coin_qty, price, date ] ]"""
         trades = list()
-        for row in self.con.execute(f"SELECT qty,price FROM dca WHERE sym = '{sym}' ORDER BY date"):
-            entry =(row[0], row[1], )
+        for row in self.con.execute(f"SELECT qty,price,date FROM dca WHERE sym = '{sym}' ORDER BY date"):
+            entry =(row[0], row[1], row[2] )
             trades.append(entry)
-        #print(trades)
         return trades
-
-    def get_sym_cumulative_trades(self, sym:str) -> tuple:
-        trades = self._get_sym_trades(sym)
-
-        buys = list()
-        sells = list()
-        for i in trades:
-            if i[0] < 0:
-                sells.append((-i[0], i[1],))
-            else:
-                buys.append(i)
-
-        total_buy_value = sum( [ x[0] * x[1] for x in buys] )
-        total_buy_qty = sum( [ x[0] for x in buys] )
-        total_sell_value = sum( [ x[0] * x[1] for x in sells] )
-        total_sell_qty = sum( [ x[0] for x in sells] )
-        return total_buy_value,total_buy_qty,total_sell_value,total_sell_qty
 
     def get_sym_available_qty(self, sym:str) -> float:
         trades = self._get_sym_trades(sym)
         return sum([i[0] for i in trades])
 
-    def get_sym_trades_for_pnl(self, sym:str) -> List[pnl.Order]:
+    def get_sym_orders(self, sym:str) -> List[HistoricalOrder]:
         trades = self._get_sym_trades(sym)
-        orders = []
+        orders:List[HistoricalOrder] = []
         for i in trades:
+            t = datetime.datetime.fromisoformat(i[2])
             if i[0] < 0:
-                orders.append(pnl.Order("SELL", -i[0]*i[1], -i[0]))
+                o = HistoricalOrder(side="SELL", value=-i[0]*i[1], qty=-i[0], timestamp=t)
             else:
-                orders.append(pnl.Order("BUY", i[0]*i[1], i[0]))
+                o = HistoricalOrder(side="BUY", value=i[0]*i[1], qty=i[0], timestamp=t)
+            orders.append(o)
         return orders
 
-    def get_sym_average_price_n_last_trades(self, sym:str, n: int) -> float:
-        trades = self._get_sym_trades(sym)
-        buys = [x for x in trades if x[0] > 0]
-        n = min(n, len(buys))
-        if n > 0:
-            avg_price = sum([x[1] for x in buys[-n:]]) / n
-        else:
-            avg_price = None
-        #print(f"sym {sym} avgprice {n} = {avg_price}")
-        return avg_price
-    
     def get_last_buy_timestamp(self) -> datetime.datetime:
         ts = None
         for row in self.con.execute(f"SELECT date FROM dca WHERE qty > 0 ORDER BY date DESC LIMIT 1"):
@@ -176,15 +154,13 @@ class Db:
 
 
 def print_account_balances():
-    title("Account Balances, USD")
+    title("Account balances")
     df_balances = DataFrame.from_dict(accounts_balance.get_available_usd_balances_dca())
     rprint(df_balances.to_string(index=False))
 
 
 def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
-    '''
-    return (daily_qty, quota_factor)
-    '''
+    """ return (daily_qty, quota_factor) """
     quota_factor = get_quota_fixed_factor(asset)
     avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_factor_average_days'])
     current_price = th.get_market_price(asset)
@@ -284,8 +260,8 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
                     'asset': asset,
                     'price': actual_price,
                     'quota_factor': round(quota_factor,2),
-                    'value': coin_qty*actual_price,
-                    'coins/shares': coin_qty,
+                    'value': round(coin_qty*actual_price,2),
+                    'qty': coin_qty,
                 })
         except Exception as e:
             err(f"{asset} : was not added")
@@ -298,7 +274,7 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
         rprint(f"accumulated value: {sum(df['value']):.2f} USD")
     else:
         print('nothing was added.')
-    #print_account_balances()
+    print_account_balances()
 
 
 def accumulate(assets: List[str], dry: bool):
@@ -383,7 +359,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
 
             market_price = th.get_market_price(coin)
             available_qty = db.get_sym_available_qty(coin)
-            pnl_data = pnl.calculate_inc_pnl(db.get_sym_trades_for_pnl(coin), market_price)
+            pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(coin), market_price)
 
             d={
                 'asset': coin,
@@ -517,17 +493,19 @@ def asset_analysis():
 
 def order_replay(asset: str):
     db = Db()
-    orders = db.get_sym_trades_for_pnl(asset)
+    orders:HistoricalOrder = db.get_sym_orders(asset)
+    stats_data = []
     for i in range(1,len(orders)+1):
-        stats_data = list()
         orders_slice = orders[:i]
         last_order = orders_slice[-1]
         market_price = abs(last_order.value / last_order.qty)
-        rprint(f"order: {last_order.side} value={last_order.value} qty={last_order.qty}")
         pnl_data = pnl.calculate_inc_pnl(orders_slice, market_price)
 
         stats_data.append({
-            'asset': asset,
+            'date': last_order.timestamp,
+            'side': last_order.side,
+            'value': last_order.value,
+            'qty': last_order.qty,
             'break_even_price': pnl_data.break_even_price,
             'current_price': market_price,
             'unrealized_sell_value': pnl_data.unrealized_sell_value,
@@ -536,10 +514,9 @@ def order_replay(asset: str):
             'u pnl': pnl_data.unrealized_pnl,
             'u pnl %': pnl_data.unrealized_pnl_percent if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
         })
-        
-        df_pnl = DataFrame.from_dict(stats_data)
-        rprint(df_pnl.to_string(index=False, na_rep="~"))
-        print()
+    df = DataFrame.from_dict(stats_data)
+    rprint(df.to_string(index=False, na_rep="~"))
+    print()
 
 
 def print_last_dca_time():
@@ -553,7 +530,7 @@ def print_last_dca_time():
         print("no buy orders found")
 
 
-def read_settings() -> dict:
+def read_settings() -> Dict[str, Any]:
     with open('config/dca.yml', 'r') as file:
         return yaml.safe_load(file)
 
