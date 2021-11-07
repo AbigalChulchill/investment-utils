@@ -25,12 +25,20 @@ class OkexTrader(Trader):
     def _wait_for_order(self, order_id: int):
         while True: #fixme: timeout maybe? shouldn't be needed
             time.sleep(1)
-            response = self.api.get_order_details(self.market, order_id)
-            if response['state'] == "filled":
-                fill_qty = float(response['accFillSz'])
-                fill_price  = float(response['avgPx'])
+            r = self.api.get_order_details(self.market, order_id)
+            if r['state'] == "filled":
+                if r['side'] == "buy":
+                    # if buying fee is deducted from token qty bought
+                    fill_qty = float(r['accFillSz']) + float(r['fee']) 
+                    fill_price  = float(r['avgPx'])
+                elif r['side'] == "sell":
+                    # if selling fee is deducted from USD amount sold
+                    fill_qty = float(r['accFillSz'])
+                    fill_price = float(r['avgPx']) + float(r['fee']) / fill_qty
+                else:
+                    raise ValueError("invalid side")
                 return [fill_price, fill_qty]
-            elif response['state'] == "canceled":
-                raise "not filled"
+            elif r['state'] == "canceled":
+                raise ValueError("not filled")
             else:
                 print("waiting on trade ...")
