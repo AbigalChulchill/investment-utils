@@ -498,21 +498,21 @@ def order_replay(asset: str):
     for i in range(1,len(orders)+1):
         orders_slice = orders[:i]
         last_order = orders_slice[-1]
-        market_price = abs(last_order.value / last_order.qty)
-        pnl_data = pnl.calculate_inc_pnl(orders_slice, market_price)
+        last_order_price = abs(last_order.value / last_order.qty)
+        pnl_data = pnl.calculate_inc_pnl(orders_slice, last_order_price)
 
         stats_data.append({
             'date': last_order.timestamp,
             'side': last_order.side,
-            'value': last_order.value,
+            'price': last_order_price,
             'qty': last_order.qty,
+            'value': round(last_order.value,2),
             'break_even_price': pnl_data.break_even_price,
-            'current_price': market_price,
-            'unrealized_sell_value': pnl_data.unrealized_sell_value,
-            'r pnl': pnl_data.realized_pnl,
-            'r pnl %': pnl_data.realized_pnl_percent if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
-            'u pnl': pnl_data.unrealized_pnl,
-            'u pnl %': pnl_data.unrealized_pnl_percent if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
+            'unrealized_sell_value': round(pnl_data.unrealized_sell_value, 2),
+            'r pnl': round(pnl_data.realized_pnl,2),
+            'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
+            'u pnl': round(pnl_data.unrealized_pnl,2),
+            'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
         })
     df = DataFrame.from_dict(stats_data)
     rprint(df.to_string(index=False, na_rep="~"))
