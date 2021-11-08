@@ -32,5 +32,9 @@ id_to_binance={
   "matic-network":      "MATICUSDT",
   "the-sandbox":        "SANDUSDT",
   "illuvium":           "ILVUSDT",
+  "pancakeswap-token":  "CAKEUSDT",
+
+  #fiat
+  "UAH":                "USDTUAH_r",
 }
 

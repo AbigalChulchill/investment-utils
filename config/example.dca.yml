@@ -23,6 +23,16 @@ categories:
   stocks:
     - AAPL
 
+# additional asset categories not managed by DCA, only for portfolio structure accounting
+# 'currency' can be 'USD' or any id supported by MarketDataProvider
+unmanaged_categories:
+  paper:
+    currency: USD
+    qty: 1000
+  deposits:
+    currency: UAH
+    qty: 10000
+
 # default quota for --add per asset if --qty is not specified
 quota_usd: 10
 

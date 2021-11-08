@@ -70,7 +70,7 @@ class TradeHelper:
         self.market_data = MarketData()
 
     def get_market_price(self, coin: str) -> float:
-        return self.market_data.get_market_price(coin)
+        return 1 if coin == "USD" else self.market_data.get_market_price(coin)
 
     def is_tradeable(self, asset: str) -> bool:
         return self.market_data.is_tradeable(asset)
@@ -420,10 +420,10 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
                 'USD' : 0,
             })
     if 'unmanaged_categories' in ds.keys():
-        for c,size in ds['unmanaged_categories'].items():
+        for um_category_name,um_category_dict in ds['unmanaged_categories'].items():
             stats_data.append({
-                'asset_group': c,
-                'USD': size,
+                'asset_group': um_category_name,
+                'USD': round(um_category_dict['qty'] * th.get_market_price(um_category_dict['currency']),2),
             })
     df_cats = DataFrame.from_dict(stats_data)
     df_cats['%'] = round(df_cats['USD'] / sum(df_cats['USD']) * 100,1)
