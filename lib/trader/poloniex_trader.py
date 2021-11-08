@@ -1,4 +1,5 @@
 import time
+from typing import Tuple
 #import traceback
 from lib.common.msg import info, warn
 from lib.common.id_map_poloniex import id_to_poloniex
@@ -23,12 +24,12 @@ class PoloniexTrader(Trader):
         self.pair = id_to_poloniex[sym]
         self.api = poloniex_api.Poloniex(api_key, secret)
 
-    def buy_market(self, qty_usd: float) -> float:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
         self._check_trx_balance()
         retries = MAX_RETRIES
         while retries >= 0:
             try:
-                return self._buy_market(qty_usd)
+                return self._buy_market(qty, qty_in_usd)
             except Exception:
                 if retries > 0:
                     retries -= 1
@@ -38,7 +39,7 @@ class PoloniexTrader(Trader):
                 else:
                     raise
 
-    def sell_market(self, qty_tokens: float) -> float:
+    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
         self._check_trx_balance()
         retries = MAX_RETRIES
         while retries >= 0:
@@ -53,7 +54,7 @@ class PoloniexTrader(Trader):
                 else:
                     raise
 
-    def _handle_trade(self, response: dict):
+    def _handle_trade(self, response: dict) -> Tuple[float,float]:
         if 'resultingTrades' in response.keys():
             trades = response['resultingTrades']
             total_qty_coin = sum( [float(x['amount']) for x in trades] )
@@ -65,12 +66,16 @@ class PoloniexTrader(Trader):
         else:
             raise PoloniexTraderError(f"unknown error : {response}")
 
-    def _buy_market(self, qty_usd: float) -> float:
+    def _buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
         max_price = self.api.returnTicker(self.pair) * 1.01
-        response = self.api.buy(self.pair, max_price, qty_usd / max_price, {'fillOrKill': True})
+        if qty_in_usd:
+            qty_tokens = qty / max_price
+        else:
+            qty_tokens = qty
+        response = self.api.buy(self.pair, max_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
 
-    def _sell_market(self, qty_tokens: float) -> float:
+    def _sell_market(self, qty_tokens: float) -> Tuple[float,float]:
         min_price = self.api.returnTicker(self.pair) * 0.99
         response = self.api.sell(self.pair, min_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)

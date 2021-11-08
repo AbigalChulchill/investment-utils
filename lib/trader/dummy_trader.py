@@ -1,5 +1,6 @@
 import re
-from .trader import Trader
+from typing import Tuple
+from lib.trader.trader import Trader
 from lib.common.market_data import MarketData
 
 class DummyTrader(Trader):
@@ -16,14 +17,14 @@ class DummyTrader(Trader):
         else:
             self._sym = sym
 
-    def buy_market(self, qty_usd: float) -> float:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
         market_data = MarketData(self._sym)
         market_price = market_data.get_market_price(self._sym)
-        qty_sym =  qty_usd / market_price
+        qty_sym = qty / market_price if qty_in_usd else qty
         print(f"buying {qty_sym} {self._sym_original_name} at {market_price}")
         return [market_price, qty_sym]
 
-    def sell_market(self, qty_sym: float) -> float:
+    def sell_market(self, qty_sym: float) -> Tuple[float,float]:
         market_data = MarketData(self._sym)
         market_price = market_data.get_market_price(self._sym)
         print(f"selling {qty_sym} {self._sym_original_name} at {market_price}")

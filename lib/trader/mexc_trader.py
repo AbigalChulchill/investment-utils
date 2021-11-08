@@ -18,10 +18,14 @@ class MexcTrader(Trader):
         self._symbol = id_to_mexc[sym]
         self._api = mexc_api.Mexc(api_key, secret)
 
-    def buy_market(self, qty_usd: float) -> Tuple[float,float]:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
         self._check_mx_balance()
-        market_price = float(self._api.get_ticker(self._symbol)['ask'])
-        return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*1.01, qty=qty_usd / market_price, trade_type="BID", order_type="IMMEDIATE_OR_CANCEL" ))
+        if qty_in_usd:
+            market_price = float(self._api.get_ticker(self._symbol)['ask'])
+            qty_tokens = qty / market_price
+        else:
+            qty_tokens = qty
+        return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*1.01, qty=qty_tokens, trade_type="BID", order_type="IMMEDIATE_OR_CANCEL" ))
 
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
         self._check_mx_balance()

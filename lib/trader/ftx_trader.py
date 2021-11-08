@@ -17,9 +17,13 @@ class FtxTrader(Trader):
         self._market = id_to_ftx[sym]
         self._api = ftx_api.Ftx(api_key, secret, subaccount)
 
-    def buy_market(self, qty_usd: float) -> Tuple[float,float]:
-        market_price = self._api.get_orderbook(self._market)['asks'][0][0]
-        return self._finalize_order(self._api.place_order(market=self._market, side="buy", price=None, limit_or_market="market", size= qty_usd / market_price, ioc=False))
+    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
+        if qty_in_usd:
+            market_price = self._api.get_orderbook(self._market)['asks'][0][0]
+            qty_tokens = qty / market_price
+        else:
+            qty_tokens = qty
+        return self._finalize_order(self._api.place_order(market=self._market, side="buy", price=None, limit_or_market="market", size=qty_tokens, ioc=False))
 
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
         return self._finalize_order(self._api.place_order(market=self._market, side="sell", price=None, limit_or_market="market", size=qty_tokens, ioc=False))

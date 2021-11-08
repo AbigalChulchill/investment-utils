@@ -1,69 +1,68 @@
+from abc import abstractmethod, abstractproperty
 from typing import Tuple
 import numpy as np
 import pandas as pd
 from lib.common import pnl
 
 class Broker:
+    @abstractmethod
     def buy(self, qty: float)->Tuple[float,float]:
-        '''
-        returns [value, qty]
-        '''
-        raise NotImplementedError()
+        """returns [value, qty]"""
 
+    @abstractmethod
     def sell(self, qty: float)->Tuple[float,float]:
-        '''
-        returns [value, qty]
-        '''
-        raise NotImplementedError()
+        """returns [value, qty]"""
 
-    @property
+    @abstractproperty
     def account_size_usd(self) -> float:
-        raise NotImplementedError()
+        """returns account size in USD"""
 
-    @property
+    @abstractproperty
     def account_size_token(self) -> float:
-        raise NotImplementedError()
+        """returns account size in token"""
 
-    @property
+    @abstractproperty
     def pnl(self) -> pnl.PnL:
-        raise NotImplementedError()
+        """returns PnL"""
 
 
 class Ticker:
-    @property
+    @abstractproperty
     def market_price(self) -> float:
-        raise NotImplementedError()
+        """returns current market price of instrument"""
 
-    @property
+    @abstractproperty
     def timestamp(self) -> pd.DatetimeIndex:
-        raise NotImplementedError()
+        """returns open timestamps of bars"""
 
-    @property
+    @abstractproperty
     def open(self) -> np.ndarray:
-        raise NotImplementedError()
+        """returns open values of bars"""
 
-    @property
+    @abstractproperty
     def close(self) -> np.ndarray:
-        raise NotImplementedError()
+        """returns close values of bars"""
 
-    @property
+    @abstractproperty
     def high(self) -> np.ndarray:
-        raise NotImplementedError()
+        """returns high values of bars"""
 
-    @property
+    @abstractproperty
     def low(self) -> np.ndarray:
-        raise NotImplementedError()
+        """returns low values of bars"""
 
-    @property
+    @abstractproperty
     def volume(self) -> np.ndarray:
-        raise NotImplementedError()
+        """returns volume values of bars"""
 
 
 class Strategy:
+    @abstractmethod
     def tick(self, ticker: Ticker, broker: Broker):
-        raise NotImplementedError()
+        """strategy update"""
 
 
 class Conductor:
+    @abstractmethod
     def run(self):
-        raise NotImplementedError()
+        """conductor logic"""
