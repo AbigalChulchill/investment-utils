@@ -1,7 +1,9 @@
+from typing import Any
 from .interface import MarketDataProvider
 from ..common.misc import is_stock
 import pandas as pd
 import yfinance as yf
+import logging
 
 yf_exclude_stocks =[ 
     "PAXG"
@@ -21,11 +23,28 @@ class MarketDataProviderYF(MarketDataProvider):
             self._ticker_cache[asset] = yf.Ticker(asset)
         return self._ticker_cache[asset]
 
+    def _get_history(self, asset: str, period: str, interval: str) -> Any:
+        return self._get_ticker(asset).history(period=period, interval=interval)
+    def _get_info(self, asset: str) -> Any:
+        return self._get_ticker(asset).info
+
+    def _get(self, asset: str, op: Any, **kwargs) -> Any:
+        retries = 3
+        while True:
+            try:
+                return op(asset, **kwargs)
+            except:
+                if retries > 0:
+                    retries -= 1
+                    logging.debug(f"YahooFinance exception - retrying, {retries} attempts remaining")
+                    continue
+                else:
+                    raise
+
     def get_market_price(self, asset: str) -> float:
         return self.get_historical_bars(asset,1,True)['close'].to_numpy(float)[-1]
 
     def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
-        ticker = self._get_ticker(asset)
         if days_before <= 1:
             period = "1d"
         elif days_before <= 5:
@@ -38,13 +57,12 @@ class MarketDataProviderYF(MarketDataProvider):
             period = "6mo"
         elif days_before <= 365:
             period = "1y"
-        df = ticker.history(period=period, interval="1d")
+        df = self._get(asset, self._get_history, period=period, interval="1d")
         df.rename(columns={ "Open": "open", "Close": "close", "High": "high", "Low": "low", }, inplace=True)
         return df
 
     def get_fundamentals(self, asset: str) -> dict:
-        ticker = self._get_ticker(asset)
-        info = ticker.info
+        info = self._get(asset, self._get_info)
         d = {}
         if "trailingPE" in info.keys():
             d['P/E trailing'] = info['trailingPE']
