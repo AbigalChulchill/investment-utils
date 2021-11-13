@@ -184,7 +184,7 @@ def accumulate_one(asset: str, quota: float, dry: bool):
             price = th.get_market_price(asset)
             qty = daily_quota / price
         else:
-            price, qty = trader.buy_market(daily_quota)
+            price, qty = trader.buy_market(daily_quota,True)
             db.add(asset, qty, price)
         df = DataFrame.from_dict([{
             'asset': asset,
@@ -254,7 +254,7 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
                     actual_price = th.get_market_price(asset)
                     coin_qty = daily_qty / actual_price
                 else:
-                    actual_price, coin_qty = trader.buy_market(daily_qty)
+                    actual_price, coin_qty = trader.buy_market(daily_qty,True)
                     db.add(asset, coin_qty, actual_price)
                 a.append({
                     'asset': asset,
