@@ -15,4 +15,5 @@ id_to_poloniex={
     "polkadot":         "USDT_DOT",
     "basic-attention-token": "USDT_BAT",
     "amp-token":        "USDT_AMP",
+    "pancakeswap-token":"USDT_CAKE",
 }
