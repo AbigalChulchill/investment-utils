@@ -33,6 +33,7 @@ id_to_ticker={
     "polkadot":             "DOT",
     "raydium":              "RAY",
     "ripple":               "XRP",
+    "samoyedcoin":          "SAMO",
     "serum":                "SRM",
     "shiba-inu":            "SHIB",
     "solana":               "SOL",
