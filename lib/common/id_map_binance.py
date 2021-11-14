@@ -33,6 +33,8 @@ id_to_binance={
   "the-sandbox":        "SANDUSDT",
   "illuvium":           "ILVUSDT",
   "pancakeswap-token":  "CAKEUSDT",
+  "uniswap":            "UNIUSDT",
+  "sushi":              "SUSHIUSDT",
 
   #fiat
   "UAH":                "USDTUAH_r",

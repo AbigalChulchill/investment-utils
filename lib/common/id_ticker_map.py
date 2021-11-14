@@ -40,6 +40,9 @@ id_to_ticker={
     "solfarm":              "TULIP",
     "star-atlas-dao":       "POLIS",
     "star-atlas":           "ATLAS",
+    "starlaunch":           "STARS",
+    "sushi":                "SUSHI",
     "tezos":                "XTZ",
     "the-sandbox":          "SAND",
+    "uniswap":              "UNI",
 }
