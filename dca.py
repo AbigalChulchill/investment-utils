@@ -464,31 +464,47 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
     print()
 
 
-def asset_analysis():
-    title("Asset Analysis")
-    assets = list(set(list(ds['asset_exchg'].keys())))
+def fundamentals():
+    title("Fundamentals")
+    assets = list(set(list(ds["asset_exchg"].keys())))
     th = TradeHelper()
-    asset_groups = defaultdict(list)
-    for a in assets: asset_groups[get_asset_category(a)].append(a)
-    for asset_group in asset_groups.keys():
-        #statusbar = StatusBar(len(asset_groups[asset_group]), 50)
-        data = []
-        title2(asset_group)
-        i = 1
-        for asset in track(asset_groups[asset_group]):
-            i += 1
+    data = []
+    for asset in track(assets):
+        if is_stock(asset):
             d ={
-                'asset': asset,
-                '>200d': round(th.get_distance_to_avg_percent(asset, 200),1),
+                "stock": asset
             }
-            if is_stock(asset):
-                fundamental_data = th.get_fundamentals(asset)
-                for k,v in fundamental_data.items(): d[k] = v
+            fundamental_data = th.get_fundamentals(asset)
+            for k,v in fundamental_data.items():
+                d[k] = v
             data.append(d)
-        df = DataFrame.from_dict(data)
-        df.sort_values(">200d", inplace=True, ascending=False)
-        rprint(df.to_string(index=False, na_rep="~"))
-        print()
+    df = DataFrame.from_dict(data)
+    df.sort_values("stock", inplace=True, ascending=True)
+    rprint(df.to_string(index=False, na_rep="~"))
+    print()
+
+
+def heatmap():
+    title("Identifying overheated markets")
+    assets = Db().get_syms()
+    th = TradeHelper()
+    data = []
+    for asset in track(assets):
+        rsi = th.get_rsi(asset)
+        if rsi > 60:
+            sma_200 = th.get_distance_to_avg_percent(asset,200)
+            if sma_200 > 20:
+                data.append({
+                    "asset": asset,
+                    "rsi": round(rsi,2),
+                    "above sma 200, %": round(sma_200,2),
+                })
+    df = DataFrame.from_dict(data)
+    df["heat score"] = int(round(df["rsi"] * df["above sma 200, %"]))
+    #df["heat_score"] = round(df["heat_score"] / max(df["heat_score"]),2)
+    df.sort_values("heat score", inplace=True, ascending=False)
+    rprint(df.to_string(index=False, na_rep="~"))
+    print()
 
 
 def order_replay(asset: str):
@@ -580,8 +596,10 @@ def main():
             err("burn: requires --coin")
     elif args.stats:
         stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
-    elif args.analysis:
-        asset_analysis()
+    elif args.fundamentals:
+        fundamentals()
+    elif args.heatmap:
+        heatmap()
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:
