@@ -19,10 +19,12 @@ class FtxTrader(Trader):
 
     def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
         if qty_in_usd:
-            market_price = self._api.get_orderbook(self._market)['asks'][0][0]
+            market_price = self._api.get_ticker(self._market)
             qty_tokens = qty / market_price
         else:
             qty_tokens = qty
+        min_qty = self._api.get_min_qty(self._market)
+        qty_tokens = max(qty_tokens, min_qty)
         return self._finalize_order(self._api.place_order(market=self._market, side="buy", price=None, limit_or_market="market", size=qty_tokens, ioc=False))
 
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:

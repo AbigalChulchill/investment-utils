@@ -66,6 +66,12 @@ class Okex:
             'instId': market,
         })
 
+    def get_min_qty(self, market: str ) -> float:
+        return float(self._get(f"/api/v5/public/instruments", {
+            'instType': 'SPOT',
+            'instId': market,
+        })[0]['minSz'])
+
     def place_order(self, market: str, side: str, size: float) -> int:
         response = self._post("/api/v5/trade/order", {
             'instId': market, #BTC-USD

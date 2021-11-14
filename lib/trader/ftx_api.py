@@ -98,6 +98,9 @@ class Ftx:
     def get_ticker(self, market: str) -> float:
         return self._get(f"/markets/{market}")['price']
 
+    def get_min_qty(self, market: str) -> float:
+        return self._get(f"/markets/{market}")['sizeIncrement']
+
     def get_orderbook(self, market: str, depth: int = 20) -> dict:
         return self._get(f"/markets/{market}/orderbook", params={'depth': depth})
 

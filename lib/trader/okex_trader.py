@@ -20,7 +20,9 @@ class OkexTrader(Trader):
             qty_tokens = qty / market_price
         else:
             qty_tokens = qty
-        order_id = self.api.place_order(market=self.market, side="buy", size= qty_tokens)
+        min_qty = self.api.get_min_qty(self.market)
+        qty_tokens = max(qty_tokens, min_qty)
+        order_id = self.api.place_order(market=self.market, side="buy", size=qty_tokens)
         return self._wait_for_order(order_id)
 
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
