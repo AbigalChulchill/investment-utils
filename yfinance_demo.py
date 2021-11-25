@@ -15,65 +15,66 @@ def pretty_json(t,s):
 
 def pretty_df(t,df):
     title(t)
-    print(df.to_string())
+    if df is not None:
+        print(df.to_string())
 
 import yfinance as yf
 
-msft = yf.Ticker("MSFT")
+t = yf.Ticker("NIO")
 
 # get stock info
-pretty_json("msft.info", msft.info)
+pretty_json("info", t.info)
 
 # get historical market data
-pretty_df("msft.history", msft.history(period="max"))
+pretty_df("history", t.history(period="max"))
 
 # show actions (dividends, splits)
-pretty_df("msft.actions",msft.actions)
+pretty_df("actions",t.actions)
 
 # show dividends
-pretty_obj("msft.dividends",msft.dividends)
+pretty_obj("dividends",t.dividends)
 
 # show splits
-pretty_obj("msft.splits",msft.splits)
+pretty_obj("splits",t.splits)
 
 # show financials
-pretty_df("msft.financials",msft.financials)
-pretty_df("msft.quarterly_financials",msft.quarterly_financials)
+pretty_df("financials",t.financials)
+pretty_df("quarterly_financials",t.quarterly_financials)
 
 # show major holders
-pretty_df("msft.major_holders",msft.major_holders)
+pretty_df("major_holders",t.major_holders)
 
 # show institutional holders
-pretty_df("msft.institutional_holders",msft.institutional_holders)
+pretty_df("institutional_holders",t.institutional_holders)
 
 # show balance sheet
-pretty_df("msft.balance_sheet",msft.balance_sheet)
-pretty_df("msft.quarterly_balance_sheet",msft.quarterly_balance_sheet)
+pretty_df("balance_sheet",t.balance_sheet)
+pretty_df("quarterly_balance_sheet",t.quarterly_balance_sheet)
 
 # show cashflow
-pretty_df("msft.cashflow",msft.cashflow)
-pretty_df("msft.quarterly_cashflow",msft.quarterly_cashflow)
+pretty_df("cashflow",t.cashflow)
+pretty_df("quarterly_cashflow",t.quarterly_cashflow)
 
 # show earnings
-pretty_df("msft.earnings",msft.earnings)
-pretty_df("msft.quarterly_earnings",msft.quarterly_earnings)
+pretty_df("earnings",t.earnings)
+pretty_df("quarterly_earnings",t.quarterly_earnings)
 
 # show sustainability
-pretty_df("msft.sustainability",msft.sustainability)
+pretty_df("sustainability",t.sustainability)
 
 # show analysts recommendations
-pretty_df("msft.recommendations",msft.recommendations)
+pretty_df("recommendations",t.recommendations)
 
 # show next event (earnings, etc)
-pretty_df("msft.calendar",msft.calendar)
+pretty_df("calendar",t.calendar)
 
 # show ISIN code - *experimental*
 # ISIN = International Securities Identification Number
-pretty_json("msft.isin",msft.isin)
+pretty_json("isin",t.isin)
 
 # show options expirations
-pretty_json("msft.options",msft.options)
+pretty_json("options",t.options)
 
 # get option chain for specific expiration
-#opt = msft.option_chain('YYYY-MM-DD')
+#opt = option_chain('YYYY-MM-DD')
 # data available via: opt.calls, opt.puts
