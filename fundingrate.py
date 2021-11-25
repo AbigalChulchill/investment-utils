@@ -204,8 +204,8 @@ class App:
         df_positives = df_positives[:limit_count]
         df_positives['rate'] = df_positives.apply(axis='columns', func=lambda x: cl.get_future_data(x['future'])['nextFundingRate']*100)
         df_positives = df_positives.sort_values("rate", ascending=False)
-        df_positives['change'] = df_positives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
-        df_positives['stability'] = df_positives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] < 0]}{['+','-'][x['rate_1'] < 0]}{['+','-'][x['rate_0'] < 0]}{['+','-'][x['rate'] < 0]}")
+        df_positives['change'] = df_positives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
+        df_positives['stability'] = df_positives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_1'] < 0]}{['+','-'][x['rate_0'] < 0]}{['+','-'][x['rate'] < 0]}")
         df_positives['future op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['bid'])
         df_positives['spot op p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['ask'])
         df_positives['future cl p'] = df_positives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['ask'])
@@ -220,8 +220,8 @@ class App:
         df_negatives = df_negatives[:limit_count]
         df_negatives['rate'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_future_data(x['future'])['nextFundingRate']*100)
         df_negatives = df_negatives.sort_values("rate", ascending=True)
-        df_negatives['change'] = df_negatives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_2'] < x['rate_1'] else arrow_down}{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
-        df_negatives['stability'] = df_negatives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_2'] > 0]}{['+','-'][x['rate_1'] > 0]}{['+','-'][x['rate_0'] > 0]}{['+','-'][x['rate'] > 0]}")
+        df_negatives['change'] = df_negatives.apply(axis='columns', func=lambda x: f"{arrow_up if x['rate_1'] < x['rate_0'] else arrow_down}{arrow_up if x['rate_0'] < x['rate'] else arrow_down}")
+        df_negatives['stability'] = df_negatives.apply(axis='columns', func=lambda x: f"{['+','-'][x['rate_1'] > 0]}{['+','-'][x['rate_0'] > 0]}{['+','-'][x['rate'] > 0]}")
         df_negatives['future op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['ask'])
         df_negatives['spot op p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(convert_symbol_futures_spot(x['future']))['bid'])
         df_negatives['future cl p'] = df_negatives.apply(axis='columns', func=lambda x: cl.get_market(x['future'])['bid'])
@@ -269,7 +269,7 @@ class App:
                 get_fr_profitable = lambda x: x > 0 if pos_side == "SHORT" else x < 0
                 is_profitable = get_fr_profitable(fr)
                 profit_per_hour = -value*fr*0.01
-                stability = [ get_fr_profitable(historical_frs[k]) for k in ["rate_2","rate_1", "rate_0"] ]
+                stability = [ get_fr_profitable(historical_frs[k]) for k in ["rate_1", "rate_0"] ]
                 ####
                 # use rounded diff of qties because sometimes qty may not be exactly 0
                 # due to extra amount borrowed when market-short-selling
