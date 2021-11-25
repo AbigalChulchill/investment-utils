@@ -17,7 +17,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
         price_data = self._cg.get_price(ids=[asset], vs_currencies="usd", include_24hr_change="false")
         return float(price_data[asset]['usd'])
 
-    def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
+    def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         cg_candles = self._cg.get_coin_ohlc_by_id(asset, "usd", 30)
         candles =[]
         current_ic = 0

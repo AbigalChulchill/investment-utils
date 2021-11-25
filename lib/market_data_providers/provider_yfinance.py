@@ -3,6 +3,7 @@ from .interface import MarketDataProvider
 from ..common.misc import is_stock
 import pandas as pd
 import yfinance as yf
+import yahoo_fin.stock_info
 import logging
 
 yf_exclude_stocks =[ 
@@ -42,9 +43,10 @@ class MarketDataProviderYF(MarketDataProvider):
                     raise
 
     def get_market_price(self, asset: str) -> float:
-        return self.get_historical_bars(asset,1,True)['close'].to_numpy(float)[-1]
+        return yahoo_fin.stock_info.get_live_price(asset)
+        #return self.get_historical_bars(asset,1,True)['close'].to_numpy(float)[-1]
 
-    def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
+    def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         if days_before <= 1:
             period = "1d"
         elif days_before <= 5:

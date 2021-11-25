@@ -9,21 +9,25 @@ from .provider_coingecko import MarketDataProviderCoingecko
 
 class MarketDataProviderFlyweight:
     def __init__(self):
-        self._prov_binance = MarketDataProviderBinance()
-        self._prov_ftx = MarketDataProviderFTX()
-        self._prov_poloniex = MarketDataProviderPoloniex()
-        self._prov_yf = MarketDataProviderYF()
-        self._prov_cg = MarketDataProviderCoingecko()
+        self._map = {
+            "binance": MarketDataProviderBinance(),
+            "ftx": MarketDataProviderFTX(),
+            "poloniex": MarketDataProviderPoloniex(),
+            "yf": MarketDataProviderYF(),
+            "cg": MarketDataProviderCoingecko(),
+        }
+        self._prioritylist = [
+            "binance",
+            "ftx",
+            "poloniex",
+            "yf",
+            "cg",
+        ]
     
     def get(self, asset: str) -> MarketDataProvider:
-        if MarketDataProviderBinance.handles(asset):
-            return self._prov_binance
-        elif MarketDataProviderYF.handles(asset):
-            return self._prov_yf
-        elif MarketDataProviderFTX.handles(asset):
-            return self._prov_ftx
-        elif MarketDataProviderPoloniex.handles(asset):
-            return self._prov_poloniex
-        elif MarketDataProviderCoingecko.handles(asset):
-            return self._prov_cg
+        for id in self._prioritylist:
+            prov = self._map[id]
+            if prov.handles(asset):
+                #print(f"MarketDataProvider: id {asset} handled by {id}")
+                return prov
         raise ValueError(f"{asset} market data unobtainable")

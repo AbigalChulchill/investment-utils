@@ -13,19 +13,18 @@ class MarketDataProviderPoloniex(MarketDataProvider):
         return asset in id_to_poloniex.keys()
 
     def __init__(self):
-        pass
+        self._api= PoloniexAPI("","")
 
     def get_market_price(self, asset: str) -> float:
-        return self.get_historical_bars(asset, 1, True)['close'].iat[-1]
+        return self._api.returnTicker(id_to_poloniex[asset])
 
-    def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
+    def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         ts_end = datetime.datetime.now().timestamp()
         ts_start = ts_end - days_before * 24 * 3600
-        candles = PoloniexAPI("","").returnChartData(id_to_poloniex[asset], "1d", ts_start, ts_end)
+        candles = self._api.returnChartData(id_to_poloniex[asset], "1d", ts_start, ts_end)
         df = pd.DataFrame.from_dict(candles)
-        if not with_partial_today_bar:
-            df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
+        #df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
         df.rename(columns={ "date": "timestamp"}, inplace=True)
-        df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
+        df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="s"))
         df.set_index('timestamp', inplace=True)
         return df

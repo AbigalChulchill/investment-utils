@@ -23,13 +23,12 @@ class MarketDataProviderFTX(MarketDataProvider):
     def get_market_price(self, asset: str) -> float:
         return self._get_market(id_to_ftx[asset])['price']
 
-    def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
+    def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         t = int(datetime.datetime.now().timestamp())
         seconds_per_day = 3600 * 24
         candles = self._api.get_candles(id_to_ftx[asset], seconds_per_day, t - (seconds_per_day * days_before),  t)
         df = pd.DataFrame.from_dict(candles)
-        if not with_partial_today_bar:
-            df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
+        #df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
         df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['startTime']))
         df.set_index('timestamp', inplace=True)
         return df

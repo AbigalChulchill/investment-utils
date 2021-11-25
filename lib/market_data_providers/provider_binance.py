@@ -25,12 +25,15 @@ class MarketDataProviderBinance(MarketDataProvider):
         price = float([x['price'] for x in self._crypto_prices if x['symbol'] == ticker][0])
         return 1 / price if reverse else price
 
-    def get_historical_bars(self, asset: str, days_before: int, with_partial_today_bar:bool =False)->pd.DataFrame:
+    def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         ticker, reverse = id_to_ticker(asset)
         candles = BinanceAPI().get_candles_by_limit(ticker, "1d", limit=days_before)
         df = pd.DataFrame.from_dict(candles)
-        if not with_partial_today_bar:
-            df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
+        df['open'] = pd.to_numeric(df['open'])
+        df['close'] =pd.to_numeric(df['close'])
+        df['high'] = pd.to_numeric(df['high'])
+        df['low'] = pd.to_numeric(df['low'])
+        #df = df[:-1] # remove last item as it corresponds to just opened candle (partial)
         df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
         df.set_index('timestamp', inplace=True)
         if reverse:

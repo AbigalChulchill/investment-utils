@@ -16,7 +16,7 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import *
-from lib.common.misc import is_stock
+from lib.common.misc import is_stock, calc_raise_percent
 from lib.common.widgets import track
 
 
@@ -29,11 +29,11 @@ def title(name: str):
 def title2(name: str):
     rprint(f"[bold white]{name}[/]")
 
-def msg_buying(coin: str):
-    rprint(f"[bold green]buying[/] : {coin}")
+def msg_buying(coin: str, value: float):
+    rprint(f"[bold green]buying[/] {coin} for {value:.2f} USD")
 
-def msg_selling(coin: str):
-    rprint(f"[bold red]selling[/] : {coin}")
+def msg_selling(coin: str, qty: float):
+    rprint(f"[bold red]selling[/] {qty} {coin}")
 
 def create_trader(coin: str) -> Trader:
     return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
@@ -80,6 +80,9 @@ class TradeHelper:
 
     def get_avg_price_n_days(self, coin: str, days_before: int, ma_type: str="auto") -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before, ma_type)
+
+    def get_lo_hi_n_days(self, coin: str, days_before: int) -> float:
+        return self.market_data.get_lo_hi_n_days(coin, days_before)
 
     def get_distance_to_avg_percent(self, coin: str, days_before: int) -> float:
         return self.market_data.get_distance_to_avg_percent(coin, days_before)
@@ -173,12 +176,11 @@ def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[flo
 
 
 def accumulate_one(asset: str, quota: float, dry: bool):
-    msg_buying(asset)
-
     db = Db()
     th = TradeHelper()
 
     daily_quota,quota_factor = (quota,1) if quota else calc_daily_qty(asset, th, ds['quota_usd'])
+    msg_buying(asset, daily_quota)
 
     trader: Trader = create_trader(asset)
     if trader:
@@ -247,9 +249,9 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     a = list()
     
     for asset,quota_factor in track(assets_quota_factors.items()):
-        msg_buying(asset)
         try:
             daily_qty = quota_asset * quota_factor
+            msg_buying(asset, daily_qty)
             trader: Trader = create_trader(asset)
             if trader:
                 if dry:
@@ -293,7 +295,7 @@ def accumulate(assets: List[str], dry: bool):
 
 
 def remove(coin: str, qty: str, dry: bool):
-    msg_selling(coin)
+    msg_selling(coin, qty)
 
     db = Db()
     th = TradeHelper()
@@ -348,7 +350,7 @@ def add_ext_order(asset: str, qty: float, price: float, timestamp: str):
 
 
 def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_by: str):
-    title("PnL")
+    title("Positions")
     db = Db()
     th = TradeHelper()
     assets = db.get_syms()
@@ -358,7 +360,7 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
     stats_data_one_table = []
     columns=["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
     formatters={
-        'available qty':    lambda x: f'{x:8.8f}',
+        'qty':    lambda x: f'{x:8.8f}',
     }
     sort_key=lambda x: [-101 if a == "~" else a for a in x]
     for asset_group in asset_groups.keys():
@@ -368,20 +370,30 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
         for coin in asset_groups[asset_group]:
 
             market_price = th.get_market_price(coin)
-            available_qty = db.get_sym_available_qty(coin)
+            qty = db.get_sym_available_qty(coin)
             pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(coin), market_price)
+
+            ma200_price = th.get_avg_price_n_days(coin,200)
+            rsi = th.get_rsi(coin)
+            lo200,hi200 = th.get_lo_hi_n_days(coin,200)
+            calc_heat_score = lambda : calc_raise_percent(ma200_price, market_price ) * rsi
 
             d={
                 'asset': coin,
-                'available qty': available_qty,
                 'break even price': pnl_data.break_even_price,
+                '200d SMA': round(ma200_price,2),
+                '200d low': round(lo200,2),
+                '200d high': round(hi200,2),
                 'current price': market_price,
-                #'overpriced %': round(th.get_distance_to_avg_percent(coin, ds['check_level_cutoff_avg_days']),1),
+                'qty': qty,
                 'value': round(pnl_data.unrealized_sell_value,2),
                 'r pnl': round(pnl_data.realized_pnl,2),
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
                 'u pnl': round(pnl_data.unrealized_pnl,2),
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
+                # 'cp>MA200': round( calc_raise_percent(ma200_price, market_price ),1),
+                #'rsi': round(rsi,2),
+                'heat_score': round(calc_heat_score(),1),
             }
             stats_data.append(d)
             stats_data_one_table.append(d)
@@ -494,28 +506,6 @@ def fundamentals():
     print()
 
 
-def heatmap():
-    title("Identifying overheated markets")
-    assets = Db().get_syms()
-    th = TradeHelper()
-    data = []
-    for asset in track(assets):
-        rsi = th.get_rsi(asset)
-        if rsi > 60:
-            sma_200 = th.get_distance_to_avg_percent(asset,200)
-            if sma_200 > 20:
-                data.append({
-                    "asset": asset,
-                    "rsi": round(rsi,2),
-                    "above sma 200, %": round(sma_200,2),
-                })
-    df = DataFrame.from_dict(data)
-    df["heat score"] = int(round(df["rsi"] * df["above sma 200, %"]))
-    #df["heat_score"] = round(df["heat_score"] / max(df["heat_score"]),2)
-    df.sort_values("heat score", inplace=True, ascending=False)
-    rprint(df.to_string(index=False, na_rep="~"))
-    print()
-
 
 def order_replay(asset: str):
     db = Db()
@@ -528,7 +518,7 @@ def order_replay(asset: str):
         pnl_data = pnl.calculate_inc_pnl(orders_slice, last_order_price)
 
         stats_data.append({
-            'date': last_order.timestamp,
+            'date':  last_order.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             'side': last_order.side,
             'price': last_order_price,
             'qty': last_order.qty,
@@ -581,10 +571,10 @@ def main():
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
     parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
     parser.add_argument('--single-table', action='store_const', const='True', help='Combine PnL of all assets into single table in --stats. By default uses separate table for each asset group')
-    parser.add_argument('--analysis', action='store_const', const='True', help='Print fundamental and technical analysis data for assets')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     parser.add_argument('--last', action='store_const', const='True', help='Print date of last DCA bulk purchase')
+    parser.add_argument('--fundamentals', action='store_const', const='True', help='Print stock fundamentals data')
     args = parser.parse_args()
 
     if args.add:
@@ -612,8 +602,6 @@ def main():
         stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
     elif args.fundamentals:
         fundamentals()
-    elif args.heatmap:
-        heatmap()
     elif args.order_replay:
         order_replay(args.coin)
     elif args.balances:
