@@ -97,14 +97,16 @@ class Db:
         self.con.execute('''CREATE TABLE IF NOT EXISTS dca (date text, sym text, qty real, price real)''')
         self.con.commit()
 
-    def add(self, sym: str, qty: float, price: float ):
-        now = datetime.datetime.now()
-        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, qty, price))
+    def add(self, sym: str, qty: float, price: float, timestamp: datetime.datetime=None ):
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (timestamp, sym, qty, price))
         self.con.commit()
 
-    def remove(self, sym: str, qty: float, price: float ):
-        now = datetime.datetime.now()
-        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (now, sym, -qty, price))
+    def remove(self, sym: str, qty: float, price: float, timestamp: datetime.datetime=None ):
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+        self.con.execute("INSERT INTO dca VALUES (?,?,?,?)", (timestamp, sym, -qty, price))
         self.con.commit()
 
     def burn(self, sym: str, qty: float):
@@ -336,6 +338,14 @@ def close(coin: str):
     print(f"{coin} position has been closed")
 
 
+def add_ext_order(asset: str, qty: float, price: float, timestamp: str):
+    db = Db()
+    if qty > 0:
+        db.add(asset, qty, price, timestamp)
+    else:
+        db.remove(asset, -qty, price, timestamp)
+    print("ext order has been accounted.")
+
 
 def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_by: str):
     title("PnL")
@@ -561,8 +571,11 @@ def main():
     parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     parser.add_argument('--burn', type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
     parser.add_argument('--close', action='store_const', const='True',  help='Close position. Requires --coin')
+    parser.add_argument('--external', action='store_const', const='True',  help='Write a record to db for an add/remove of external origin. Requires --coin, --qty (can be negative if remove), --price and --timestamp')
     parser.add_argument('--coin', type=str,  help='Perform an action on the specified coin only, used with --add, --remove and --close')
     parser.add_argument('--qty', type=str,  help='USD quota to add, quantity or %% of coins/shares to remove. Requires --coin. Requires --add or --remove')
+    parser.add_argument('--price', type=str,  help='Order price, used by --external')
+    parser.add_argument('--timestamp', type=str,  help='Order timestamp, used by --external')
     parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
@@ -580,20 +593,21 @@ def main():
         else:
             accumulate(assets=ds['auto_accumulate_list'], dry=args.dry)
     elif args.remove:
-        if args.coin:
-            remove(coin=args.coin, qty=args.qty, dry=args.dry)
-        else:
-            err("remove: requires --coin")
+        assert args.coin
+        assert args.qty
+        remove(coin=args.coin, qty=args.qty, dry=args.dry)
     elif args.close:
-        if args.coin:
-            close(coin=args.coin)
-        else:
-            err("close: requires --coin")
+        assert args.coin
+        close(coin=args.coin)
     elif args.burn:
-        if args.coin:
-            burn(coin=args.coin, qty=args.burn)
-        else:
-            err("burn: requires --coin")
+        assert args.coin
+        burn(coin=args.coin, qty=args.burn)
+    elif args.external:
+        assert args.coin
+        assert args.qty
+        assert args.price
+        assert args.timestamp
+        add_ext_order(asset=args.coin, qty=float(args.qty), price=float(args.price), timestamp=datetime.datetime.fromisoformat(args.timestamp))
     elif args.stats:
         stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, single_table=args.single_table, sort_by=args.sort_by)
     elif args.fundamentals:
