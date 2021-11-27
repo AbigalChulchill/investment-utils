@@ -294,12 +294,12 @@ def accumulate(assets: List[str], dry: bool):
     accumulate_main_pass(assets_quota_factors, dry, quota_asset)
 
 
-def remove(coin: str, qty: str, dry: bool):
-    msg_selling(coin, qty)
+def remove(asset: str, qty: str, dry: bool):
+    msg_selling(asset, qty)
 
     db = Db()
     th = TradeHelper()
-    available_sell_qty = db.get_sym_available_qty(coin)
+    available_sell_qty = db.get_sym_available_qty(asset)
     sell_qty = 0
     m = re.match(r"([0-9]+)%", qty)
     if m:
@@ -307,21 +307,20 @@ def remove(coin: str, qty: str, dry: bool):
     else:
         sell_qty = min(available_sell_qty, float(qty))
 
-    trader: Trader = create_trader(coin)
+    trader: Trader = create_trader(asset)
     if trader:
         if dry:
-            actual_price = th.get_market_price(coin)
+            actual_price = th.get_market_price(asset)
             actual_qty = sell_qty
         else:
             actual_price, actual_qty = trader.sell_market(sell_qty)
-            db.remove(coin, actual_qty, actual_price)
+            db.remove(asset, actual_qty, actual_price)
         df = DataFrame.from_dict([{
-            'coin': coin,
             'price': actual_price,
-            'coins sold': actual_qty,
-            'usd sold': actual_qty*actual_price,
-            'coins avail': available_sell_qty - actual_qty,
-            'usd avail': (available_sell_qty - actual_qty)*actual_price,
+            'qty': actual_qty,
+            'value': actual_qty*actual_price,
+            'remaining_qty': available_sell_qty - actual_qty,
+            'remaining_value': (available_sell_qty - actual_qty)*actual_price,
         }])
         rprint(df.to_string(index=False))
     else:
@@ -585,7 +584,7 @@ def main():
     elif args.remove:
         assert args.coin
         assert args.qty
-        remove(coin=args.coin, qty=args.qty, dry=args.dry)
+        remove(asset=args.coin, qty=args.qty, dry=args.dry)
     elif args.close:
         assert args.coin
         close(coin=args.coin)
