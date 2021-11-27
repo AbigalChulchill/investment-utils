@@ -33,6 +33,7 @@ id_to_ticker={
     "media-network":        "MEDIA",
     "only1":                "LIKE",
     "orca":                 "ORCA",
+    "pancakeswap-token":    "CAKE",
     "polkadot":             "DOT",
     "raydium":              "RAY",
     "ripple":               "XRP",
