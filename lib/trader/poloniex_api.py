@@ -149,3 +149,39 @@ class Poloniex:
         https://docs.poloniex.com/#cancelorder
         '''
         return self._post("cancelOrder", {"currencyPair": currencyPair, "orderNumber": orderNumber})
+
+    def withdraw(self, currency: str, amount: float, address: str) -> dict:
+        '''
+        Immediately places a withdrawal for a given currency, with no email confirmation.
+        In order to use this method, withdrawal privilege must be enabled for your API key.
+        Required POST parameters are "currency", "amount", and "address".
+
+        For withdrawals which support payment IDs, (such as XMR) you may optionally specify a "paymentId" parameter.
+
+        For currencies where there are multiple networks to choose from (like USDT or BTC), you can specify the chain
+        by setting the "currency" parameter to be a multiChain currency name, like USDTTRON, USDTETH, or BTCTRON.
+        You can get information on these currencies, like fees or if they"re disabled, by adding
+        the "includeMultiChainCurrencies" optional parameter to the returnCurrencies endpoint.
+        The previous method of choosing a network using the optional "currencyToWithdrawAs" parameter will continue
+        to function as it used to, but is no longer recommended.
+
+        https://docs.poloniex.com/#withdraw
+        '''
+        return self._post("withdraw", {
+            "currency": currency,
+            "amount": amount,
+            "address": address
+            })
+
+    def returnDepositsWithdrawals(self, ts_start: int, ts_end: int) -> dict:
+        '''
+        Returns your adjustment, deposit, and withdrawal history within a range window,
+        specified by the "start" and "end" POST parameters, both of which should be given as UNIX timestamps.
+        Note that only adjustments intended to be shown in the UI will be returned
+
+        https://docs.poloniex.com/#returndepositswithdrawals
+        '''
+        return self._post("returnDepositsWithdrawals", {
+            "start": ts_start,
+            "end": ts_end,
+            })
