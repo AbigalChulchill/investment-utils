@@ -96,8 +96,8 @@ class TradeHelper:
     def get_market_cap(self, asset: str) -> int:
         return self.market_data.get_market_cap(asset)
     
-    def get_max_supply(self, asset: str) -> int:
-        return self.market_data.get_max_supply(asset)
+    def get_total_supply(self, asset: str) -> int:
+        return self.market_data.get_total_supply(asset)
 
 
 class Db:
@@ -502,7 +502,7 @@ def fundamentals():
         d ={
         "asset": asset,
         'market cap,M': round(th.get_market_cap(asset) * 0.000001,1),
-        'max supply,M': round(th.get_max_supply(asset) * 0.000001,1),
+        'total supply,M': round(th.get_total_supply(asset) * 0.000001,1),
         }
         if is_stock(asset):
             fundamental_data = th.get_fundamentals(asset)

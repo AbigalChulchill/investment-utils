@@ -16,8 +16,8 @@ class MarketDataProvider(object):
         """return market cap in USD"""
 
     @abstractmethod
-    def get_max_supply(self, asset: str) -> int:
-        """return coin max supply"""
+    def get_total_supply(self, asset: str) -> int:
+        """return coin total supply or number of outstanding shares of the stock"""
 
     @abstractmethod
     def get_historical_bars(self, asset: str, days_before: int) -> pd.DataFrame:

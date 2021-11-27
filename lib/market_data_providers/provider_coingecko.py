@@ -21,7 +21,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
                 "get_market_price",
                 "get_historical_bars",
                 "get_market_cap",
-                "get_max_supply",
+                "get_total_supply",
             ]
         else:
             return []
@@ -62,5 +62,6 @@ class MarketDataProviderCoingecko(MarketDataProvider):
     def get_market_cap(self, asset: str) -> int:
         return self._cached[asset]['market_cap'] if 'market_cap' in self._cached[asset] and self._cached[asset]['market_cap'] is not None else nan
 
-    def get_max_supply(self, asset: str) -> int:
-        return self._cached[asset]['max_supply'] if 'max_supply' in self._cached[asset] and self._cached[asset]['max_supply'] is not None  else nan
+    def get_total_supply(self, asset: str) -> int:
+        return  self._cached[asset]['total_supply'] if ('total_supply' in self._cached[asset] and self._cached[asset]['total_supply'] is not None ) else \
+                self._cached[asset]['circulating_supply'] if ('circulating_supply' in self._cached[asset] and self._cached[asset]['circulating_supply'] is not None ) else nan

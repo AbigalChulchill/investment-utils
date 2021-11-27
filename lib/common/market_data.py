@@ -114,5 +114,5 @@ class MarketData:
     def get_market_cap(self, asset: str) -> int:
         return self._provider_flyweight.get(asset, "get_market_cap").get_market_cap(asset)
 
-    def get_max_supply(self, asset: str) -> int:
-        return self._provider_flyweight.get(asset, "get_max_supply").get_max_supply(asset)
+    def get_total_supply(self, asset: str) -> int:
+        return self._provider_flyweight.get(asset, "get_total_supply").get_total_supply(asset)

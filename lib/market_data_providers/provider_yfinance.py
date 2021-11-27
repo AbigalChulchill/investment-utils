@@ -54,6 +54,7 @@ class MarketDataProviderYF(MarketDataProvider):
                 "get_historical_bars",
                 "get_fundamentals",
                 "get_market_cap",
+                "get_total_supply",
             ]
         else:
             return []
@@ -89,35 +90,12 @@ class MarketDataProviderYF(MarketDataProvider):
         return yahoo_fin.stock_info.get_live_price(asset)
 
     def get_market_cap(self, asset: str) -> int:
-        # try:
-        #     table = yahoo_fin.stock_info.get_stats_valuation(asset)
-        #     for index,fields in table.iterrows():
-        #         if 'Market Cap' in fields[0]:
-        #             market_cap_str = fields[1]
-        #             m = re.match(r"([\d\.]+)([kKMBT])",market_cap_str)            
-        #             g = m.groups()
-        #             market_cap_value = float(g[0])
-        #             market_cap_multiplier_str = g[1]
-        #             if market_cap_multiplier_str.upper() == "K":
-        #                 return int(market_cap_value * 1000)
-        #             elif market_cap_multiplier_str == "M":
-        #                 return int(market_cap_value * 1000000)
-        #             elif market_cap_multiplier_str == "B":
-        #                 return int(market_cap_value * 1000000000)
-        #             elif market_cap_multiplier_str == "T":
-        #                 return int(market_cap_value * 1000000000000)
-        #             break
-        # except Exception as e:
-        #     warn(f"get_market_cap: {asset}: {str(e)}")
-        #     print(table)
-        # finally:
-        #     return nan
-        value = self._get(asset, self._get_info)['marketCap']
-        return value if value is not None else nan
+        info = self._get(asset, self._get_info)
+        return info ['marketCap'] if ('marketCap' in info and info['marketCap'] is not None ) else nan
 
-    def get_max_supply(self, asset: str) -> int:
-        value = self._get(asset, self._get_info)['maxSupply']
-        return value if value is not None else nan
+    def get_total_supply(self, asset: str) -> int:
+        info = self._get(asset, self._get_info)
+        return info ['sharesOutstanding'] if ('sharesOutstanding' in info and info['sharesOutstanding'] is not None ) else nan
 
     def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         if days_before <= 1:

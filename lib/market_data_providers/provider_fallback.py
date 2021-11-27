@@ -8,7 +8,7 @@ class MarketDataProviderFallback(MarketDataProvider):
             "get_market_price",
             "get_historical_bars",
             "get_market_cap",
-            "get_max_supply",
+            "get_total_supply",
             "get_fundamentals",
         ]
 
@@ -21,7 +21,7 @@ class MarketDataProviderFallback(MarketDataProvider):
     def get_market_cap(self, asset: str) -> int:
         return nan
 
-    def get_max_supply(self, asset: str) -> int:
+    def get_total_supply(self, asset: str) -> int:
         return nan
 
     def get_fundamentals(self, asset: str) -> dict:
