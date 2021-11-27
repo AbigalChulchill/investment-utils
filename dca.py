@@ -1,5 +1,5 @@
+import datetime, argparse, re, yaml, traceback, logging
 from collections import defaultdict
-import datetime, argparse, re, yaml, traceback
 from pandas.core.frame import DataFrame
 from math import nan
 from typing import List, NamedTuple, Tuple, Dict, Any
@@ -18,8 +18,6 @@ from lib.common import pnl
 from lib.common.msg import *
 from lib.common.misc import is_stock, calc_raise_percent
 from lib.common.widgets import track
-
-
 
 ds = dict()
 
@@ -565,6 +563,9 @@ def read_settings() -> Dict[str, Any]:
 def main():
     global ds
     ds = read_settings()
+
+    logging.basicConfig(level=ds['log_level'] if 'log_level' in ds else logging.WARNING)
+
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True', help='Accumulate positions. Optional arg: USD quota, valid only if --coin also specified')

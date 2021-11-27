@@ -76,3 +76,6 @@ no_filter_list:
 # list of asset categories that are not filtered under any condition
 no_filter_categories:
   - na
+
+# log level
+log_level: WARNING
