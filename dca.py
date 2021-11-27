@@ -93,6 +93,13 @@ class TradeHelper:
     def get_rsi(self, asset: str) -> float:
         return self.market_data.get_rsi(asset)
 
+    def get_market_cap(self, asset: str) -> int:
+        return self.market_data.get_market_cap(asset)
+    
+    def get_max_supply(self, asset: str) -> int:
+        return self.market_data.get_max_supply(asset)
+
+
 class Db:
     def __init__(self):
         import sqlite3
@@ -487,22 +494,27 @@ def stats(hide_private_data: bool, hide_totals: bool, single_table: bool, sort_b
 
 def fundamentals():
     title("Fundamentals")
-    assets = list(set(list(ds["asset_exchg"].keys())))
+    assets = ds["asset_exchg"].keys()
     th = TradeHelper()
-    data = []
+    data_stocks = []
+    data_others = []
     for asset in track(assets):
+        d ={
+        "asset": asset,
+        'market cap,M': round(th.get_market_cap(asset) * 0.000001,1),
+        'max supply,M': round(th.get_max_supply(asset) * 0.000001,1),
+        }
         if is_stock(asset):
-            d ={
-                "stock": asset
-            }
             fundamental_data = th.get_fundamentals(asset)
             for k,v in fundamental_data.items():
                 d[k] = v
-            data.append(d)
-    df = DataFrame.from_dict(data)
-    df.sort_values("stock", inplace=True, ascending=True)
-    rprint(df.to_string(index=False, na_rep="~"))
-    print()
+            data_stocks.append(d)
+        else:
+            data_others.append(d)
+
+    df_others = DataFrame.from_dict(data_others).sort_values(by="market cap,M", ascending=False)
+    df_stocks = DataFrame.from_dict(data_stocks).sort_values(by="market cap,M", ascending=False)
+    print(df_others.append(df_stocks).to_string(index=False, na_rep="~"))
 
 
 

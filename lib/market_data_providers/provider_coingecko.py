@@ -1,17 +1,31 @@
+from typing import List
+from math import nan
 from .interface import MarketDataProvider
-from ..common.misc import is_stock
+from lib.common.id_ticker_map import id_to_ticker
+from lib.common.misc import is_stock
 
 import pycoingecko
 import pandas as pd
 
 class MarketDataProviderCoingecko(MarketDataProvider):
-
-    @staticmethod
-    def handles(asset: str):
-        return not is_stock(asset)
-
     def __init__(self):
         self._cg = pycoingecko.CoinGeckoAPI()
+        market_cap_list = self._cg.get_coins_markets(ids=list(id_to_ticker.keys()), vs_currency="usd")
+        self._cached = {}
+        for entry in market_cap_list:
+            self._cached [entry['id']] = entry
+
+    def get_supported_methods(self, asset: str) -> List[str]:
+        if not is_stock(asset):
+            return [
+                "get_market_price",
+                "get_historical_bars",
+                "get_market_cap",
+                "get_max_supply",
+            ]
+        else:
+            return []
+
 
     def get_market_price(self, asset: str) -> float:
         price_data = self._cg.get_price(ids=[asset], vs_currencies="usd", include_24hr_change="false")
@@ -44,3 +58,9 @@ class MarketDataProviderCoingecko(MarketDataProvider):
         df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['timestamp'], unit="ms"))
         df.set_index('timestamp', inplace=True)
         return df
+
+    def get_market_cap(self, asset: str) -> int:
+        return self._cached[asset]['market_cap'] if 'market_cap' in self._cached[asset] and self._cached[asset]['market_cap'] is not None else nan
+
+    def get_max_supply(self, asset: str) -> int:
+        return self._cached[asset]['max_supply'] if 'max_supply' in self._cached[asset] and self._cached[asset]['max_supply'] is not None  else nan

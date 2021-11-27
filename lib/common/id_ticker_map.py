@@ -27,6 +27,7 @@ id_to_ticker={
     "harmony":              "ONE",
     "havven":               "SNX",
     "hedera-hashgraph":     "HBAR",
+    "hoge-finance":         "HOGE",
     "illuvium":             "ILV",
     "matic-network":        "MATIC",
     "media-network":        "MEDIA",

@@ -1,3 +1,4 @@
+from typing import List
 from datetime import datetime
 from .interface import MarketDataProvider
 from lib.common.id_map_poloniex import id_to_poloniex
@@ -7,13 +8,17 @@ import datetime
 
 
 class MarketDataProviderPoloniex(MarketDataProvider):
-
-    @staticmethod
-    def handles(asset: str):
-        return asset in id_to_poloniex.keys()
-
     def __init__(self):
         self._api= PoloniexAPI("","")
+
+    def get_supported_methods(self, asset: str) -> List[str]:
+        if asset in id_to_poloniex.keys():
+            return [
+                "get_market_price",
+                "get_historical_bars",
+            ]
+        else:
+            return []
 
     def get_market_price(self, asset: str) -> float:
         return self._api.returnTicker(id_to_poloniex[asset])

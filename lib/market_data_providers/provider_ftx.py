@@ -1,18 +1,23 @@
+from typing import List
 from .interface import MarketDataProvider
 from lib.trader.ftx_api import FtxPublic
 from lib.common.id_map_ftx import id_to_ftx
 import pandas as pd
 import datetime
 
-class MarketDataProviderFTX(MarketDataProvider):
-
-    @staticmethod
-    def handles(asset: str):
-        return asset in id_to_ftx.keys()
-
+class MarketDataProviderFTX(MarketDataProvider):   
     def __init__(self):
         self._api = FtxPublic()
         self._markets = None
+
+    def get_supported_methods(self, asset: str) -> List[str]:
+        if asset in id_to_ftx.keys():
+            return [
+                "get_market_price",
+                "get_historical_bars",
+            ]
+        else:
+            return []
 
     def _get_market(self, market: str):
         if self._markets is None:
@@ -32,6 +37,3 @@ class MarketDataProviderFTX(MarketDataProvider):
         df['timestamp'] = pd.DatetimeIndex(pd.to_datetime(df['startTime']))
         df.set_index('timestamp', inplace=True)
         return df
-
-    def get_fundamentals(self, asset: str) -> dict:
-        return {}

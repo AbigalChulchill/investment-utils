@@ -1,23 +1,62 @@
-from typing import Any
-from .interface import MarketDataProvider
-from ..common.misc import is_stock
+
+import re, os, datetime, pathlib, json
+from math import nan
+from typing import List, Dict, Any
 import pandas as pd
 import yfinance as yf
 import yahoo_fin.stock_info
 import logging
+from .interface import MarketDataProvider
+from lib.common.misc import is_stock
+from lib.common.msg import warn
 
 yf_exclude_stocks =[ 
     "PAXG"
 ]
 
-class MarketDataProviderYF(MarketDataProvider):
 
-    @staticmethod
-    def handles(asset: str):
-        return is_stock(asset) and asset not in yf_exclude_stocks
+class YFInfoCache:
+    _cache_dir = f"cache/yf/info/{datetime.datetime.utcnow().strftime('%Y-%m-%d')}"
 
     def __init__(self):
-        self._ticker_cache = dict()
+        self._cache = {}
+
+    @staticmethod
+    def _get_cache_file_name(asset: str):
+        return f"{YFInfoCache._cache_dir}/{asset}.json"
+
+    def put(self, asset: str, d: Dict[Any,Any]):
+        self._cache[asset] = d
+        if not os.path.exists(YFInfoCache._cache_dir):
+            pathlib.Path(YFInfoCache._cache_dir).mkdir(parents=True, exist_ok=True)
+        cache_file = YFInfoCache._get_cache_file_name(asset)
+        with open(cache_file, "w") as f:
+            json.dump(d, f)
+
+    def get(self, asset: str) -> Dict[Any,Any]:
+        if asset in self._cache.keys():
+            return self._cache[asset]
+        cache_file = YFInfoCache._get_cache_file_name(asset)
+        if os.path.exists(cache_file):
+            return json.load(open(cache_file))
+        else:
+            return None
+
+class MarketDataProviderYF(MarketDataProvider):
+    def __init__(self):
+        self._ticker_cache = {}
+        self._info_cache = YFInfoCache()
+
+    def get_supported_methods(self, asset: str) -> List[str]:
+        if is_stock(asset) and asset not in yf_exclude_stocks:
+            return [
+                "get_market_price",
+                "get_historical_bars",
+                "get_fundamentals",
+                "get_market_cap",
+            ]
+        else:
+            return []
 
     def _get_ticker(self, asset: str):
         if asset not in self._ticker_cache.keys():
@@ -27,7 +66,11 @@ class MarketDataProviderYF(MarketDataProvider):
     def _get_history(self, asset: str, period: str, interval: str) -> Any:
         return self._get_ticker(asset).history(period=period, interval=interval)
     def _get_info(self, asset: str) -> Any:
-        return self._get_ticker(asset).info
+        data = self._info_cache.get(asset)
+        if data is None:
+            data = self._get_ticker(asset).info
+            self._info_cache.put(asset, data)
+        return data
 
     def _get(self, asset: str, op: Any, **kwargs) -> Any:
         retries = 3
@@ -44,7 +87,37 @@ class MarketDataProviderYF(MarketDataProvider):
 
     def get_market_price(self, asset: str) -> float:
         return yahoo_fin.stock_info.get_live_price(asset)
-        #return self.get_historical_bars(asset,1,True)['close'].to_numpy(float)[-1]
+
+    def get_market_cap(self, asset: str) -> int:
+        # try:
+        #     table = yahoo_fin.stock_info.get_stats_valuation(asset)
+        #     for index,fields in table.iterrows():
+        #         if 'Market Cap' in fields[0]:
+        #             market_cap_str = fields[1]
+        #             m = re.match(r"([\d\.]+)([kKMBT])",market_cap_str)            
+        #             g = m.groups()
+        #             market_cap_value = float(g[0])
+        #             market_cap_multiplier_str = g[1]
+        #             if market_cap_multiplier_str.upper() == "K":
+        #                 return int(market_cap_value * 1000)
+        #             elif market_cap_multiplier_str == "M":
+        #                 return int(market_cap_value * 1000000)
+        #             elif market_cap_multiplier_str == "B":
+        #                 return int(market_cap_value * 1000000000)
+        #             elif market_cap_multiplier_str == "T":
+        #                 return int(market_cap_value * 1000000000000)
+        #             break
+        # except Exception as e:
+        #     warn(f"get_market_cap: {asset}: {str(e)}")
+        #     print(table)
+        # finally:
+        #     return nan
+        value = self._get(asset, self._get_info)['marketCap']
+        return value if value is not None else nan
+
+    def get_max_supply(self, asset: str) -> int:
+        value = self._get(asset, self._get_info)['maxSupply']
+        return value if value is not None else nan
 
     def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
         if days_before <= 1:

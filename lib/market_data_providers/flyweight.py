@@ -5,6 +5,7 @@ from .provider_ftx import MarketDataProviderFTX
 from .provider_poloniex import MarketDataProviderPoloniex
 from .provider_yfinance import MarketDataProviderYF
 from .provider_coingecko import MarketDataProviderCoingecko
+from .provider_fallback import MarketDataProviderFallback
 
 
 class MarketDataProviderFlyweight:
@@ -15,6 +16,7 @@ class MarketDataProviderFlyweight:
             "poloniex": MarketDataProviderPoloniex(),
             "yf": MarketDataProviderYF(),
             "cg": MarketDataProviderCoingecko(),
+            "fallback": MarketDataProviderFallback(),
         }
         self._prioritylist = [
             "binance",
@@ -22,12 +24,13 @@ class MarketDataProviderFlyweight:
             "poloniex",
             "yf",
             "cg",
+            "fallback",
         ]
     
-    def get(self, asset: str) -> MarketDataProvider:
+    def get(self, asset: str, method: str) -> MarketDataProvider:
         for id in self._prioritylist:
             prov = self._map[id]
-            if prov.handles(asset):
+            if method in prov.get_supported_methods(asset):
                 #print(f"MarketDataProvider: id {asset} handled by {id}")
                 return prov
         raise ValueError(f"{asset} market data unobtainable")

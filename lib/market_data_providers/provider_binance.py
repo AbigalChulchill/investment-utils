@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 from .interface import MarketDataProvider
 from lib.common.id_map_binance import id_to_binance
 from lib.trader.binance_api import Binance as BinanceAPI
@@ -12,13 +12,18 @@ def id_to_ticker(id: str) -> Tuple[str, bool]:
 
 
 class MarketDataProviderBinance(MarketDataProvider):
-
-    @staticmethod
-    def handles(asset: str):
-        return asset in id_to_binance.keys()
-
     def __init__(self):
         self._crypto_prices = BinanceAPI().get_prices()
+
+    def get_supported_methods(self, asset: str) -> List[str]:
+        if asset in id_to_binance.keys():
+            return [
+                "get_market_price",
+                "get_historical_bars",
+            ]
+        else:
+            return []
+
 
     def get_market_price(self, asset: str) -> float:
         ticker, reverse = id_to_ticker(asset)

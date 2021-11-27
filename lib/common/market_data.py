@@ -41,7 +41,7 @@ class MarketData:
         self._historical_bars_cache = HistoricalBarCache()
 
     def get_market_price(self, asset: str) -> float:
-        return self._provider_flyweight.get(asset).get_market_price(asset)
+        return self._provider_flyweight.get(asset, "get_market_price").get_market_price(asset)
 
     def is_tradeable(self, asset: str) -> bool:
         return True
@@ -51,7 +51,7 @@ class MarketData:
         assert days_before <= max_cache_days
         bar_data = self._historical_bars_cache.get(asset)
         if bar_data is None:
-            bar_data = self._provider_flyweight.get(asset).get_historical_bars(asset, max_cache_days)
+            bar_data = self._provider_flyweight.get(asset, "get_historical_bars").get_historical_bars(asset, max_cache_days)
             self._historical_bars_cache.put(asset, bar_data)
             return bar_data[-days_before-1:]
         else:
@@ -109,4 +109,10 @@ class MarketData:
         return calc_raise_percent(self.get_avg_price_n_days(coin, days_before), self.get_market_price(coin))
 
     def get_fundamentals(self, asset: str) -> dict:
-        return self._provider_flyweight.get(asset).get_fundamentals(asset)
+        return self._provider_flyweight.get(asset, "get_fundamentals").get_fundamentals(asset)
+
+    def get_market_cap(self, asset: str) -> int:
+        return self._provider_flyweight.get(asset, "get_market_cap").get_market_cap(asset)
+
+    def get_max_supply(self, asset: str) -> int:
+        return self._provider_flyweight.get(asset, "get_max_supply").get_max_supply(asset)
