@@ -29,21 +29,50 @@ class App:
     def __init__(self, subaccount: str):
         self.cl = Client(subaccount)
 
-    def create_orders(self, market: str, side: str, qty: float, lots: int, min_price: float, max_price: float, dry: bool):
-        lots = max(1, lots)
-        lot_qty = qty / lots
-        value = 0
+    def create_orders(self, market: str, side: str, total_value: float, lots: int, min_price: float, max_price: float, scale: float, rounding: bool, dry: bool):
+        assert lots > 0
+        assert total_value > 0
+        assert min_price > 0
+        assert max_price > 0
+        assert scale >= 1
+        avg_price = (max_price + min_price) / 2
+        qty = total_value / avg_price
+        step = (max_price - min_price) / (lots - 1)
 
-        if min_price and max_price:
-            price = min_price
-            step = (max_price - min_price) / (lots - 1)
-            for i in range(lots):
-                value += price * lot_qty
-                print(f"[{i+1:2}] add {side} order limit={price:.6} qty={lot_qty:.6}")
-                if not dry:
-                    self.cl.place_limit_order(market, side, lot_qty, price)
-                price += step
-            print(f"combined value of all orders: ${round(value)}")
+        lots_value = lambda lots: sum([x[0]*x[1] for x in lots])
+
+        # fitting
+        base_lot_qty = qty / lots
+        orders = []
+        while True:
+            lot_qty = base_lot_qty
+
+            orders = []
+            if side == "sell":
+                price = min_price
+                for i in range(lots):
+                    orders.append([price,lot_qty])
+                    price += step
+                    lot_qty *= scale
+            else:
+                price = max_price
+                for i in range(lots):
+                    orders.append([price,lot_qty])
+                    price -= step
+                    lot_qty *= scale
+            if round(lots_value(orders)) <= total_value:
+                break
+            base_lot_qty *= 0.99
+
+        if rounding:
+            orders = list( map(lambda o: [round(o[0],1),round(o[1],1)], orders ))
+
+        for i in range(len(orders)):
+            price,lot_qty = orders[i]
+            print(f"[{i+1:2}] add {side} order limit={price:.6} qty={lot_qty:.6}")
+            if not dry:
+                self.cl.place_limit_order(market, side, lot_qty, price)
+        print(f"combined value of all orders: {round(lots_value(orders))} USD")
 
 
     def cancel_orders(self, market: str):
@@ -56,12 +85,14 @@ def main():
     parser.add_argument('--market', type=str,  help='Market symbol')
     parser.add_argument('--buy', action='store_const', const='True',  help='Buy limit order')
     parser.add_argument('--sell', action='store_const', const='True',  help='Sell limit order')
-    parser.add_argument('--qty', type=float,  help='Total qty')
+    parser.add_argument('--value', type=float,  help='Total USD value of the orders')
     parser.add_argument('--min', type=float,  help='Min price of the range')
     parser.add_argument('--max', type=float,  help='Max price of the range')
-    parser.add_argument('--lots', type=int,  help='Lots count')
-    parser.add_argument('--cancel-all-orders', action='store_const', const='True',  help='Cancel all orders')
+    parser.add_argument('--lots', type=int,  help='Number of orders')
+    parser.add_argument('--scale', type=float, default=1, help='qty factor for every next lot such as lot_qty(i+1) = lot_qty(i) * scale')
+    parser.add_argument('--round', action='store_const', const='True',  help='Round price and size values. This step is unnecessary but helps if entering orders manually.')
     parser.add_argument('--dry', action='store_const', const='True',  help='Do not do anythng, only print')
+    parser.add_argument('--cancel-all-orders', action='store_const', const='True',  help='Cancel all orders')
     args = parser.parse_args()
 
     app = App(args.subaccount)
@@ -69,7 +100,16 @@ def main():
     if args.buy or args.sell:
         if args.buy and args.sell:
             raise argparse.ArgumentError("specify either --buy or --sell, not both")
-        app.create_orders(side=["buy","sell"][args.sell is not None], market=args.market, qty=args.qty, lots=args.lots, min_price=args.min, max_price=args.max, dry=args.dry)
+        app.create_orders(
+            side=["buy","sell"][args.sell is not None],
+            market=args.market,
+            total_value=args.value,
+            lots=args.lots,
+            min_price=args.min,
+            max_price=args.max,
+            scale=args.scale,
+            rounding=args.round,
+            dry=args.dry)
     elif args.cancel_all_orders:
         app.cancel_orders(market=args.market)
 
