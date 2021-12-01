@@ -506,10 +506,42 @@ def fundamentals():
     print(df_others.append(df_stocks).to_string(index=False, na_rep="~"))
 
 
+def _coalesce_bucket(orders: List[HistoricalOrder]):
+    return HistoricalOrder(
+        side=orders[0].side,
+        value=sum([x.value for x in orders]),
+        qty=sum([x.qty for x in orders]),
+        timestamp=orders[-1].timestamp
+        )
 
-def order_replay(asset: str):
+def _coalesce_orders(orders: List[HistoricalOrder]):
+    if len(orders) < 2:
+        return orders
+
+    buckets: List[List[HistoricalOrder]] = []
+
+    bucket:List[HistoricalOrder] = []
+    side = None
+    for o in orders:
+        if side is None: #first item
+            side = o.side
+            bucket.append(o)
+        elif side == o.side :
+            bucket.append(o)
+        elif side != o.side:
+            buckets.append(bucket)
+            bucket = [o]
+        side = o.side
+    buckets.append(bucket)
+    coalesced_orders = [_coalesce_bucket(x) for x in buckets]
+    return coalesced_orders
+
+
+def order_replay(asset: str, coalesce: bool):
     db = Db()
-    orders:HistoricalOrder = db.get_sym_orders(asset)
+    orders = db.get_sym_orders(asset)
+    if coalesce:
+        orders = _coalesce_orders(orders)
     stats_data = []
     for i in range(1,len(orders)+1):
         orders_slice = orders[:i]
@@ -574,6 +606,7 @@ def main():
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
     parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
+    parser.add_argument('--coalesce', action='store_const', const='True', help='For --order-replay, merge sequential orders of same side')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     parser.add_argument('--last', action='store_const', const='True', help='Print date of last DCA bulk purchase')
     parser.add_argument('--fundamentals', action='store_const', const='True', help='Print stock fundamentals data')
@@ -605,7 +638,7 @@ def main():
     elif args.fundamentals:
         fundamentals()
     elif args.order_replay:
-        order_replay(args.coin)
+        order_replay(args.coin, args.coalesce)
     elif args.balances:
         print_account_balances()
     elif args.last:
