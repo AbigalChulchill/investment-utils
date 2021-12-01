@@ -117,14 +117,14 @@ class MarketDataProviderYF(MarketDataProvider):
     def get_fundamentals(self, asset: str) -> dict:
         info = self._get(asset, self._get_info)
         d = {}
-        if "trailingPE" in info.keys():
-            d['P/E trailing'] = info['trailingPE']
-        if "forwardPE" in info.keys():
-            d['P/E forward'] = info['forwardPE']
-        if "pegRatio" in info.keys():
-            d['PEG'] = info['pegRatio']
-        if "priceToBook" in info.keys():
-            d['P/B'] = info['priceToBook']
-        if "priceToSalesTrailing12Months" in info.keys():
-            d['P/S'] = info['priceToSalesTrailing12Months']
+        if "trailingPE" in info and info['trailingPE'] is not None:
+            d['P/E trailing'] = round(info['trailingPE'],1)
+        if "forwardPE" in info and info['forwardPE'] is not None:
+            d['P/E forward'] = round(info['forwardPE'],1)
+        if "pegRatio" in info and info['pegRatio'] is not None:
+            d['PEG'] = round(info['pegRatio'],1)
+        if "priceToBook" in info and info['priceToBook'] is not None:
+            d['P/B'] = round(info['priceToBook'],1)
+        if "priceToSalesTrailing12Months" in info and info['priceToSalesTrailing12Months'] is not None:
+            d['P/S'] = round(info['priceToSalesTrailing12Months'],1)
         return d
