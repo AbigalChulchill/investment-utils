@@ -3,6 +3,7 @@ id_to_ftx={
     "aurory":          "AURY/USD",
     "axie-infinity":   "AXS/USD",
     "bitcoin":         "BTC/USD",
+    "basic-attention-token": "BAT/USD",
     "enjincoin":       "ENJ/USD",
     "ethereum":        "ETH/USD",
     "fantom":          "FTM/USD",
