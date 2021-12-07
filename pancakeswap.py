@@ -22,7 +22,7 @@ def _create_poloniex_private_api():
 def buy_cake():
     print('buying CAKE...')
     price, qty = _create_poloniex_trader('pancakeswap-token').buy_market(conf['quota'],qty_in_usd=True)
-    print(f'exchanged {qty*price:.2f} USD for {qty} CAKE at rate {price})')
+    print(f'exchanged {qty*price:.2f} USD for {qty:.6f} CAKE at rate {price:.6f})')
 
 
 def transfer_cake():
@@ -38,7 +38,6 @@ def transfer_cake():
     print(f'withdrawal request status: {withdraw_response["response"]}')
     withdrawal_id = withdraw_response['withdrawalNumber']
     while True:
-        print('waiting for withdrawal...')
         t = datetime.datetime.now().timestamp()
         withdrawals_list = api.returnDepositsWithdrawals(t - 3600, t)['withdrawals']
         # matching_withdrawals = [x for x in withdrawals_list if x['withdrawalNumber'] == withdrawal_id ]
@@ -53,6 +52,7 @@ def transfer_cake():
         if 'COMPLETE' in status:
             print(status)
             break
+        print('waiting for withdrawal...')
         time.sleep(30)
 
 
