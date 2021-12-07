@@ -1,4 +1,4 @@
-import datetime, argparse, re, yaml, traceback, logging, functools
+import datetime, argparse, re, yaml, time, traceback, logging, functools
 from collections import defaultdict
 from pandas.core.frame import DataFrame
 from math import nan, sqrt
@@ -74,7 +74,7 @@ class TradeHelper:
         return self.market_data.is_tradeable(asset)
 
     def get_daily_change(self, coin: str) -> float:
-        return self.market_data.get_daily_change(coin)
+        return self.market_data.get_daily_change(coin)[0]
 
     def get_avg_price_n_days(self, coin: str, days_before: int, ma_type: str="auto") -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before, ma_type)
@@ -254,27 +254,37 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     a = list()
     
     for asset,quota_factor in track(assets_quota_factors.items()):
-        try:
             daily_qty = quota_asset * quota_factor
             msg_buying(asset, daily_qty)
             trader: Trader = create_trader(asset)
-            if trader:
-                if dry:
-                    actual_price = th.get_market_price(asset)
-                    coin_qty = daily_qty / actual_price
-                else:
-                    actual_price, coin_qty = trader.buy_market(daily_qty,True)
-                    db.add(asset, coin_qty, actual_price)
-                a.append({
-                    'asset': asset,
-                    'price': actual_price,
-                    'quota_factor': round(quota_factor,2),
-                    'value': round(coin_qty*actual_price,2),
-                    'qty': coin_qty,
-                })
-        except Exception as e:
-            err(f"{asset} : was not added")
-            traceback.print_exc()
+            assert trader
+            retries = 3
+            while True:
+                try:
+                    if dry:
+                        actual_price = th.get_market_price(asset)
+                        coin_qty = daily_qty / actual_price
+                    else:
+                        actual_price, coin_qty = trader.buy_market(daily_qty,True)
+                        db.add(asset, coin_qty, actual_price)
+                    a.append({
+                        'asset': asset,
+                        'price': actual_price,
+                        'quota_factor': round(quota_factor,2),
+                        'value': round(coin_qty*actual_price,2),
+                        'qty': coin_qty,
+                    })
+                    break
+                except Exception as e:
+                    if retries > 0:
+                        warn(f"{asset} buy failed ({e}), {retries} retries remaining")
+                        retries -= 1
+                        time.sleep(5)
+                    else:
+                        err(f"{asset} buy failed ({e})")
+                        traceback.print_exc()
+                        break
+             
 
     if len(a):
         df = DataFrame.from_dict(a)
