@@ -1,6 +1,6 @@
 import os, talib, json, datetime, pathlib
 import pandas as pd
-from typing import List, Any
+from typing import List, Tuple, Any
 from .. market_data_providers.flyweight import MarketDataProviderFlyweight
 from lib.common.msg import warn
 from lib.common.misc import calc_raise_percent
@@ -63,14 +63,15 @@ class MarketData:
             return bar_data[-days_before-1:]
 
 
-    def get_daily_change(self, asset: str) -> float:
-        daily_change = 0
+    def get_daily_change(self, asset: str) -> Tuple[float,float]:
+        daily_change = (0,0)
         df = self._get_historical_bars(asset, 1)
         if df['close'].size > 1:
             previous_close = df['close'].iat[-2]
             current_price = df['close'].iat[-1]
-            daily_change = (current_price - previous_close) / current_price * 100
-        return daily_change
+            daily_change = (current_price - previous_close)
+            daily_change_percent = (current_price - previous_close) / previous_close * 100
+        return daily_change,daily_change_percent
 
     def get_avg_price_n_days(self, asset: str, days_before: int, ma_type: str="auto") -> float:
         df = self._get_historical_bars(asset, days_before)

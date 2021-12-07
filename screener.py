@@ -15,6 +15,23 @@ def get_list_of_assets():
    return list( set( list(dca_conf["asset_exchg"].keys()) + screener_conf['additional_assets']) )
 
 
+def calc_heat_score(market_price: float, ma200: float, hi200: float, rsi: float):
+    """
+    Heat Score
+
+    Provides an estimate to how much the asset is overvalued.
+
+    Asset looks overvalued if:
+     - rsi is high
+     - high above 200-day moving average
+     - getting close to 200-day high
+
+    """
+
+    return calc_raise_percent(ma200, market_price ) * rsi / sqrt(calc_raise_percent(market_price,hi200 ) if market_price < hi200 else 0.001)
+
+
+
 def table(sort_by: str):
     assets =get_list_of_assets()
     m = MarketData()
@@ -26,20 +43,22 @@ def table(sort_by: str):
         ma200_price = m.get_avg_price_n_days(asset,200)
         rsi = m.get_rsi(asset)
         lo200,hi200 = m.get_lo_hi_n_days(asset,200)
-        # proportional to rsi, proportional to distance to 200-day MA and inverse proportional to distance to 200-day high
-        calc_heat_score = lambda : calc_raise_percent(ma200_price, market_price ) * rsi / sqrt(calc_raise_percent(market_price,hi200 ) if market_price < hi200 else 0.001)
+        chg,chg_p = m.get_daily_change(asset)
+        heat_score = calc_heat_score(market_price=market_price, ma200=ma200_price, hi200=hi200, rsi=rsi)
 
         d ={
         "asset": asset,
         'market cap,M': round(m.get_market_cap(asset) * 0.000001,1),
         'total supply,M': round(m.get_total_supply(asset) * 0.000001,1),
         'market price': market_price,
+        'chg':  round(chg,2),
+        'chg%':  round(chg_p,1),
         '200d SMA': round(ma200_price,2),
         '200d low': round(lo200,2),
         '200d high': round(hi200,2),
         # 'cp>MA200': round( calc_raise_percent(ma200_price, market_price ),1),
         #'rsi': round(rsi,2),
-        'heat_score': round(calc_heat_score(),1),
+        'heat_score': round(heat_score,1),
         }
         if is_stock(asset):
             fundamental_data = m.get_fundamentals(asset)
