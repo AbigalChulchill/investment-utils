@@ -9,3 +9,13 @@ class Trader(object):
     @abstractmethod
     def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
         """ [average fill price, filled qty in tokens] """
+
+    @abstractmethod
+    def estimate_fill_price(self, qty: float, side: str) -> float:
+        """estimate fill price for buying or selling qty amount of the instrument
+            Args:
+                qty     amount of tokens or shares of instrument
+                side    buy or sell
+            Return:
+                estimated fill price
+        """

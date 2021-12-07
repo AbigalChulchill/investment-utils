@@ -49,3 +49,13 @@ class OkexTrader(Trader):
                 raise ValueError("not filled")
             else:
                 print("waiting on trade ...")
+
+    def estimate_fill_price(self, qty: float, side: str) -> float:
+        #TODO: need to use orderbook
+        raise NotImplementedError()
+        
+        # assert side in ["buy", "sell"]
+        # if side == "buy":
+        #     return float(self.api.get_ticker(self.market)[0]['askPx'])
+        # else:
+        #     return float(self.api.get_ticker(self.market)[0]['bidPx'])

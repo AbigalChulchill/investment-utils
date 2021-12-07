@@ -44,6 +44,15 @@ class MexcTrader(Trader):
                 break
         return fill_price, fill_qty,
 
+    def estimate_fill_price(self, qty: float, side: str) -> float:
+        #TODO: need to use orderbook
+        raise NotImplementedError()
+        # assert side in ["buy", "sell"]
+        # if side == "buy":
+        #     return float(self._api.get_ticker(self._symbol)['ask'])
+        # else:
+        #     return float(self._api.get_ticker(self._symbol)['bid'])
+
     def _check_mx_balance(self):
         balances = self._api.get_balances()
         get_mx_balance = lambda : float(balances['MX']['available']) if 'MX' in balances.keys() else 0

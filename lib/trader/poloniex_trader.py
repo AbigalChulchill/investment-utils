@@ -1,14 +1,13 @@
 import time
-from typing import Tuple
-#import traceback
+from typing import List,Tuple
 from lib.common.msg import info, warn
 from lib.common.id_map_poloniex import id_to_poloniex
+from lib.common.orderbook import estimate_fill_price
 from lib.trader import poloniex_api
 from lib.trader.trader import Trader
 
-
-MAX_RETRIES = 3
-DELAY = 5
+# limit price estimate is based on (qty requested) x (overcommit_factor)
+overcommit_factor = 2.0
 
 class PoloniexTraderError(RuntimeError):
     def __init__(self, message: str):
@@ -24,36 +23,6 @@ class PoloniexTrader(Trader):
         self.pair = id_to_poloniex[sym]
         self.api = poloniex_api.Poloniex(api_key, secret)
 
-    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
-        self._check_trx_balance()
-        retries = MAX_RETRIES
-        while retries >= 0:
-            try:
-                return self._buy_market(qty, qty_in_usd)
-            except Exception:
-                if retries > 0:
-                    retries -= 1
-                    #traceback.print_exc()
-                    warn(f"PoloniexTrader: buy: failed, retrying in {DELAY} seconds...")
-                    time.sleep(DELAY)
-                else:
-                    raise
-
-    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
-        self._check_trx_balance()
-        retries = MAX_RETRIES
-        while retries >= 0:
-            try:
-                return self._sell_market(qty_tokens)
-            except Exception:
-                if retries > 0:
-                    retries -= 1
-                    #traceback.print_exc()
-                    warn(f"PoloniexTrader: sell: failed, retrying in {DELAY} seconds...")
-                    time.sleep(DELAY)
-                else:
-                    raise
-
     def _handle_trade(self, response: dict) -> Tuple[float,float]:
         if 'resultingTrades' in response.keys():
             trades = response['resultingTrades']
@@ -66,19 +35,30 @@ class PoloniexTrader(Trader):
         else:
             raise PoloniexTraderError(f"unknown error : {response}")
 
-    def _buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
-        max_price = self.api.returnTicker(self.pair) * 1.01
+
+    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
+        self._check_trx_balance()
         if qty_in_usd:
-            qty_tokens = qty / max_price
+            qty_tokens = qty / self.api.returnTicker(self.pair)
         else:
             qty_tokens = qty
-        response = self.api.buy(self.pair, max_price, qty_tokens, {'fillOrKill': True})
+        limit_price = estimate_fill_price(self.api.returnOrderBook(self.pair)['asks'], qty_tokens*overcommit_factor)
+        response = self.api.buy(self.pair, limit_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
 
-    def _sell_market(self, qty_tokens: float) -> Tuple[float,float]:
-        min_price = self.api.returnTicker(self.pair) * 0.99
-        response = self.api.sell(self.pair, min_price, qty_tokens, {'fillOrKill': True})
+    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
+        self._check_trx_balance()
+        limit_price = estimate_fill_price(self.api.returnOrderBook(self.pair)['bids'], qty_tokens*overcommit_factor)
+        response = self.api.sell(self.pair, limit_price, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
+
+    def estimate_fill_price(self, qty: float, side: str) -> float:
+        assert side in ["buy", "sell"]
+        if side == "buy":
+            return estimate_fill_price(self.api.returnOrderBook(self.pair)['asks'], qty*overcommit_factor)
+        else:
+            return estimate_fill_price(self.api.returnOrderBook(self.pair)['bids'], qty*overcommit_factor)
+
 
     def _check_trx_balance(self):
         qty = float(self.api.returnBalances()['TRX'])

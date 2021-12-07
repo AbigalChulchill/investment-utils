@@ -3,6 +3,7 @@ import time
 from typing import Tuple
 
 from lib.common.id_map_ftx import id_to_ftx
+from lib.common.orderbook import estimate_fill_price
 from lib.trader import ftx_api
 from lib.trader.trader import Trader
 
@@ -43,3 +44,9 @@ class FtxTrader(Trader):
                 break
         return fill_price, fill_qty,
         
+    def estimate_fill_price(self, qty: float, side: str) -> float:
+        assert side in ["buy", "sell"]
+        if side == "buy":
+            return estimate_fill_price(self._api.get_orderbook(market=self._market)['asks'], qty)
+        else:
+            return estimate_fill_price(self._api.get_orderbook(market=self._market)['bids'], qty)

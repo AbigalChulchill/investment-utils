@@ -66,7 +66,11 @@ class Poloniex:
         '''
         https://docs.poloniex.com/#returnorderbook
         '''
-        return self._get("returnOrderBook", {"currencyPair": currencyPair})
+        ob = self._get("returnOrderBook", {"currencyPair": currencyPair,"depth": 20})
+        to_float_lists = lambda ob:list(map(lambda e: [float(e[0]), float(e[1])] , ob))
+        ob['bids'] = to_float_lists(ob['bids'])
+        ob['asks'] = to_float_lists(ob['asks'])
+        return ob
 
     def returnMarketTradeHistory(self, currencyPair: str) -> dict:
         '''
