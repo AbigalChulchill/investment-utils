@@ -70,12 +70,10 @@ check_rsi: False
 check_rsi_threshold: 65
 
 # list of assets that are not filtered under any condition
-no_filter_list:
-  - na
+no_filter_list: []
 
 # list of asset categories that are not filtered under any condition
-no_filter_categories:
-  - na
+no_filter_categories: []
 
 # log level
 log_level: WARNING

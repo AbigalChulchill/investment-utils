@@ -1,0 +1,5 @@
+---
+# By default screener uses list of assets from dca.yml -> asset_exchg
+# More assets can be added to this list. The two lists are then merged together.
+additional_assets: []
+

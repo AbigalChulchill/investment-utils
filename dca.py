@@ -353,7 +353,7 @@ def add_ext_order(asset: str, qty: float, price: float, timestamp: str):
     print("ext order has been accounted.")
 
 
-def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
+def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     title("Positions")
     db = Db()
     th = TradeHelper()
@@ -372,18 +372,9 @@ def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
             qty = db.get_sym_available_qty(coin)
             pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(coin), market_price)
 
-            ma200_price = th.get_avg_price_n_days(coin,200)
-            rsi = th.get_rsi(coin)
-            lo200,hi200 = th.get_lo_hi_n_days(coin,200)
-            # proportional to rsi, proportional to distance to 200-day MA and inverse proportional to distance to 200-day high
-            calc_heat_score = lambda : calc_raise_percent(ma200_price, market_price ) * rsi / sqrt(calc_raise_percent(market_price,hi200 ) if market_price < hi200 else 0.001)
-
             d={
                 'asset': coin,
                 'break even price': pnl_data.break_even_price,
-                '200d SMA': round(ma200_price,2),
-                '200d low': round(lo200,2),
-                '200d high': round(hi200,2),
                 'current price': market_price,
                 'qty': qty,
                 'value': round(pnl_data.unrealized_sell_value,2),
@@ -391,9 +382,6 @@ def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
                 'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
                 'u pnl': round(pnl_data.unrealized_pnl,2),
                 'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
-                # 'cp>MA200': round( calc_raise_percent(ma200_price, market_price ),1),
-                #'rsi': round(rsi,2),
-                'heat_score': round(calc_heat_score(),1),
             }
             stats_data.append(d)
         df_pnl = DataFrame.from_dict(stats_data)
@@ -479,31 +467,6 @@ def stats(hide_private_data: bool, hide_totals: bool, sort_by: str):
     #rprint(Panel(df_str, title="[bold underline green]by asset category[/]", expand=False, box=box.MINIMAL))
     if not (hide_private_data or hide_totals):
         rprint(f"total value across all assets: {sum(df_cats['USD']):.2f} USD ({sum(df_cats['BTC']):.6f} BTC)")
-
-
-def fundamentals():
-    title("Fundamentals")
-    assets = ds["asset_exchg"].keys()
-    th = TradeHelper()
-    data_stocks = []
-    data_others = []
-    for asset in track(assets):
-        d ={
-        "asset": asset,
-        'market cap,M': round(th.get_market_cap(asset) * 0.000001,1),
-        'total supply,M': round(th.get_total_supply(asset) * 0.000001,1),
-        }
-        if is_stock(asset):
-            fundamental_data = th.get_fundamentals(asset)
-            for k,v in fundamental_data.items():
-                d[k] = v
-            data_stocks.append(d)
-        else:
-            data_others.append(d)
-
-    df_others = DataFrame.from_dict(data_others).sort_values(by="market cap,M", ascending=False)
-    df_stocks = DataFrame.from_dict(data_stocks).sort_values(by="market cap,M", ascending=False)
-    print(df_others.append(df_stocks).to_string(index=False, na_rep="~"))
 
 
 def _coalesce_bucket(orders: List[HistoricalOrder]):
@@ -601,7 +564,7 @@ def main():
     parser.add_argument('--qty', type=str,  help='USD quota to add, quantity or %% of coins/shares to remove. Requires --coin. Requires --add or --remove')
     parser.add_argument('--price', type=str,  help='Order price, used by --external')
     parser.add_argument('--timestamp', type=str,  help='Order timestamp, used by --external')
-    parser.add_argument('--stats', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
+    parser.add_argument('--list-positions', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
     parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
@@ -609,7 +572,6 @@ def main():
     parser.add_argument('--coalesce', action='store_const', const='True', help='For --order-replay, merge sequential orders of same side')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
     parser.add_argument('--last', action='store_const', const='True', help='Print date of last DCA bulk purchase')
-    parser.add_argument('--fundamentals', action='store_const', const='True', help='Print stock fundamentals data')
     args = parser.parse_args()
 
     if args.add:
@@ -633,10 +595,8 @@ def main():
         assert args.price
         assert args.timestamp
         add_ext_order(asset=args.coin, qty=float(args.qty), price=float(args.price), timestamp=datetime.datetime.fromisoformat(args.timestamp))
-    elif args.stats:
-        stats(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, sort_by=args.sort_by)
-    elif args.fundamentals:
-        fundamentals()
+    elif args.list_positions:
+        list_positions(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, sort_by=args.sort_by)
     elif args.order_replay:
         order_replay(args.coin, args.coalesce)
     elif args.balances:
