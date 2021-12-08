@@ -53,11 +53,11 @@ def table(sort_by: str):
         'market price': market_price,
         'chg':  round(chg,2),
         'chg%':  round(chg_p,1),
-        '200d SMA': round(ma200_price,2),
-        '200d low': round(lo200,2),
-        '200d high': round(hi200,2),
-        # 'cp>MA200': round( calc_raise_percent(ma200_price, market_price ),1),
-        #'rsi': round(rsi,2),
+        'mean': round(ma200_price,2),
+        'bottom': round(lo200,2),
+        'top': round(hi200,2),
+        '% from top': round(calc_raise_percent(hi200,market_price),1),
+        '% up mean': round(calc_raise_percent(ma200_price,market_price),1),
         'heat_score': round(heat_score,1),
         }
         if is_stock(asset):
