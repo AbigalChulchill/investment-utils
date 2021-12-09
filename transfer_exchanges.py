@@ -5,6 +5,7 @@ import argparse, time
 from lib.trader.trader_factory import TraderFactory
 from lib.common.market_data import MarketData
 from lib.common.msg import err, warn
+from lib.common.misc import get_first_decimal_place
 
 
 def transfer_asset(asset: str, qty: float, src_ex: str, dest_ex: str, max_trade_value: float, min_spread: float):
@@ -13,6 +14,7 @@ def transfer_asset(asset: str, qty: float, src_ex: str, dest_ex: str, max_trade_
 
     price = MarketData().get_market_price(asset)
     lot_size = min(max_trade_value / price, qty)
+    lot_size = round(lot_size, get_first_decimal_place(lot_size))
     print(f"using lot size {lot_size} based on max trade value of {max_trade_value} USD")
 
     transferred_qty = 0.
