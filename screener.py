@@ -1,11 +1,10 @@
 import argparse, yaml
 from typing import Dict, Any
 from pandas.core.frame import DataFrame
-from math import nan, sqrt
 from lib.common.market_data import MarketData
 from lib.common.widgets import track
 from lib.common.misc import is_stock, calc_raise_percent
-
+from lib.common.metrics import calc_discount_score, calc_heat_score
 
 screener_conf = yaml.safe_load(open('config/screener.yml', 'r'))
 
@@ -13,23 +12,6 @@ screener_conf = yaml.safe_load(open('config/screener.yml', 'r'))
 def get_list_of_assets():
    dca_conf = yaml.safe_load(open('config/dca.yml', 'r'))
    return list( set( list(dca_conf["asset_exchg"].keys()) + screener_conf['additional_assets']) )
-
-
-def calc_heat_score(market_price: float, ma200: float, hi200: float, rsi: float):
-    """
-    Heat Score
-
-    Provides an estimate to how much the asset is overvalued.
-
-    Asset looks overvalued if:
-     - rsi is high
-     - high above 200-day moving average
-     - getting close to 200-day high
-
-    """
-
-    return calc_raise_percent(ma200, market_price ) * rsi / sqrt(calc_raise_percent(market_price,hi200 ) if market_price < hi200 else 0.001)
-
 
 
 def table(sort_by: str):
@@ -45,6 +27,7 @@ def table(sort_by: str):
         lo200,hi200 = m.get_lo_hi_n_days(asset,200)
         chg,chg_p = m.get_daily_change(asset)
         heat_score = calc_heat_score(market_price=market_price, ma200=ma200_price, hi200=hi200, rsi=rsi)
+        discount_factor = calc_discount_score(market_price=market_price, low=lo200, high=hi200)
 
         d ={
         "asset": asset,
@@ -59,6 +42,8 @@ def table(sort_by: str):
         '% from top': round(calc_raise_percent(hi200,market_price),1),
         '% up mean': round(calc_raise_percent(ma200_price,market_price),1),
         'heat_score': round(heat_score,1),
+        'discount_factor': round(discount_factor,1),
+        
         }
         if is_stock(asset):
             fundamental_data = m.get_fundamentals(asset)
