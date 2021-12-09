@@ -1,7 +1,7 @@
 import datetime, argparse, re, yaml, time, traceback, logging, functools
 from collections import defaultdict
 from pandas.core.frame import DataFrame
-from math import nan, sqrt
+from math import nan, isclose
 from typing import List, NamedTuple, Tuple, Dict, Any
 
 from rich.columns import Columns
@@ -236,9 +236,12 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
     for asset in track(assets):
         filter_result, filter_reason = passes_acc_filter(asset, th)
         if not filter_result:
-            rprint(f"[bold]{asset}[/] filtered: {filter_reason}")
+            rprint(f"[bold]{asset}[/] {filter_reason}, skipping")
             continue
         daily_qty,quota_factor = calc_daily_qty(asset, th, ds['quota_usd'])
+        if isclose(quota_factor,0):
+            rprint(f"[bold]{asset}[/] quota = 0, skipping")
+            continue
         price = th.get_market_price(asset)
         coin_qty = daily_qty / price
         value = coin_qty * price
