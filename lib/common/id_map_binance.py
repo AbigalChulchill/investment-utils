@@ -35,6 +35,7 @@ id_to_binance={
   "pancakeswap-token":  "CAKEUSDT",
   "uniswap":            "UNIUSDT",
   "sushi":              "SUSHIUSDT",
+  "binancecoin":        "BNBUSDT",
 
   #fiat
   "UAH":                "USDTUAH_r",

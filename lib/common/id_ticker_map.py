@@ -9,6 +9,7 @@ id_to_ticker={
     "avalanche-2":          "AVAX",
     "axie-infinity":        "AXS",
     "basic-attention-token": "BAT",
+    "binancecoin":          "BNB",
     "bitcoin":              "BTC",
     "cardano":              "ADA",
     "cope":                 "COPE",
