@@ -55,12 +55,6 @@ quota_factor_max: 2
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False
 
-# if True, asset from auto_accumulate_list is only processed if close
-# is above SMA(close,`avg_days`) by no more than `threshold` %.
-check_level_cutoff: False
-check_level_cutoff_avg_days: 50
-check_level_cutoff_threshold: 1.0
-
 # if True, asset from auto_accumulate_list is only processed if daily growth does not exceed threshold %
 check_pump: False
 check_pump_threshold: 8
@@ -68,6 +62,11 @@ check_pump_threshold: 8
 # if True, asset from auto_accumulate_list is only processed if rsi < rsi_threshold
 check_rsi: False
 check_rsi_threshold: 65
+
+# if True, asset from auto_accumulate_list  is only processed if price dropped
+# more than check_discount_threshold % of the distance from 200-day high to 200-day low
+check_discount: False
+check_discount_threshold: 50
 
 # list of assets that are not filtered under any condition
 no_filter_list: []

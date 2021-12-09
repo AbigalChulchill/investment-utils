@@ -16,8 +16,9 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import *
-from lib.common.misc import is_stock, calc_raise_percent
+from lib.common.misc import is_stock
 from lib.common.widgets import track
+from lib.common.metrics import calc_discount_score
 
 ds = dict()
 
@@ -211,12 +212,6 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
         if ds['check_market_open']:
             if not (th.is_tradeable(asset)):
                 return False, "market is closed"
-        if ds['check_level_cutoff']:
-            d200 = th.get_distance_to_avg_percent(asset, 200)
-            d = th.get_distance_to_avg_percent(asset, ds['check_level_cutoff_avg_days'])
-            #print(f"{asset} distance to {ds['check_level_cutoff_avg_days']}-day SMA : {d:.1f}%")
-            if d > ds['check_level_cutoff_threshold'] and d200 > 0: # not overpriced if below 200d
-                return False, "probably too high"
         if ds['check_pump']:
             if th.get_daily_change(asset) > ds['check_pump_threshold']:
                 return False, "probably pump today"
@@ -226,6 +221,13 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
                 warn(f"{asset}: RSI calculation error")
             elif rsi > ds['check_rsi_threshold']:
                 return False, f"RSI {round(rsi,2)} too high"
+        if ds['check_discount']:
+            market_price = th.get_market_price(asset)
+            low,high = th.get_lo_hi_n_days(asset,200)
+            discount_factor = calc_discount_score(market_price=market_price, low=low, high=high)
+            if discount_factor < ds['check_discount_threshold']:
+                return False, f"not enough discount ({round(discount_factor,1)}%)"       
+
     return True, ""
 
 
