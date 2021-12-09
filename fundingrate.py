@@ -393,7 +393,7 @@ class App:
                     profit_per_hour = -value*fr*0.01
                     net_profit_per_hour += profit_per_hour
                     db.add_fr(future_name, fr, is_profitable)
-            db.add_net_profit(positions_value=round(acc_calc.positions_value), net_profit=round(net_profit_per_hour,2))
+            db.add_net_profit(positions_value=round(acc_calc.positions_value), net_profit=round(net_profit_per_hour,6))
             time.sleep(100)
 
 
