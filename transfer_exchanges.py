@@ -23,8 +23,8 @@ def transfer_asset(asset: str, qty: float, src_ex: str, dest_ex: str, max_trade_
         print("waiting for optimal price conditions")
         while True:
             try:
-                estimated_sell_price = trader_src.estimate_fill_price(lot_size, "sell")
-                estimated_buy_price = trader_dest.estimate_fill_price(lot_size, "buy")
+                estimated_sell_price = trader_src.estimate_fill_price(lot_size, "sell").average
+                estimated_buy_price = trader_dest.estimate_fill_price(lot_size, "buy").average
                 spread = round((estimated_sell_price - estimated_buy_price )/ estimated_sell_price * 100,2)
                 print(f"current spread: {spread}%, required: >{min_spread}%", end="\r", flush=True)
                 if spread >= min_spread:

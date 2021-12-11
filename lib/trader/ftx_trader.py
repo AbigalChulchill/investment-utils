@@ -3,10 +3,12 @@ import time
 from typing import Tuple
 
 from lib.common.id_map_ftx import id_to_ftx
-from lib.common.orderbook import estimate_fill_price
+from lib.common.orderbook import estimate_fill_price, FillPriceEstimate
 from lib.trader import ftx_api
 from lib.trader.trader import Trader
 
+# limit price estimate is based on (qty requested) x (overcommit_factor)
+overcommit_factor = 1.1
 
 class FtxTrader(Trader):
 
@@ -44,9 +46,9 @@ class FtxTrader(Trader):
                 break
         return fill_price, fill_qty,
         
-    def estimate_fill_price(self, qty: float, side: str) -> float:
+    def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
         assert side in ["buy", "sell"]
         if side == "buy":
-            return estimate_fill_price(self._api.get_orderbook(market=self._market)['asks'], qty)
+            return estimate_fill_price(self._api.get_orderbook(market=self._market)['asks'], qty*overcommit_factor)
         else:
-            return estimate_fill_price(self._api.get_orderbook(market=self._market)['bids'], qty)
+            return estimate_fill_price(self._api.get_orderbook(market=self._market)['bids'], qty*overcommit_factor)

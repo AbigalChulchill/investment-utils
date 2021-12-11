@@ -1,5 +1,7 @@
 from abc import abstractmethod
 from typing import Tuple
+from lib.common.orderbook import FillPriceEstimate
+
 
 class Trader(object):
     @abstractmethod
@@ -11,7 +13,7 @@ class Trader(object):
         """ [average fill price, filled qty in tokens] """
 
     @abstractmethod
-    def estimate_fill_price(self, qty: float, side: str) -> float:
+    def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
         """estimate fill price for buying or selling qty amount of the instrument
             Args:
                 qty     amount of tokens or shares of instrument

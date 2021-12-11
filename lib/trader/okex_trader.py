@@ -50,7 +50,7 @@ class OkexTrader(Trader):
             else:
                 print("waiting on trade ...")
 
-    def estimate_fill_price(self, qty: float, side: str) -> float:
+    def estimate_fill_price(self, qty: float, side: str):
         #TODO: need to use orderbook
         raise NotImplementedError()
         
