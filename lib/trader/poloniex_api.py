@@ -22,6 +22,8 @@ class Poloniex:
     def __init__(self, api_key: str, secret: str) -> None:
         self._api_key = api_key
         self._secret = secret
+        self._session = requests.Session()
+
 
     def _post(self, command: str, data: dict={}) -> dict:
         post_data = {
@@ -35,14 +37,14 @@ class Poloniex:
             "Sign": sign,
             "Key": self._api_key
         }
-        return self._check_resp(requests.post(POLONIEX_PRIVATE_API, data=post_data, headers=headers))
+        return self._check_resp(self._session.post(POLONIEX_PRIVATE_API, data=post_data, headers=headers))
 
     def _get(self, command: str, data: dict={}) -> dict:
         params = {
             "command": command,
             **data
         }
-        return self._check_resp(requests.get(POLONIEX_PUBLIC_API, params=params))
+        return self._check_resp(self._session.get(POLONIEX_PUBLIC_API, params=params))
 
     def _check_resp(self, resp: requests.Response) -> dict:
         if resp.status_code != 200:
