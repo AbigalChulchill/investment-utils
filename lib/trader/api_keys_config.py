@@ -31,3 +31,6 @@ class ApiKeysConfig:
 
     def get_ftx_subaccount_fundingratefarm(self) -> str:
         return self._cfg['ftx']['SUBACCOUNT_FUNDINGRATEFARM']
+
+    def get_ftx_subaccount_tuliphedgedshorts(self) -> str:
+        return self._cfg['ftx']['SUBACCOUNT_TULIPHEDGEDSHORTS']

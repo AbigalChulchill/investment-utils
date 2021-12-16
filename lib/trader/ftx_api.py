@@ -127,7 +127,7 @@ class Ftx:
         return self._get("/wallet/balances")
 
     def get_positions(self) -> dict:
-        return self._get("/positions")
+        return self._get("/positions",{"showAvgPrice": True})
 
     def get_markets(self) -> dict:
         return self._get("/markets")
