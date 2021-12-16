@@ -75,7 +75,7 @@ class TradeHelper:
         return self.market_data.is_tradeable(asset)
 
     def get_daily_change(self, coin: str) -> float:
-        return self.market_data.get_daily_change(coin)[0]
+        return self.market_data.get_daily_change(coin)[1]
 
     def get_avg_price_n_days(self, coin: str, days_before: int, ma_type: str="auto") -> float:
         return self.market_data.get_avg_price_n_days(coin, days_before, ma_type)
