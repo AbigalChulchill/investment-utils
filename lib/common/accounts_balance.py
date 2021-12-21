@@ -14,7 +14,8 @@ def round_qty(x: float):
     return round(x, 3)
 
 def get_poloniex(api: Poloniex) -> float:
-    return roundx(float(api.returnBalances()['USDT']))
+    bal = api.returnCompleteBalances()['USDT']
+    return roundx(float(bal['available']) + float(bal['onOrders'])  )
 
 def get_poloniex_fee_token(api: Poloniex) -> float:
     return round_qty(float(api.returnBalances()['TRX']))

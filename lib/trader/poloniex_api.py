@@ -110,6 +110,45 @@ class Poloniex:
         '''
         return self._post("returnBalances")
 
+    def returnCompleteBalances(self) -> dict:
+        '''
+        Returns all of your balances, including available balance, balance on orders,
+        and the estimated BTC value of your balance. By default, this call is limited
+        to your exchange account; set the "account" POST parameter to "all" to include
+        your margin and lending accounts.
+
+        Please note that this call will not return balances for your futures account.
+        Please refer to https://futures-docs.poloniex.com/ for information on how to access your futures balance.
+        { 
+            "1CR":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"},
+            "ABY":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"},
+            "AC":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"},
+            ...
+            "SPELL":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"},
+            "ICE":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"},
+            "CHESS":
+            {"available":"0.00000000",
+                "onOrders":"0.00000000",
+                "btcValue":"0.00000000"}}
+        https://docs.poloniex.com/#returncompletebalances
+        '''
+        return self._post("returnCompleteBalances", {"account": "all"})
+
     def returnOpenOrders(self, currencyPair: str) -> dict:
         '''
         Returns your open orders for a given market, specified by the "currencyPair" POST parameter, e.g. "BTC_ETH".

@@ -446,6 +446,13 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
                 'asset_group': um_category_name,
                 'USD': round(um_category_dict['qty'] * th.get_market_price(um_category_dict['currency']),2),
             })
+    # create custom asset category for fiat money on CEXes
+    stats_data.append({
+        'asset_group': "fiat_cex",
+        'USD': round(sum( DataFrame.from_dict( accounts_balance.get_available_usd_balances_dca() )['USD'] ),2),
+    })
+
+
     df_cats = DataFrame.from_dict(stats_data)
     df_cats['%'] = round(df_cats['USD'] / sum(df_cats['USD']) * 100,1)
     df_cats['BTC'] = df_cats['USD'] / th.get_market_price("bitcoin")
