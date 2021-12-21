@@ -1,7 +1,6 @@
-import time
-from typing import List,Tuple
 from lib.common.msg import info, warn
 from lib.common.id_map_poloniex import id_to_poloniex
+from lib.common.id_ticker_map import id_to_ticker
 from lib.common.orderbook import estimate_fill_price, FillPriceEstimate
 from lib.trader import poloniex_api
 from lib.trader.trader import Trader
@@ -21,9 +20,10 @@ class PoloniexTrader(Trader):
 
     def __init__(self, sym: str, api_key: str, secret: str):
         self.pair = id_to_poloniex[sym]
+        self.ticker = id_to_ticker[sym]
         self.api = poloniex_api.Poloniex(api_key, secret)
 
-    def _handle_trade(self, response: dict) -> Tuple[float,float]:
+    def _handle_trade(self, response: dict) -> tuple[float,float]:
         if 'resultingTrades' in response.keys():
             trades = response['resultingTrades']
             total_qty_coin = sum( [float(x['amount']) for x in trades] )
@@ -36,7 +36,7 @@ class PoloniexTrader(Trader):
             raise PoloniexTraderError(f"unknown error : {response}")
 
 
-    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> tuple[float,float]:
         self._check_trx_balance()
         if qty_in_usd:
             qty_tokens = qty / self.api.returnTicker(self.pair)
@@ -46,11 +46,18 @@ class PoloniexTrader(Trader):
         response = self.api.buy(self.pair, estimate_price.limit, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
 
-    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
+    def sell_market(self, qty_tokens: float) -> tuple[float,float]:
         self._check_trx_balance()
         estimate_price = estimate_fill_price(self.api.returnOrderBook(self.pair)['bids'], qty_tokens*overcommit_factor)
         response = self.api.sell(self.pair, estimate_price.limit, qty_tokens, {'fillOrKill': True})
         return self._handle_trade(response)
+
+    def sell_limit(self, qty_tokens: float, limit_price: float, auto_top_up_commission_tokens: bool = False) -> tuple[float,float]:
+        if auto_top_up_commission_tokens:
+            self._check_trx_balance()
+        response = self.api.sell(self.pair, limit_price, qty_tokens, {'fillOrKill': True, 'immediateOrCancel': True})
+        return self._handle_trade(response)
+
 
     def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
         assert side in ["buy", "sell"]
@@ -59,6 +66,8 @@ class PoloniexTrader(Trader):
         else:
             return estimate_fill_price(self.api.returnOrderBook(self.pair)['bids'], qty*overcommit_factor)
 
+    def get_available_qty(self) -> float:
+        return float(self.api.returnBalances()[self.ticker])
 
     def _check_trx_balance(self):
         qty = float(self.api.returnBalances()['TRX'])

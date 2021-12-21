@@ -1,12 +1,10 @@
 import time
-
-from typing import Tuple
-
 from lib.common.msg import info,warn
 from lib.common.id_map_mexc import id_to_mexc
+from lib.common.id_ticker_map import id_to_ticker
 from lib.trader import mexc_api
 from lib.trader.trader import Trader
-
+from lib.common.orderbook import estimate_fill_price, FillPriceEstimate
 
 class MexcTrader(Trader):
 
@@ -16,9 +14,10 @@ class MexcTrader(Trader):
 
     def __init__(self, sym: str, api_key: str, secret: str):
         self._symbol = id_to_mexc[sym]
+        self._ticker = id_to_ticker[sym]
         self._api = mexc_api.Mexc(api_key, secret)
 
-    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> tuple[float,float]:
         self._check_mx_balance()
         if qty_in_usd:
             market_price = float(self._api.get_ticker(self._symbol)['ask'])
@@ -27,16 +26,15 @@ class MexcTrader(Trader):
             qty_tokens = qty
         return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*1.01, qty=qty_tokens, trade_type="BID", order_type="IMMEDIATE_OR_CANCEL" ))
 
-    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
+    def sell_market(self, qty_tokens: float) -> tuple[float,float]:
         self._check_mx_balance()
         market_price = float(self._api.get_ticker(self._symbol)['bid'])
         return self._finalize_order(self._api.place_order(symbol=self._symbol, price=market_price*0.99, qty=qty_tokens, trade_type="ASK", order_type="IMMEDIATE_OR_CANCEL"))
 
-    def _finalize_order(self, order_id: str) -> Tuple[float,float]:
+    def _finalize_order(self, order_id: str) -> tuple[float,float]:
         fill_qty = 0
         fill_price = 0
         for _ in range(10):
-            time.sleep(0.5)
             r = self._api.query_order(self._symbol, order_id)
             if r['state'] == "FILLED":
                 fill_qty = float(r['deal_quantity'])
@@ -44,14 +42,16 @@ class MexcTrader(Trader):
                 break
         return fill_price, fill_qty,
 
-    def estimate_fill_price(self, qty: float, side: str):
-        #TODO: need to use orderbook
-        raise NotImplementedError()
-        # assert side in ["buy", "sell"]
-        # if side == "buy":
-        #     return float(self._api.get_ticker(self._symbol)['ask'])
-        # else:
-        #     return float(self._api.get_ticker(self._symbol)['bid'])
+    def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
+        assert side in ["buy", "sell"]
+        if side == "buy":
+            return estimate_fill_price(self._api.get_orderbook(self._symbol,'asks'), qty)
+        else:
+            return estimate_fill_price(self._api.get_orderbook(self._symbol,'bids'), qty)
+
+    def get_available_qty(self) -> float:
+        balances = self._api.get_balances()
+        return float(balances[self._ticker]['available']) if self._ticker in balances.keys() else 0
 
     def _check_mx_balance(self):
         balances = self._api.get_balances()

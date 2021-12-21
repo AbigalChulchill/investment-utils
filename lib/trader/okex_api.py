@@ -1,5 +1,5 @@
 import hmac, datetime, requests, codecs
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 
 class OkexQueryError(Exception):
@@ -23,13 +23,13 @@ class Okex:
         self._passphrase = passphrase
         self._session = requests.Session()
 
-    def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _get(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('GET', path, params=params)
 
-    def _post(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _post(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('POST', path, json=params)
 
-    def _delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _delete(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('DELETE', path, json=params)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
@@ -61,10 +61,18 @@ class Okex:
                 raise OkexQueryError(status_code=response.status_code, data=response.json())
             return data['data']
 
-    def get_ticker(self, market: str ) -> Dict:
+    def get_ticker(self, market: str ) -> dict:
         return self._get(f"/api/v5/market/ticker", {
             'instId': market,
         })
+
+    def get_orderbook(self, market: str, side: str) -> dict:
+        r = self._get("/api/v5/market/books",{
+            'instId': market,
+            'sz': 20,
+        })[0][side]
+        #  return only  ( price,volume ), ignore other fields
+        return [(float(d[0]),float(d[1])) for d in r]
 
     def get_min_qty(self, market: str ) -> float:
         return float(self._get(f"/api/v5/public/instruments", {
@@ -83,12 +91,11 @@ class Okex:
         })
         return int(response[0]['ordId'])
 
-    def get_order_details(self, market: str, order_id: int) -> Dict:
+    def get_order_details(self, market: str, order_id: int) -> dict:
         return self._get("/api/v5/trade/order", {
             'instId': market, #BTC-USD
             'ordId': order_id,
         })[0]
 
-    def get_balances(self) -> Dict:
+    def get_balances(self) -> dict:
         return self._get("/api/v5/account/balance")[0]['details']
-

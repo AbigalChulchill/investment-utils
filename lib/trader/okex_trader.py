@@ -1,8 +1,8 @@
-import time
-from typing import Tuple
 from lib.common.id_map_okex import id_to_okex
+from lib.common.id_ticker_map import id_to_ticker
 from lib.trader import okex_api
 from lib.trader.trader import Trader
+from lib.common.orderbook import estimate_fill_price, FillPriceEstimate
 
 class OkexTrader(Trader):
 
@@ -12,9 +12,10 @@ class OkexTrader(Trader):
 
     def __init__(self, sym: str, api_key: str, secret: str, passw: str):
         self.market = id_to_okex[sym]
+        self.ticker = id_to_ticker[sym]
         self.api = okex_api.Okex(api_key, secret, passw)
 
-    def buy_market(self, qty: float, qty_in_usd: bool) -> Tuple[float,float]:
+    def buy_market(self, qty: float, qty_in_usd: bool) -> tuple[float,float]:
         if qty_in_usd:
             market_price = float(self.api.get_ticker(self.market)[0]['askPx'])
             qty_tokens = qty / market_price
@@ -25,13 +26,12 @@ class OkexTrader(Trader):
         order_id = self.api.place_order(market=self.market, side="buy", size=qty_tokens)
         return self._wait_for_order(order_id)
 
-    def sell_market(self, qty_tokens: float) -> Tuple[float,float]:
+    def sell_market(self, qty_tokens: float) -> tuple[float,float]:
         order_id = self.api.place_order(market=self.market, side="sell", size=qty_tokens)
         return self._wait_for_order(order_id)
 
-    def _wait_for_order(self, order_id: int) -> Tuple[float,float]:
+    def _wait_for_order(self, order_id: int) -> tuple[float,float]:
         while True: #fixme: timeout maybe? shouldn't be needed
-            time.sleep(1)
             r = self.api.get_order_details(self.market, order_id)
             if r['state'] == "filled":
                 if r['side'] == "buy":
@@ -50,12 +50,14 @@ class OkexTrader(Trader):
             else:
                 print("waiting on trade ...")
 
-    def estimate_fill_price(self, qty: float, side: str):
-        #TODO: need to use orderbook
-        raise NotImplementedError()
-        
-        # assert side in ["buy", "sell"]
-        # if side == "buy":
-        #     return float(self.api.get_ticker(self.market)[0]['askPx'])
-        # else:
-        #     return float(self.api.get_ticker(self.market)[0]['bidPx'])
+    def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
+        assert side in ["buy", "sell"]
+        if side == "buy":
+            return estimate_fill_price(self.api.get_orderbook(self.market,'asks'), qty)
+        else:
+            return estimate_fill_price(self.api.get_orderbook(self.market,'bids'), qty)
+
+    def get_available_qty(self) -> float:
+        balances = self.api.get_balances()
+        free = [x['eqUsd'] for x in balances if x['ccy'] == self.ticker]
+        return float(free[0])

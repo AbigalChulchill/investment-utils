@@ -1,6 +1,6 @@
 import hmac, time, requests
 from urllib.parse import urlencode
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 class MexcQueryError(Exception):
     def __init__(self, status_code: int, data: dict):
@@ -16,13 +16,13 @@ class Mexc:
         self._secret = secret
         self._session = requests.Session()
 
-    def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _get(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('GET', path, params=params)
 
-    def _post(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _post(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('POST', path, json=params)
 
-    def _delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _delete(self, path: str, params: Optional[dict[str, Any]] = None) -> Any:
         return self._request('DELETE', path, json=params)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
@@ -53,6 +53,14 @@ class Mexc:
         return self._get("/open/api/v2/market/ticker", {
             'symbol': symbol,
         })[0]
+    
+    def get_orderbook(self, symbol: str, side: str) -> dict:
+        r = self._get("/open/api/v2/market/depth", {
+            'symbol': symbol,
+            'depth': 20,
+        })[side]
+        return [(float(d['price']),float(d['quantity'])) for d in r]
+
 
     def place_order(self, symbol: str, price: float, qty: float, trade_type: str, order_type: str) -> str:
         return self._post("/open/api/v2/order/place", {
@@ -63,7 +71,7 @@ class Mexc:
             'order_type': order_type,
         })
 
-    def query_order(self, symbol: str, order_id: str) -> Dict:
+    def query_order(self, symbol: str, order_id: str) -> dict:
         # Attention:
         # Keys must be in alphabetical order otherwise signature verification fails.
         # This restriction applies only to GET requests.
@@ -72,5 +80,5 @@ class Mexc:
             'symbol': symbol,
         })[0]
     
-    def get_balances(self) -> Dict:
+    def get_balances(self) -> dict:
         return self._get("/open/api/v2/account/info")
