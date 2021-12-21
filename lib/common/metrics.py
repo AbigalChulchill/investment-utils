@@ -14,6 +14,9 @@ def calc_heat_score(market_price: float, ma200: float, hi200: float, rsi: float)
 
     """
 
+    if rsi is None:
+        rsi = 50
+
     return calc_raise_percent(ma200, market_price ) * rsi / sqrt(calc_raise_percent(market_price,hi200 ) if market_price < hi200 else 0.001)
 
 
