@@ -1,4 +1,5 @@
 from lib.common.id_map_ftx import id_to_ftx
+from lib.common.id_ticker_map import id_to_ticker
 from lib.common.orderbook import estimate_fill_price, FillPriceEstimate
 from lib.trader import ftx_api
 from lib.trader.trader import Trader
@@ -14,6 +15,7 @@ class FtxTrader(Trader):
 
     def __init__(self, sym: str, api_key: str, secret: str, subaccount: str):
         self._market = id_to_ftx[sym]
+        self._ticker = id_to_ticker[sym]
         self._api = ftx_api.Ftx(api_key, secret, subaccount)
 
     def buy_market(self, qty: float, qty_in_usd: bool) -> tuple[float,float]:
@@ -39,7 +41,12 @@ class FtxTrader(Trader):
                 fill_price = float(r['avgFillPrice'])
                 break
         return fill_price, fill_qty,
-        
+
+    def get_available_qty(self) -> float:
+        balances = self._api.get_balances()
+        matches = [x['availableWithoutBorrow'] for x in balances if x['coin'] == self._ticker]
+        return matches[0] if len(matches) > 0 else 0
+
     def estimate_fill_price(self, qty: float, side: str) -> FillPriceEstimate:
         assert side in ["buy", "sell"]
         if side == "buy":
