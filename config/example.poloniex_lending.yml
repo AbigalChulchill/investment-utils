@@ -1,0 +1,15 @@
+---
+# delay between polls
+delay: 60
+
+# max size of the single offer order. Offers are periodically created, the delay is governed by offer_cooldown.
+lot_size: 1000
+
+# timeout in seconds before the offer is deleted if not accepted by anyone
+offer_expiration: 600
+
+# timeout in seconds before the next offer lot is created
+offer_cooldown: 1800
+
+# only create offers if existing top offers' APR is greater or equal to this value
+min_apr: 10

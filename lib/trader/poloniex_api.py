@@ -1,5 +1,6 @@
 import hashlib, hmac, time, urllib, requests
 from lib.common.convert import timeframe_to_interval_ms
+from typing import Optional
 
 
 POLONIEX_PUBLIC_API = "https://poloniex.com/public"
@@ -128,26 +129,42 @@ class Poloniex:
             {"available":"0.00000000",
                 "onOrders":"0.00000000",
                 "btcValue":"0.00000000"},
-            "AC":
-            {"available":"0.00000000",
-                "onOrders":"0.00000000",
-                "btcValue":"0.00000000"},
             ...
-            "SPELL":
-            {"available":"0.00000000",
-                "onOrders":"0.00000000",
-                "btcValue":"0.00000000"},
-            "ICE":
-            {"available":"0.00000000",
-                "onOrders":"0.00000000",
-                "btcValue":"0.00000000"},
-            "CHESS":
-            {"available":"0.00000000",
-                "onOrders":"0.00000000",
-                "btcValue":"0.00000000"}}
+            }
         https://docs.poloniex.com/#returncompletebalances
         '''
         return self._post("returnCompleteBalances", {"account": "all"})
+
+
+    def returnAvailableAccountBalances(self, account: Optional[str]) -> dict:
+        '''
+        Returns your balances sorted by account. You may optionally specify the "account" POST parameter
+        if you wish to fetch only the balances of one account. Please note that balances in your margin account
+        may not be accessible if you have any open margin positions or orders.
+
+        Please note that this call will not return balances for your futures account.
+        Please refer to https://futures-docs.poloniex.com/ for information on how to access your futures balance.
+        { "exchange":
+            { "BTC": "0.10000000",
+                "EOS": "5.18012931",
+                "ETC": "3.39980734",
+                "SC": "120.00000000",
+                "USDC": "23.79999938",
+                "ZEC": "0.02380926" },
+            "margin":
+            { "BTC": "0.50000000" },
+            "lending":
+            { "BTC": "0.14804126",
+                "ETH": "2.69148073",
+                "LTC": "1.75862721",
+                "XMR": "5.25780982" } }
+        https://docs.poloniex.com/#returnavailableaccountbalances
+        '''
+        params = {}
+        if account:
+            params['account'] = account
+        return self._post("returnAvailableAccountBalances", params)
+
 
     def returnOpenOrders(self, currencyPair: str) -> dict:
         '''
@@ -229,4 +246,84 @@ class Poloniex:
         return self._post("returnDepositsWithdrawals", {
             "start": ts_start,
             "end": ts_end,
+            })
+
+    def returnLoanOrders(self, currency: str) -> dict:
+        '''
+        Returns the list of loan offers and demands for a given currency, specified by the "currency" GET parameter. 
+        {
+            "offers": [
+                {
+                "rate": "0.00001600",
+                "amount": "4.29410375",
+                "rangeMin": 2,
+                "rangeMax": 2
+                },
+                {
+                "rate": "0.00001694",
+                "amount": "0.06896614",
+                "rangeMin": 2,
+                "rangeMax": 2
+                },
+                ...
+
+            ],
+            "demands": [
+                {
+                "rate": "0.00001000",
+                "amount": "40.11028911",
+                "rangeMin": 2,
+                "rangeMax": 60
+                },
+                ...
+            ]
+        }
+
+        https://docs.poloniex.com/#returnloanorders
+        '''
+        return self._get("returnLoanOrders",{'currency':currency})
+
+    def createLoanOffer(self, currency: str, amount: float, duration: int, autoRenew: bool, lendingRate: float) -> dict:
+        '''
+        Creates a loan offer for a given currency.
+        Args:
+            currency 	Denotes the currency for this loan offer.
+            amount 	    The total amount of currency offered.
+            duration 	The maximum duration of this loan in days. (from 2 to 60, inclusive)
+            autoRenew 	Denotes if this offer should be reinstated with the same settings after having been taken.
+            lendingRate Lending interest rate
+        Output Fields:
+            success 	Denotes whether a success (1) or a failure (0) of this operation.
+            message 	A human-readable message summarizing the activity.
+            orderID 	The identification number of the newly created loan offer.
+
+        {   "success": 1,
+            "message": "Loan order placed.",
+            "orderID": 1002013188 }
+        '''
+        return self._post("createLoanOffer",{
+            'currency':currency,
+            'amount': amount,
+            'duration': duration,
+            'autoRenew': 1 if autoRenew else 0,
+            'lendingRate': lendingRate,
+            })
+
+    def cancelLoanOffer(self, orderID: int) -> dict:
+        '''
+        Cancels a loan offer
+        Args:
+            orderID 	The identification number of the offer to be canceled.
+            
+        Output Fields:
+            success 	Denotes whether a success (1) or a failure (0) of this operation.
+            message 	A human-readable message summarizing the activity.
+            amount 	    The amount of the offer that was canceled.
+
+        {   "success": 1,
+            "message": "Loan offer canceled.",
+            "amount": "0.10000000" }
+        '''
+        return self._post("cancelLoanOffer",{
+            'orderNumber':orderID,
             })
