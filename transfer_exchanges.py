@@ -1,4 +1,6 @@
-"""Move asset between exchanges"""
+#
+# Move an asset from one exchange to another
+#
 
 import argparse, time
 
@@ -28,7 +30,10 @@ def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_va
     transferred_qty = 0.
 
     while transferred_qty < qty:
-        #print("waiting for optimal price conditions...")
+
+        # ensure lot size is not bigger that the amount that is left to transfer
+        lot_size = min(lot_size, qty - transferred_qty)
+
         estimated_sell_price = None
         estimated_buy_price = None
         spread_range : tuple[float,float] = (100,-100)
@@ -50,11 +55,8 @@ def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_va
                 continue
         print()
 
-        #print(f"optimal reached: sell at {estimated_sell_price.average} / buy at {estimated_buy_price.average}")
         try:
-            #[src_price, src_qty] = trader_src.sell_limit(lot_size, estimated_sell_price.limit)
             [src_price, src_qty] = trader_src.sell_market(lot_size)
-            #[src_price, src_qty] = [estimated_sell_price,lot_size]
             rprint(f"[red]sold[/] at {src_ex}: price={src_price} qty={src_qty}")
         except Exception as e:
             warn(f"sell failed: {e}")
@@ -62,7 +64,6 @@ def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_va
 
         try:
             [dest_price, dest_qty] = trader_dest.buy_market(src_qty, qty_in_usd=False)
-            #[dest_price, dest_qty] = [estimated_buy_price,lot_size]
             rprint(f"[green]bought[/] at {dest_ex}: price={dest_price} qty={dest_qty}")
         except Exception as e:
             err(f"buy failed: {e}")
