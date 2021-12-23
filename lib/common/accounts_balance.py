@@ -22,8 +22,8 @@ def get_poloniex_fee_token(api: Poloniex) -> float:
 
 def get_ftx(api: Ftx) -> float:
     balances = api.get_balances()
-    free = [x['usdValue'] for x in balances if x['coin'] == "USD"]
-    return roundx(float(free[0]))
+    free = [float(x['usdValue']) for x in balances if x['coin'] in ["USD","USDT"] ]
+    return roundx(sum(free))
 
 def get_okex(api: Okex) -> float:
     balances = api.get_balances()
