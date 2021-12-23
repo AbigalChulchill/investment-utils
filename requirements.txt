@@ -9,3 +9,4 @@ rich >= 10.12
 pyyaml >= 5.4.1
 pytest >= 6.2.5
 selenium >= 3.141
+gtts >= 2.2
