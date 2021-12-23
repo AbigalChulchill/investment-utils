@@ -59,5 +59,5 @@ class OkexTrader(Trader):
 
     def get_available_qty(self) -> float:
         balances = self.api.get_balances()
-        free = [x['eqUsd'] for x in balances if x['ccy'] == self.ticker]
+        free = [x['eq'] for x in balances if x['ccy'] == self.ticker]
         return float(free[0])
