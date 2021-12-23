@@ -1,4 +1,9 @@
-id_to_ticker={
+class TickerDict (dict):
+    # if id is not listed below its ticker is assumed to be equal to id
+    def __missing__(self,k):
+        return k
+
+id_to_ticker = TickerDict({
     "0x":                   "ZRX",
     "aave":                 "AAVE",
     "aleph":                "ALEPH",
@@ -50,4 +55,4 @@ id_to_ticker={
     "tezos":                "XTZ",
     "the-sandbox":          "SAND",
     "uniswap":              "UNI",
-}
+})
