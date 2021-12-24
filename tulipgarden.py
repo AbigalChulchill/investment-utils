@@ -1,5 +1,6 @@
 import argparse, yaml, time
 from typing import Any
+from collections import defaultdict
 from math import isclose
 from pandas.core.frame import DataFrame
 from selenium import webdriver
@@ -12,7 +13,7 @@ from lib.common.msg import *
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.defi.solscan_api import Solscan
-from lib.common.sound_notification import SoundNotification
+from lib.common.sound_notification import VoiceNotification
 
 conf: dict[str, Any] = {}
 
@@ -68,16 +69,18 @@ class TulipClient:
             
             d.append({
                 'LP': lp_name,
-                'tulip_equity_value': float(equity_value.replace("$","").replace(",","")),
-                'tulip_kill_buffer': float(kill_buffer.replace("%","").strip()),
+                'tulip_equity_value': float(equity_value.replace("$","").replace(",","").strip()),
+                'tulip_kill_buffer': float(kill_buffer.replace("%","").replace(",","").strip()),
             })
         return d
         
  
+def get_main_token_of_liquidity_pair(lp):
+    return lp.replace("LP","").replace("-USDT","").replace("-USDC","").replace("we","").strip()
 
 
 def list_positions():
-    cl = FtxClient()
+    ftx = FtxClient()
     tulip = TulipClient()
     solscan = Solscan(conf['lyf_account'])
     kill_thr = conf['kill_buffer_alert_threshold'] if 'kill_buffer_alert_threshold' in conf else 10
@@ -86,32 +89,80 @@ def list_positions():
 
         reread_conf()
 
+        tulip_lyf_positions = tulip.get_lyf_positions()
+
+        # long positions that are short-hedged on FTX
+        ftx_hedged_short_positions_pnl = ftx.get_positions_pnl()
+
+        tulip_lyf_positions_ftx_hedged= []
+        tulip_lyf_positions_self_hedged_d = defaultdict(list)
+        tulip_lyf_positions_self_hedged = []
+
+        for x in tulip_lyf_positions:
+            main_token_of_lp = get_main_token_of_liquidity_pair(x['LP'])
+            if main_token_of_lp in ftx_hedged_short_positions_pnl:
+                tulip_lyf_positions_ftx_hedged.append(x)
+            else:
+                tulip_lyf_positions_self_hedged_d[x['LP']].append(x)
+
+        # group long and short positions by LP
+        for k,x in tulip_lyf_positions_self_hedged_d.items():
+            if len(x) == 2:
+                r = {
+                    'LP': k,
+                    'equity_value_A' : x[0]['tulip_equity_value'],
+                    'equity_value_B' : x[1]['tulip_equity_value'],
+                    'kill_buffer_A' : x[0]['tulip_kill_buffer'],
+                    'kill_buffer_B' : x[1]['tulip_kill_buffer'],
+                }
+                tulip_lyf_positions_self_hedged.append(r)
+
+
+        print()
         print("Positions:")
         print()
+        print("Neutral / FTX hedged")
+        print()
+        
 
-        hedged_short_positions_pnl = cl.get_positions_pnl()
-
-        df_tulip_long_lyf_positions = DataFrame.from_dict(tulip.get_lyf_positions())
-        main_token_of_lp = lambda x: x.replace("LP","").replace("-USDT","").replace("-USDC","").replace("we","").strip()
-        df_tulip_long_lyf_positions['ftx_hedged_short_pnl'] = [ hedged_short_positions_pnl[ main_token_of_lp(x) ] if main_token_of_lp(x) in hedged_short_positions_pnl else 0 for x in df_tulip_long_lyf_positions['LP']]
-        df_tulip_long_lyf_positions['ftx_kill_buffer'] = (cl.account['marginFraction'] - cl.account['maintenanceMarginRequirement'])*100 
+        df_tulip_long_lyf_positions = DataFrame.from_dict(tulip_lyf_positions_ftx_hedged)
+        df_tulip_long_lyf_positions['ftx_hedged_short_pnl'] = [ ftx_hedged_short_positions_pnl[ get_main_token_of_liquidity_pair(x) ]  for x in df_tulip_long_lyf_positions['LP']]
+        df_tulip_long_lyf_positions['ftx_kill_buffer'] = (ftx.account['marginFraction'] - ftx.account['maintenanceMarginRequirement'])*100 
         df_tulip_long_lyf_positions['net_value'] = df_tulip_long_lyf_positions['tulip_equity_value'] + df_tulip_long_lyf_positions['ftx_hedged_short_pnl']
-        if "lyf_position_entry_value" in conf:
-            df_tulip_long_lyf_positions['pnl'] = df_tulip_long_lyf_positions['net_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
+        df_tulip_long_lyf_positions['pnl'] = df_tulip_long_lyf_positions['net_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
         print(df_tulip_long_lyf_positions.sort_values('LP').to_string(index=False,float_format=lambda x: f"{x:.2f}"))
         print()
 
+        if df_tulip_long_lyf_positions['tulip_kill_buffer'].min() < kill_thr:
+            VoiceNotification().say("tulip kill buffer is low")
+        if df_tulip_long_lyf_positions['ftx_kill_buffer'].min() < kill_thr:
+            VoiceNotification().say("FTX kill buffer is low")
+
+        print()
+        print("Neutral / self hedged")
+        print()
+    
+        df_tulip_neutral_lyf_positions = DataFrame.from_dict(tulip_lyf_positions_self_hedged)
+        df_tulip_neutral_lyf_positions['net_value'] = df_tulip_neutral_lyf_positions['equity_value_A'] + df_tulip_neutral_lyf_positions['equity_value_B']
+        df_tulip_neutral_lyf_positions['pnl'] = df_tulip_neutral_lyf_positions['net_value'] - [ conf['lyf_position_entry_value'][x] for x in df_tulip_neutral_lyf_positions['LP'] ]
+        print(df_tulip_neutral_lyf_positions.sort_values('LP').to_string(index=False,float_format=lambda x: f"{x:.2f}"))
+
+        if df_tulip_neutral_lyf_positions['kill_buffer_A'].min() < kill_thr or df_tulip_neutral_lyf_positions['kill_buffer_B'].min() < kill_thr:
+            VoiceNotification().say("tulip kill buffer is low")
+        
+
         lyf_account_stablecoins_balance = solscan.get_token_qty('USDC') + solscan.get_token_qty('USDT')
 
-        print(f"Combined Accounts Value: {df_tulip_long_lyf_positions['tulip_equity_value'].sum() + lyf_account_stablecoins_balance + cl.get_account_value():.2f} USD")
-        print(f"FTX Free Collateral:     {cl.account['freeCollateral']:.2f} USD")
+        print()
+        accounts_value  = df_tulip_long_lyf_positions['tulip_equity_value'].sum() \
+                        + df_tulip_neutral_lyf_positions['equity_value_A'].sum() \
+                        + df_tulip_neutral_lyf_positions['equity_value_B'].sum() \
+                        + lyf_account_stablecoins_balance \
+                        + ftx.get_account_value()
+        print(f"Combined Accounts Value: {accounts_value:.2f} USD")
+        print(f"FTX Free Collateral:     {ftx.account['freeCollateral']:.2f} USD")
         print()
 
-
-        if df_tulip_long_lyf_positions['tulip_kill_buffer'].min() < kill_thr or df_tulip_long_lyf_positions['ftx_kill_buffer'].min() < kill_thr:
-            for i in range(3):
-                SoundNotification().error()
-                time.sleep(0.5)
 
         time.sleep(60)
 

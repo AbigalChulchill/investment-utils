@@ -19,9 +19,9 @@ class SoundNotification:
         subprocess.Popen(args, close_fds=True, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL)
 
 
-class SpeechNotification:
+class VoiceNotification:
     @staticmethod
-    def speak(text: str):
+    def say(text: str):
         r,w = os.pipe()
         o = gtts.gTTS(text=text, lang="en", slow=False)
         subprocess.Popen(["mpg123", "-"], close_fds=False, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL, stdin=os.fdopen(r, mode="rb"))
