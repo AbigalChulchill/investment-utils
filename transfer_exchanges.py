@@ -65,6 +65,10 @@ def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_va
         try:
             [dest_price, dest_qty] = trader_dest.buy_market(src_qty, qty_in_usd=False)
             rprint(f"[green]bought[/] at {dest_ex}: price={dest_price} qty={dest_qty}")
+
+            if (abs(src_qty - dest_qty) / src_qty) > 0.002:           # > 0.2% diff should be beyond  the commission charges, so most likely indicates something is wrong
+                raise RuntimeError(f"{dest_ex} is unable to buy same qty. Please check balances!")
+
         except Exception as e:
             err(f"buy failed: {e}")
             raise
