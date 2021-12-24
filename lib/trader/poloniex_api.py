@@ -300,6 +300,8 @@ class Poloniex:
         {   "success": 1,
             "message": "Loan order placed.",
             "orderID": 1002013188 }
+
+        https://docs.poloniex.com/#createloanoffer
         '''
         return self._post("createLoanOffer",{
             'currency':currency,
@@ -323,6 +325,8 @@ class Poloniex:
         {   "success": 1,
             "message": "Loan offer canceled.",
             "amount": "0.10000000" }
+
+        https://docs.poloniex.com/#cancelloanoffer
         '''
         return self._post("cancelLoanOffer",{
             'orderNumber':orderID,
