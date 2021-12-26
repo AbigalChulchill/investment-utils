@@ -10,10 +10,7 @@ import pandas as pd
 class MarketDataProviderCoingecko(MarketDataProvider):
     def __init__(self):
         self._cg = pycoingecko.CoinGeckoAPI()
-        market_cap_list = self._cg.get_coins_markets(ids=list(id_to_ticker.keys()), vs_currency="usd")
-        self._cached = {}
-        for entry in market_cap_list:
-            self._cached [entry['id']] = entry
+        self._cached = None
 
     def get_supported_methods(self, asset: str) -> List[str]:
         if not is_stock(asset):
@@ -59,9 +56,20 @@ class MarketDataProviderCoingecko(MarketDataProvider):
         df.set_index('timestamp', inplace=True)
         return df
 
+
+    def _get_cached(self, asset: str):
+        if self._cached is None:
+            market_cap_list = self._cg.get_coins_markets(ids=list(id_to_ticker.keys()), vs_currency="usd")
+            self._cached = {}
+            for entry in market_cap_list:
+                self._cached [entry['id']] = entry
+        return self._cached[asset]
+
     def get_market_cap(self, asset: str) -> int:
-        return self._cached[asset]['market_cap'] if 'market_cap' in self._cached[asset] and self._cached[asset]['market_cap'] is not None else nan
+        d = self._get_cached(asset)
+        return d['market_cap'] if 'market_cap' in d and d['market_cap'] is not None else nan
 
     def get_total_supply(self, asset: str) -> int:
-        return  self._cached[asset]['total_supply'] if ('total_supply' in self._cached[asset] and self._cached[asset]['total_supply'] is not None ) else \
-                self._cached[asset]['circulating_supply'] if ('circulating_supply' in self._cached[asset] and self._cached[asset]['circulating_supply'] is not None ) else nan
+        d = self._get_cached(asset)
+        return  d['total_supply'] if ('total_supply' in d and d['total_supply'] is not None ) else \
+                d['circulating_supply'] if ('circulating_supply' in d and d['circulating_supply'] is not None ) else nan
