@@ -1,13 +1,16 @@
 from typing import Any
+from collections.abc import Iterable
 
-from rich.progress import track as _rich_track
-from rich.console import Console
-
-
-def track(*args: Any, **kwargs: Any):
-    """a transient monochromatic progress bar
-    """
-    return _rich_track(*args, **kwargs,
-        transient=True,
-        #console=Console(no_color=True),
-        )
+def simple_progress_track(sequence: Iterable[Any], with_item_text: bool = True) -> Iterable[Any]:
+    n = len(sequence)
+    i = 0
+    text_pad = 0
+    for x in sequence:
+        i += 1
+        if with_item_text:
+            text_pad = max(text_pad, len(str(x)))
+            item_text = f"....{str(x)}" + " "*text_pad
+        else:
+            item_text = ""
+        print(f"{i / n * 100.:>3.0f}%  " + item_text, end="\r")
+        yield x

@@ -2,7 +2,7 @@ import argparse, yaml
 from typing import Dict, Any
 from pandas.core.frame import DataFrame
 from lib.common.market_data import MarketData
-from lib.common.widgets import track
+from lib.common.widgets import simple_progress_track
 from lib.common.misc import is_stock, calc_raise_percent
 from lib.common.metrics import calc_discount_score, calc_heat_score
 
@@ -19,7 +19,9 @@ def table(sort_by: str):
     m = MarketData()
     data_stocks = []
     data_others = []
-    for asset in track(assets):
+
+    # processing is conservatively sequential here, to prevent triggering various order rate limits
+    for asset in simple_progress_track(assets):
 
         market_price = m.get_market_price(asset)
         ma200_price = m.get_avg_price_n_days(asset,200)

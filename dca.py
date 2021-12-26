@@ -17,7 +17,7 @@ from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import *
 from lib.common.misc import is_stock
-from lib.common.widgets import track
+from lib.common.widgets import simple_progress_track
 from lib.common.metrics import calc_discount_score
 
 ds = dict()
@@ -235,7 +235,7 @@ def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
     th = TradeHelper()
     total_value = 0
     enabled = {}
-    for asset in track(assets):
+    for asset in simple_progress_track(assets,with_item_text=False):
         filter_result, filter_reason = passes_acc_filter(asset, th)
         if not filter_result:
             rprint(f"[bold]{asset}[/] {filter_reason}, skipping")
@@ -258,7 +258,7 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     th = TradeHelper()
     a = list()
     
-    for asset,quota_factor in track(assets_quota_factors.items()):
+    for asset,quota_factor in simple_progress_track(assets_quota_factors.items(),with_item_text=False):
             daily_qty = quota_asset * quota_factor
             msg_buying(asset, daily_qty)
             trader: Trader = create_trader(asset)
