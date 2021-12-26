@@ -1,1 +1,13 @@
 ---
+
+# voice alert if kill buffer gets below this value
+kill_buffer_alert_threshold: 10
+
+# wallet for LYF farm
+lyf_account: <wallet>
+
+# entry value of position for pnl calculation
+# If multiple positions of same LP this value should be total value of all positions.
+lyf_position_entry_value: {}
+#  ATLAS-USDC LP:   100
+#  RAY-USDT LP:     100
