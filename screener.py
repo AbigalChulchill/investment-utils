@@ -11,7 +11,8 @@ screener_conf = yaml.safe_load(open('config/screener.yml', 'r'))
 
 def get_list_of_assets():
    dca_conf = yaml.safe_load(open('config/dca.yml', 'r'))
-   return list( set( list(dca_conf["asset_exchg"].keys()) + screener_conf['additional_assets']) )
+
+   return sorted([*{*list(dca_conf["asset_exchg"].keys()) + screener_conf['additional_assets']}])
 
 
 def table(sort_by: str):
