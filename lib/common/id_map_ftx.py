@@ -6,12 +6,15 @@ id_to_ftx={
     "axie-infinity":   "AXS/USD",
     "basic-attention-token": "BAT/USD",
     "bitcoin":         "BTC/USD",
+    "defi-land":       "DFL/USD",
     "enjincoin":       "ENJ/USD",
     "ethereum":        "ETH/USD",
     "fantom":          "FTM/USD",
     "ftx-token":       "FTT/USD",
+    "genopets":        "GENE/USD",
     "havven":          "SNX/USD",
     "media-network":   "MEDIA/USD",
+    "monkeyball":      "MBS/USD",
     "nexo":            "NEXO/USD",
     "raydium":         "RAY/USD",
     "ripple":          "XRP/USD",
@@ -20,6 +23,7 @@ id_to_ftx={
     "solfarm":         "TULIP/USD",
     "star-atlas-dao":  "POLIS/USD",
     "star-atlas":      "ATLAS/USD",
+    "starlaunch":      "STARS/USD",  
     "the-sandbox":     "SAND/USD",
 
     #stocks
