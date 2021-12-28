@@ -331,3 +331,29 @@ class Poloniex:
         return self._post("cancelLoanOffer",{
             'orderNumber':orderID,
             })
+
+    def returnOpenLoanOffers(self) -> dict:
+        '''
+        Returns your open loan offers for each currency.
+        Args:
+            None
+            
+        Output Fields:
+            id	        The identification number of this offer.
+            rate	    Daily lending rate.
+            amount	    The total amount offered for this loan.
+            duration	The maximum number of days offered for this loan.
+            autoRenew	Denotes if this offer will be reinstated with the same settings after having been taken.
+            date	    The UTC date at which this loan offer was created.
+
+        { "BTC":
+            [ { "id": 1002015083,
+                "rate": "0.01500000",
+                "amount": "0.10000000",
+                "duration": 2,
+                "autoRenew": 0,
+                "date": "2018-10-26 20:26:46" } ] }
+
+        https://docs.poloniex.com/#returnopenloanoffers
+        '''
+        return self._post("returnOpenLoanOffers")

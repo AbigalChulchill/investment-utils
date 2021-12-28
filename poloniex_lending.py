@@ -1,4 +1,4 @@
-import argparse, time, yaml
+import time, yaml
 from pandas import DataFrame
 
 from lib.common.msg import *
@@ -30,35 +30,44 @@ class Client:
         return qty
 
     def get_APR(self) -> tuple[float,float]:
-        """  current lend rates """
+        """ current lend rates """
         r = self._api.returnLoanOrders("USDT")['offers']
         df = DataFrame.from_dict(r,dtype=float)
         max_r = dpr_to_aprp(df['rate'][:3].max())
         min_r = dpr_to_aprp(df['rate'][:3].min())
         return min_r,max_r
 
-    def _cancel_offer(self) -> bool:
-        """ 
-        Return:
-            True if offer has been canceled successfully.
-            False if offer not existing or if it has been already accepted.
-        """
+    def _is_loan_offer_open(self):
+        """ check if _loan_offer_id offer is open """
+        open_offers  = self._api.returnOpenLoanOffers()
+        if 'USDT' in open_offers:
+            matches = [x for x in open_offers['USDT'] if x['id'] == self._loan_offer_id]
+            return len(matches) != 0
+        return False
+
+    def _cancel_offer(self):
+        """ unconditionally cancels offer by _loan_offer_id """
         if self._loan_offer_id:
             cancel_result = self._api.cancelLoanOffer(self._loan_offer_id)
-            if 'success' in cancel_result and cancel_result['success']:
-                print(f"canceled an existing offer")
-                return True
-            else:
-                return False
+            if not ('success' in cancel_result and cancel_result['success']):
+                raise RuntimeError("unable to cancel offer")
+            print(f"canceled an existing offer")    
             self._loan_offer_id = 0
 
 
     def check_expired_loan_offer(self):
-        if time.time() > self._loan_offer_expiration:
-            self._loan_offer_expiration = 0
-            if self._cancel_offer():
-                # also reset cooldown if we canceled an open offer
-                self._loan_offer_cooldown = 0
+        if self._loan_offer_id:
+            if self._is_loan_offer_open():
+                # offer not picked, check for expiration
+                if time.time() > self._loan_offer_expiration:
+                    self._cancel_offer()
+                    self._loan_offer_expiration = 0
+                    self._loan_offer_cooldown = 0
+            else:
+                print(f"offer has been picked by somebody")
+                # offer has been picked
+                self._loan_offer_id = 0
+                self._loan_offer_expiration = 0
 
 
     def create_loan_offer(self, rate: float):
@@ -82,7 +91,7 @@ class Client:
         return self._loan_offer_cooldown - time.time()
 
 
-def status():
+def main():
     cl = Client()
 
     while True:
@@ -107,13 +116,6 @@ def status():
                 cl.create_loan_offer(aprp_to_dpr(test_apr))
 
         time.sleep(conf['delay'])
-
-def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--check',action='store_const', const='True', help='check unused lending balance')
-    # args = parser.parse_args()
-
-    status()
 
 if __name__ == '__main__':
     main()
