@@ -1,5 +1,5 @@
 import argparse, yaml
-from typing import Dict, Any
+from math import nan
 from pandas.core.frame import DataFrame
 from lib.common.market_data import MarketData
 from lib.common.widgets import simple_progress_track
@@ -31,12 +31,18 @@ def table(sort_by: str):
         chg,chg_p = m.get_daily_change(asset)
         heat_score = calc_heat_score(market_price=market_price, ma200=ma200_price, hi200=hi200, rsi=rsi)
         discount_factor = calc_discount_score(market_price=market_price, low=lo200, high=hi200)
+        supply = m.get_total_supply(asset)
+        mcap = m.get_market_cap(asset)
+        vol  = m.get_total_volume(asset)
+        vol_mcap = vol / (mcap if mcap > 0 else nan)
 
         d ={
         "asset": asset,
-        'market cap,M': round(m.get_market_cap(asset) * 0.000001,1),
-        'total supply,M': round(m.get_total_supply(asset) * 0.000001,1),
-        'market price': market_price,
+        'supply,M': round(supply * 0.000001,1),
+        'cap,M': round(mcap * 0.000001,1),
+        'vol,M': round(vol * 0.000001,1),
+        'vol % of cap': round(vol_mcap * 100.0 ,1),
+        'price': market_price,
         'chg':  round(chg,2),
         'chg%':  round(chg_p,1),
         'mean': round(ma200_price,2),

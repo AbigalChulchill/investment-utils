@@ -117,3 +117,6 @@ class MarketData:
 
     def get_total_supply(self, asset: str) -> int:
         return self._provider_flyweight.get(asset, "get_total_supply").get_total_supply(asset)
+
+    def get_total_volume(self, asset: str) -> int:
+        return self._provider_flyweight.get(asset, "get_total_volume").get_total_volume(asset)

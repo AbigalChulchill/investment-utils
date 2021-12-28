@@ -19,6 +19,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
                 "get_historical_bars",
                 "get_market_cap",
                 "get_total_supply",
+                "get_total_volume",
             ]
         else:
             return []
@@ -73,3 +74,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
         d = self._get_cached(asset)
         return  d['total_supply'] if ('total_supply' in d and d['total_supply'] is not None ) else \
                 d['circulating_supply'] if ('circulating_supply' in d and d['circulating_supply'] is not None ) else nan
+
+    def get_total_volume(self, asset: str) -> int:
+        d = self._get_cached(asset)
+        return d['total_volume'] if 'total_volume' in d and d['total_volume'] is not None else nan

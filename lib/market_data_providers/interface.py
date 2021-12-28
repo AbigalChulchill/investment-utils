@@ -20,6 +20,10 @@ class MarketDataProvider(object):
         """return coin total supply or number of outstanding shares of the stock"""
 
     @abstractmethod
+    def get_total_volume(self, asset: str) -> int:
+        """return 24h volume"""
+
+    @abstractmethod
     def get_historical_bars(self, asset: str, days_before: int) -> pd.DataFrame:
         """return historical 1d bars
             Args:
