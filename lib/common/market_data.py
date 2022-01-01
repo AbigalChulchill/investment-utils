@@ -98,7 +98,7 @@ class MarketData:
 
     def get_rsi(self, asset: str) -> float:
         rsi_period = 14
-        df = self._get_historical_bars(asset, rsi_period)
+        df = self._get_historical_bars(asset, 50)
         r = None
         if df['close'].size > rsi_period:
             r = talib.RSI(df['close'], rsi_period).iat[-1]
