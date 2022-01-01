@@ -33,8 +33,9 @@ class Client:
         """ current lend rates """
         r = self._api.returnLoanOrders("USDT")['offers']
         df = DataFrame.from_dict(r,dtype=float)
-        max_r = dpr_to_aprp(df['rate'][:3].max())
-        min_r = dpr_to_aprp(df['rate'][:3].min())
+        depth = conf['apr_table_lookup_depth']
+        max_r = dpr_to_aprp(df['rate'][:depth].max())
+        min_r = dpr_to_aprp(df['rate'][:depth].min())
         return min_r,max_r
 
     def _is_loan_offer_open(self):

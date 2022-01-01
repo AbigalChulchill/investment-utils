@@ -13,3 +13,6 @@ offer_cooldown: 1800
 
 # only create offers if existing top offers' APR is greater or equal to this value
 min_apr: 10
+
+# number of entries from the top to consider
+apr_table_lookup_depth: 5
