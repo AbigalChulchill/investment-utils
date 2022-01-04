@@ -79,15 +79,20 @@ def get_main_token_of_liquidity_pair(lp):
     return lp.replace("LP","").replace("-USDT","").replace("-USDC","").replace("we","").strip()
 
 
-def list_positions():
-    ftx = FtxClient()
-    tulip = TulipClient()
-    solscan = Solscan(conf['lyf_account'])
-    kill_thr = conf['kill_buffer_alert_threshold'] if 'kill_buffer_alert_threshold' in conf else 10
+class CmdListPositions:
+    def __init__(self):
+        self.ftx = FtxClient()
+        self.tulip = TulipClient()
+        self.solscan = Solscan(conf['lyf_account'])
+        self.kill_thr = conf['kill_buffer_alert_threshold'] if 'kill_buffer_alert_threshold' in conf else 10
 
-    while True:
-
+    def do_action(self):
         reread_conf()
+
+        tulip = self.tulip
+        ftx = self.ftx
+        solscan = self.solscan
+        kill_thr = self.kill_thr
 
         tulip_lyf_positions = tulip.get_lyf_positions()
 
@@ -166,8 +171,6 @@ def list_positions():
         print()
 
 
-        time.sleep(60)
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -177,7 +180,13 @@ def main():
     reread_conf()
 
     if args.list:
-        list_positions()
+        cmd = CmdListPositions()
+        while True:
+            try:
+                cmd.do_action()
+                time.sleep(60)
+            except:
+                time.sleep(1)
 
 
 if __name__ == '__main__':
