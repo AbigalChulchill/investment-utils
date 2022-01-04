@@ -69,7 +69,7 @@ def table(sort_by: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--overview',action='store_const', const='True', help='show overview')
-    parser.add_argument('--sort-by', type=str, default='market cap,M', help='Label of the column to sort screener table by')
+    parser.add_argument('--sort-by', type=str, default='cap,M', help='Label of the column to sort screener table by')
     args = parser.parse_args()
 
     table(sort_by=args.sort_by)
