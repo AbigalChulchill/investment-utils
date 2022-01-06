@@ -1,7 +1,7 @@
 ---
 
-# voice alert if kill buffer gets below this value
-kill_buffer_alert_threshold: 10
+# maximum skew of debt ratio before alerts will begin
+debt_skew_threshold_percent: 10
 
 # wallet for LYF farm
 lyf_account: <wallet>

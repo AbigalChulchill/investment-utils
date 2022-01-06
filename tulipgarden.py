@@ -10,6 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from lib.common.msg import *
+from lib.common.market_data import MarketData
+from lib.common.id_ticker_map import id_to_ticker
 from lib.trader import api_keys_config
 from lib.trader import ftx_api
 from lib.defi.solscan_api import Solscan
@@ -64,6 +66,12 @@ class TulipClient:
         for e in WebDriverWait(self._driver,60).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "your-positions-table__row-item"))):
             data_cols = e.find_elements_by_class_name("your-positions-table__row-item__cell")
             lp_name = e.find_element_by_class_name("your-positions-table__row-item__asset__text-name").text
+            debt_value_container = data_cols[1].find_elements_by_class_name("position-breakup__item")
+            #print("debt_value_container", debt_value_container)
+            debt_value_token = debt_value_container[0].find_element_by_class_name("position-breakup__item-value").text
+            #print("debt_value_token", debt_value_token)
+            debt_value_stable = debt_value_container[1].find_element_by_class_name("position-breakup__item-value").text
+            #print("debt_value_stable", debt_value_stable)
             equity_value = data_cols[2].find_element_by_xpath("./div").text
             kill_buffer = data_cols[3].find_element_by_xpath("./div").text
             
@@ -71,9 +79,21 @@ class TulipClient:
                 'LP': lp_name,
                 'tulip_equity_value': float(equity_value.replace("$","").replace(",","").strip()),
                 'tulip_kill_buffer': float(kill_buffer.replace("%","").replace(",","").strip()),
+                'tulip_debt_value_token': float(debt_value_token.replace(",","").strip()),
+                'tulip_debt_value_stable': float(debt_value_stable.replace(",","").strip()),
             })
+        #print(DataFrame.from_dict(d).to_string())
         return d
-        
+
+
+class MarketPriceClient:
+    def __init__(self):
+        self._market_data = MarketData()
+
+    def get_token_price(self, ticker: str):
+        token_id = [k for k,v in id_to_ticker.items() if v == ticker][0]
+        return self._market_data.get_market_price(token_id)
+
  
 def get_main_token_of_liquidity_pair(lp):
     return lp.replace("LP","").replace("-USDT","").replace("-USDC","").replace("we","").strip()
@@ -84,7 +104,6 @@ class CmdListPositions:
         self.ftx = FtxClient()
         self.tulip = TulipClient()
         self.solscan = Solscan(conf['lyf_account'])
-        self.kill_thr = conf['kill_buffer_alert_threshold'] if 'kill_buffer_alert_threshold' in conf else 10
 
     def do_action(self):
         reread_conf()
@@ -92,7 +111,7 @@ class CmdListPositions:
         tulip = self.tulip
         ftx = self.ftx
         solscan = self.solscan
-        kill_thr = self.kill_thr
+        market_price = MarketPriceClient()
 
         tulip_lyf_positions = tulip.get_lyf_positions()
 
@@ -100,26 +119,17 @@ class CmdListPositions:
         ftx_hedged_short_positions_pnl = ftx.get_positions_pnl()
 
         tulip_lyf_positions_ftx_hedged= []
-        tulip_lyf_positions_self_hedged_d = defaultdict(list)
         tulip_lyf_positions_self_hedged = []
 
         for x in tulip_lyf_positions:
             main_token_of_lp = get_main_token_of_liquidity_pair(x['LP'])
+            xx = x
+            xx['current_price'] = market_price.get_token_price(main_token_of_lp)
             if main_token_of_lp in ftx_hedged_short_positions_pnl:
-                tulip_lyf_positions_ftx_hedged.append(x)
+                tulip_lyf_positions_ftx_hedged.append(xx)
             else:
-                tulip_lyf_positions_self_hedged_d[x['LP']].append(x)
+                tulip_lyf_positions_self_hedged.append(xx)
 
-        # group long and short positions by LP
-        for k,x in tulip_lyf_positions_self_hedged_d.items():
-            net_value = sum([a['tulip_equity_value'] for a in x])
-            min_kill_buf = min([a['tulip_kill_buffer'] for a in x])
-            r = {
-                'LP': k,
-                'net_value' : net_value,
-                'min_kill_buffer' : min_kill_buf,
-            }
-            tulip_lyf_positions_self_hedged.append(r)
 
 
         print()
@@ -133,15 +143,11 @@ class CmdListPositions:
         if df_tulip_long_lyf_positions.size > 0:
             df_tulip_long_lyf_positions['ftx_hedged_short_pnl'] = [ ftx_hedged_short_positions_pnl[ get_main_token_of_liquidity_pair(x) ]  for x in df_tulip_long_lyf_positions['LP']]
             df_tulip_long_lyf_positions['ftx_kill_buffer'] = (ftx.account['marginFraction'] - ftx.account['maintenanceMarginRequirement'])*100 
-            df_tulip_long_lyf_positions['net_value'] = df_tulip_long_lyf_positions['tulip_equity_value'] + df_tulip_long_lyf_positions['ftx_hedged_short_pnl']
-            df_tulip_long_lyf_positions['pnl'] = df_tulip_long_lyf_positions['net_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
+            df_tulip_long_lyf_positions['tulip_equity_value'] = df_tulip_long_lyf_positions['tulip_equity_value'] + df_tulip_long_lyf_positions['ftx_hedged_short_pnl']
+            df_tulip_long_lyf_positions['pnl'] = df_tulip_long_lyf_positions['tulip_equity_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
             print(df_tulip_long_lyf_positions.sort_values('LP').to_string(index=False))
             print()
 
-            if df_tulip_long_lyf_positions['tulip_kill_buffer'].min() < kill_thr:
-                VoiceNotification().say("tulip kill buffer is low")
-            if df_tulip_long_lyf_positions['ftx_kill_buffer'].min() < kill_thr:
-                VoiceNotification().say("FTX kill buffer is low")
 
         print()
         print("Neutral / self hedged")
@@ -149,12 +155,27 @@ class CmdListPositions:
     
         df_tulip_neutral_lyf_positions = DataFrame.from_dict(tulip_lyf_positions_self_hedged)
         if df_tulip_neutral_lyf_positions.size > 0:
-            df_tulip_neutral_lyf_positions['pnl'] = df_tulip_neutral_lyf_positions['net_value'] - [ conf['lyf_position_entry_value'][x] for x in df_tulip_neutral_lyf_positions['LP'] ]
+            df_tulip_neutral_lyf_positions['debt_skew'] =round( df_tulip_neutral_lyf_positions['tulip_debt_value_token'] / 3 * df_tulip_neutral_lyf_positions['current_price'] /  df_tulip_neutral_lyf_positions['tulip_debt_value_stable'], 2)
+            df_tulip_neutral_lyf_positions['pnl'] = df_tulip_neutral_lyf_positions['tulip_equity_value'] - [ conf['lyf_position_entry_value'][x] for x in df_tulip_neutral_lyf_positions['LP'] ]
             print(df_tulip_neutral_lyf_positions.sort_values('LP').to_string(index=False))
 
-            if df_tulip_neutral_lyf_positions['min_kill_buffer'].min() < kill_thr:
-                VoiceNotification().say("tulip kill buffer is low")
-        
+            skew_thr = conf['debt_skew_threshold_percent']
+            unbalanced_list =[]
+            for i,x in df_tulip_neutral_lyf_positions.iterrows():
+                if x['debt_skew'] > 1+(skew_thr*0.01) or x['debt_skew'] < 1-(skew_thr*0.01):
+                    if x['debt_skew']  > 1: # need to borrow more stable
+                        need_borrow_stable = x['tulip_debt_value_token'] / 3 * x['current_price']  - x['tulip_debt_value_stable']
+                        if need_borrow_stable > 15:
+                            print(f"{x['LP']}: debt unbalanced: you need to borrow {round(need_borrow_stable,2)} more USDC")
+                            unbalanced_list.append(x['LP'])
+                    elif x['debt_skew']  < 1: # need to borrow more unstable
+                        need_borrow_unstable = x['tulip_debt_value_stable'] / x['current_price'] - x['tulip_debt_value_token'] / 3
+                        if need_borrow_unstable * x['current_price'] > 15:
+                            print(f"{x['LP']}: debt unbalanced: you need to borrow {round(need_borrow_unstable,6)} more {get_main_token_of_liquidity_pair(x['LP'])}")
+                            unbalanced_list.append(x['LP'])
+            if len(unbalanced_list) > 0:
+                VoiceNotification().say(f"tulip {', '.join(unbalanced_list)} debt is unbalanced")
+       
 
         lyf_account_stablecoins_balance = solscan.get_token_qty('USDC') + solscan.get_token_qty('USDT')
 
@@ -162,7 +183,7 @@ class CmdListPositions:
         if  df_tulip_long_lyf_positions.size > 0:
             accounts_value += df_tulip_long_lyf_positions['tulip_equity_value'].sum()
         if df_tulip_neutral_lyf_positions.size > 0:
-            accounts_value += df_tulip_neutral_lyf_positions['net_value'].sum()
+            accounts_value += df_tulip_neutral_lyf_positions['tulip_equity_value'].sum()
 
         accounts_value += lyf_account_stablecoins_balance + ftx.get_account_value()
         print()
@@ -181,11 +202,13 @@ def main():
 
     if args.list:
         cmd = CmdListPositions()
+
         while True:
             try:
                 cmd.do_action()
                 time.sleep(60)
-            except:
+            except Exception as e:
+                print(f"unexpected: {e}")
                 time.sleep(1)
 
 
