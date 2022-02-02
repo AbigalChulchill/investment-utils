@@ -1,5 +1,6 @@
 import datetime, argparse, re, yaml, time, traceback, logging, functools
 from collections import defaultdict
+from collections.abc import Callable
 from pandas.core.frame import DataFrame
 from math import nan, isclose
 from typing import List, NamedTuple, Tuple, Dict, Any
@@ -317,6 +318,18 @@ def accumulate(assets: List[str], dry: bool):
     accumulate_main_pass(assets_quota_factors, dry, quota_asset)
 
 
+def accumulate_btc_limit(limit: float, acc_fun: Callable):
+    print(f"waiting for BTC price < {limit}")
+    while True:
+        th = TradeHelper()
+        btc_price = th.get_market_price("bitcoin")
+        print(f"BTC price = {btc_price}")
+        if btc_price < limit:
+            acc_fun()
+            break
+        time.sleep(60)
+
+
 def remove(asset: str, qty: str, dry: bool):
     msg_selling(asset, qty)
 
@@ -580,6 +593,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--add', action='store_const', const='True', help='Accumulate positions. Optional arg: USD quota, valid only if --coin also specified')
+    parser.add_argument('--add-btc-limit', type=float, help='Accumulate positions automatically but wait until BTC price gets lower than specified value')
     parser.add_argument('--remove', action='store_const', const='True', help='Partially remove from a position')
     parser.add_argument('--dry', action='store_const', const='True', help='Dry run: do not actually buy or sell, just report on what will be done')
     parser.add_argument('--burn', type=float, help='Remove coins from equity without selling (as if lost, in other circumstances). Requires --coin')
@@ -604,6 +618,8 @@ def main():
             accumulate_one(asset=args.coin, quota=float(args.qty), dry=args.dry)
         else:
             accumulate(assets=ds['auto_accumulate_list'], dry=args.dry)
+    elif args.add_btc_limit:
+        accumulate_btc_limit(args.add_btc_limit, lambda : accumulate(assets=ds['auto_accumulate_list'], dry=args.dry) )
     elif args.remove:
         assert args.coin
         assert args.qty
