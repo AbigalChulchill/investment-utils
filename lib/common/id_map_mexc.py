@@ -1,6 +1,3 @@
-id_to_mexc={
-    "gitcoin":       "GTC_USDT",
-    "harmony":       "ONE_USDT",
-    "cosmos":        "ATOM_USDT",
-    "arweave":       "AR_USDT",
-}
+from lib.common.yaml_id_maps import get_id_map_by_key
+
+id_to_mexc = get_id_map_by_key("id_to_mexc")

@@ -1,19 +1,4 @@
-id_to_poloniex={
-    "bitcoin":          "USDT_BTC",
-    "dogecoin":         "USDT_DOGE",
-    "ethereum":         "USDT_ETH",
-    "matic-network":    "USDT_MATIC",
-    "ripple":           "USDT_XRP",
-    "cardano":          "USDT_ADA",
-    "gitcoin":          "USDT_GTC",
-    "shiba-inu":        "USDT_SHIB",
-    "curve-dao-token":  "USDT_CRV",
-    "aave":             "USDT_AAVE",
-    "0x":               "USDT_ZRX",
-    "havven":           "USDT_SNX",
-    "ethereum-classic": "USDT_ETC",
-    "polkadot":         "USDT_DOT",
-    "basic-attention-token": "USDT_BAT",
-    "amp-token":        "USDT_AMP",
-    "pancakeswap-token":"USDT_CAKE",
-}
+from lib.common.yaml_id_maps import get_id_map_by_key
+
+id_to_poloniex = get_id_map_by_key("id_to_poloniex")
+

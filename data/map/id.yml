@@ -1,0 +1,243 @@
+---
+
+id_to_bitrue:
+  gitcoin:                GTCUSDT
+
+id_to_binance:
+  0x:                     ZRXUSDT
+  aave:                   AAVEUSDT
+  algorand:               ALGOUSDT
+  arweave:                ARUSDT
+  avalanche-2:            AVAXUSDT
+  axie-infinity:          AXSUSDT
+  basic-attention-token:  BATUSDT
+  binancecoin:            BNBUSDT
+  bitcoin:                BTCUSDT
+  cardano:                ADAUSDT
+  cosmos:                 ATOMUSDT
+  cosmos:                 ATOMUSDT
+  curve-dao-token:        CRVUSDT
+  decentraland:           MANAUSDT
+  dogecoin:               DOGEUSDT
+  enjincoin:              ENJUSDT
+  ethereum-classic:       ETCUSDT
+  ethereum:               ETHUSDT
+  fantom:                 FTMUSDT
+  ftx-token:              FTTUSDT
+  gitcoin:                GTCUSDT
+  harmony:                ONEUSDT
+  havven:                 SNXUSDT
+  hedera-hashgraph:       HBARUSDT
+  illuvium:               ILVUSDT
+  matic-network:          MATICUSDT
+  near:                   NEARUSDT
+  pancakeswap-token:      CAKEUSDT
+  polkadot:               DOTUSDT
+  raydium:                RAYUSDT
+  ripple:                 XRPUSDT
+  serum:                  SRMUSDT
+  shiba-inu:              SHIBUSDT
+  solana:                 SOLUSDT
+  sushi:                  SUSHIUSDT
+  terra-luna:             LUNAUSDT
+  tezos:                  XTZUSDT
+  the-sandbox:            SANDUSDT
+  tron:                   TRXUSDT
+  uniswap:                UNIUSDT
+
+  #fiat
+  UAH:                    USDTUAH_r
+
+
+id_to_ftx:
+  #crypto
+  0x:                     ZRX/USD
+  aave:                   AAVE/USD
+  alien-worlds:           TLM/USD
+  aurory:                 AURY/USD
+  avalanche-2:            AVAX/USD
+  axie-infinity:          AXS/USD
+  basic-attention-token:  BAT/USD
+  bitcoin:                BTC/USD
+  chiliz:                 CHZ/USD
+  chromaway:              CHR/USD
+  decentraland:           MANA/USD
+  defi-land:              DFL/USD
+  enjincoin:              ENJ/USD
+  ethereum:               ETH/USD
+  fantom:                 FTM/USD
+  ftx-token:              FTT/USD
+  gala:                   GALA/USD
+  genopets:               GENE/USD
+  havven:                 SNX/USD
+  matic-network:          MATIC/USD
+  media-network:          MEDIA/USD
+  monkeyball:             MBS/USD
+  my-neighbor-alice:      ALICE/USD
+  nexo:                   NEXO/USD
+  polkadot:               DOT/USD
+  raydium:                RAY/USD
+  ripple:                 XRP/USD
+  serum:                  SRM/USD
+  solana:                 SOL/USD
+  solfarm:                TULIP/USD
+  star-atlas-dao:         POLIS/USD
+  star-atlas:             ATLAS/USD
+  starlaunch:             STARS/USD  
+  the-open-network:       TONCOIN/USD
+  the-sandbox:            SAND/USD
+  #stocks
+  AAPL:                   AAPL/USD
+  ABNB:                   ABNB/USD
+  ACB:                    ACB/USD
+  AMC:                    AMC/USD
+  AMD:                    AMD/USD
+  AMZN:                   AMZN/USD
+  ARKK:                   ARKK/USD
+  BABA:                   BABA/USD
+  BILI:                   BILI/USD
+  BNTX:                   BNTX/USD
+  CGC:                    CGC/USD
+  COIN:                   COIN/USD
+  CRON:                   CRON/USD
+  FB:                     FB/USD
+  GBTC:                   GBTC/USD
+  GDX:                    GDX/USD
+  GDXJ:                   GDXJ/USD
+  GOOGL:                  GOOGL/USD
+  HOOD:                   HOOD/USD
+  MRNA:                   MRNA/USD
+  MSTR:                   MSTR/USD
+  NFLX:                   NFLX/USD
+  NIO:                    NIO/USD
+  NVDA:                   NVDA/USD
+  PAXG:                   PAXG/USD
+  PYPL:                   PYPL/USD
+  SLV:                    SLV/USD  
+  SPY:                    SPY/USD
+  SQ:                     SQ/USD
+  TLRY:                   TLRY/USD
+  TSLA:                   TSLA/USD
+  TSM:                    TSM/USD
+  TWTR:                   TWTR/USD
+  USO:                    USO/USD
+  ZM:                     ZM/USD
+
+
+id_to_mexc:
+  gitcoin:                GTC_USDT
+  harmony:                ONE_USDT
+  cosmos:                 ATOM_USDT
+  arweave:                AR_USDT
+
+
+id_to_okex:
+  algorand:               ALGO-USDT
+  avalanche-2:            AVAX-USDT
+  axie-infinity:          AXS-USDT
+  cosmos:                 ATOM-USDT
+  curve-dao-token:        CRV-USDT
+  decentraland:           MANA-USDT
+  hedera-hashgraph:       HBAR-USDT
+  illuvium:               ILV-USDT
+  matic-network:          MATIC-USDT
+  near:                   NEAR-USDT
+  polkadot:               DOT-USDT
+  terra-luna:             LUNA-USDT
+  tezos:                  XTZ-USDT
+  verasity:               VRA-USDT
+
+
+id_to_poloniex:
+  0x:                     USDT_ZRX
+  aave:                   USDT_AAVE
+  amp-token:              USDT_AMP
+  basic-attention-token:  USDT_BAT
+  bitcoin:                USDT_BTC
+  cardano:                USDT_ADA
+  curve-dao-token:        USDT_CRV
+  dogecoin:               USDT_DOGE
+  ethereum-classic:       USDT_ETC
+  ethereum:               USDT_ETH
+  gitcoin:                USDT_GTC
+  havven:                 USDT_SNX
+  matic-network:          USDT_MATIC
+  pancakeswap-token:      USDT_CAKE
+  polkadot:               USDT_DOT
+  ripple:                 USDT_XRP
+  shiba-inu:              USDT_SHIB
+
+
+id_to_ticker:
+  0x:                     ZRX
+  aave:                   AAVE
+  aleph:                  ALEPH
+  algorand:               ALGO
+  alien-worlds:           TLM
+  allbridge:              ABR
+  amp-token:              AMP
+  arweave:                AR
+  aurory:                 AURY
+  avalanche-2:            AVAX
+  axie-infinity:          AXS
+  basic-attention-token:  BAT
+  basis-markets:          BASIS
+  binancecoin:            BNB
+  bitcoin:                BTC
+  cardano:                ADA
+  cave:                   CAVE
+  chiliz:                 CHZ
+  chromaway:              CHR
+  cope:                   COPE
+  cosmos:                 ATOM
+  curve-dao-token:        CRV
+  decentraland:           MANA
+  defi-land:              DFL
+  dogecoin:               DOGE
+  dydx:                   DYDX
+  enjincoin:              ENJ
+  ethereum-classic:       ETC
+  ethereum:               ETH
+  fantom:                 FTM
+  flow:                   FLOW
+  ftx-token:              FTT
+  gala:                   GALA
+  genesysgo-shadow:       SHDW
+  genopets:               GENE
+  gitcoin:                GTC
+  harmony:                ONE
+  havven:                 SNX
+  hedera-hashgraph:       HBAR
+  hoge-finance:           HOGE
+  illuvium:               ILV
+  matic-network:          MATIC
+  media-network:          MEDIA
+  monkeyball:             MBS
+  my-neighbor-alice:      ALICE
+  near:                   NEAR
+  nexo:                   NEXO
+  only1:                  LIKE
+  orca:                   ORCA
+  pancakeswap-token:      CAKE
+  polkadot:               DOT
+  raydium:                RAY
+  realy-metaverse:        REAL
+  ripple:                 XRP
+  samoyedcoin:            SAMO
+  serum:                  SRM
+  shiba-inu:              SHIB
+  solana:                 SOL
+  solfarm:                TULIP
+  star-atlas-dao:         POLIS
+  star-atlas:             ATLAS
+  starlaunch:             STARS
+  sushi:                  SUSHI
+  terra-luna:             LUNA
+  tezos:                  XTZ
+  the-open-network:       TONCOIN
+  the-sandbox:            SAND
+  theta-token:            THETA
+  tron:                   TRX
+  uniswap:                UNI
+  verasity:               VRA
+  yield-guild-games:      YGG
