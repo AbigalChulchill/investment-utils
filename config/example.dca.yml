@@ -49,6 +49,10 @@ quota_fixed_factor:
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False
 
+# if True, asset from auto_accumulate_list is only processed if price movement during last check_correction_min_sequential_days is downward
+check_correction: False
+check_correction_min_sequential_days: 2
+
 # if True, asset from auto_accumulate_list is only processed if daily growth does not exceed threshold %
 check_pump: False
 check_pump_threshold: 8

@@ -73,6 +73,26 @@ class MarketData:
             daily_change_percent = (current_price - previous_close) / previous_close * 100
         return daily_change,daily_change_percent
 
+    def get_short_term_trend(self, asset: str, length_days: int) -> str:
+        df = self._get_historical_bars(asset, length_days)
+        c_up = 0
+        c_down = 0
+        i = -length_days
+        while i <= -1:
+            if df['open'].iat[i] <= df['close'].iat[i]:
+                c_up += 1
+            else:
+                c_down += 1
+            i += 1
+
+        if c_up == length_days:
+            return "up"
+        elif c_down == length_days:
+            return "down"
+        else:
+            return "side"
+
+
     def get_avg_price_n_days(self, asset: str, days_before: int, ma_type: str="auto") -> float:
         df = self._get_historical_bars(asset, days_before)
         if df['close'].size > 1:

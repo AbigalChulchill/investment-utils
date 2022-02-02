@@ -98,6 +98,9 @@ class TradeHelper:
     def get_total_supply(self, asset: str) -> int:
         return self.market_data.get_total_supply(asset)
 
+    def get_short_term_trend(self, asset: str, length_days: int) -> str:
+        return self.market_data.get_short_term_trend(asset,length_days)
+
 
 class Db:
     def __init__(self):
@@ -208,6 +211,10 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
         if ds['check_market_open']:
             if not (th.is_tradeable(asset)):
                 return False, "market is closed"
+        if ds['check_correction']:
+            trend = th.get_short_term_trend(asset, ds['check_correction_min_sequential_days'])
+            if trend != 'down':
+                return False, "not a correction"
         if ds['check_pump']:
             if th.get_daily_change(asset) > ds['check_pump_threshold']:
                 return False, "probably pump today"

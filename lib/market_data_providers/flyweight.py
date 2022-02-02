@@ -31,6 +31,6 @@ class MarketDataProviderFlyweight:
         for id in self._prioritylist:
             prov = self._map[id]
             if method in prov.get_supported_methods(asset):
-                #print(f"MarketDataProvider: id {asset} handled by {id}")
+                #print(f"MarketDataProvider: {method}({asset}) handled by {id}")
                 return prov
         raise ValueError(f"{asset} market data unobtainable")
