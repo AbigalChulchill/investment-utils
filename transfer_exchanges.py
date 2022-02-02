@@ -12,7 +12,7 @@ from lib.common.misc import get_first_decimal_place
 from rich import print as rprint
 
 
-def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_value: float, min_spread: float):
+def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_value: float, exact_trade_qty: float, min_spread: float):
     trader_src = TraderFactory.create_dca(asset, src_ex)
     trader_dest = TraderFactory.create_dca(asset, dest_ex)
 
@@ -22,8 +22,11 @@ def transfer_asset(asset: str, qty: str, src_ex: str, dest_ex: str, max_trade_va
         qty = float(qty)
 
     price = MarketData().get_market_price(asset)
-    lot_size = max_trade_value / price
-    lot_size = round(lot_size, get_first_decimal_place(lot_size))
+    if exact_trade_qty is not None:
+        lot_size = exact_trade_qty
+    else:
+        lot_size = max_trade_value / price
+        lot_size = round(lot_size, get_first_decimal_place(lot_size))
     lot_size = min(lot_size, qty)
     rprint(f"[bold blue]will transfer {qty} using lot size {lot_size} based on max trade value of {max_trade_value} USD[/]")
 
@@ -89,6 +92,7 @@ def main():
     parser.add_argument('--src', type=str, help='source exchange')
     parser.add_argument('--dest', type=str, help='destination exchange')
     parser.add_argument('--max-lot-size', type=float, default=15.0, help='max equivalent USD value of tokens/shares traded at once')
+    parser.add_argument('--exact-lot-qty', type=float, default=None, help='exact amout of tokens/shares traded at once')
     parser.add_argument('--min-spread', type=float, default=0.1, help='min threshold diff %% between sell price and buy price, can be negative if sell price is lower than buy price')
     args = parser.parse_args()
 
@@ -98,6 +102,7 @@ def main():
         src_ex=args.src,
         dest_ex=args.dest,
         max_trade_value=args.max_lot_size,
+        exact_trade_qty=args.exact_lot_qty,
         min_spread=args.min_spread)
 
 
