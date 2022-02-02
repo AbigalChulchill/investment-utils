@@ -46,12 +46,6 @@ quota_fixed_factor:
   bitcoin:            1.2
   ethereum:           1.2
 
-# moving average period to calculate average price to compare current price to
-quota_factor_average_days: 200
-
-# quota factor is upper limited to quota_factor_max
-quota_factor_max: 2
-
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False
 

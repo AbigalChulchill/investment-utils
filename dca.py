@@ -173,10 +173,6 @@ def print_account_balances():
 def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
     """ return (daily_qty, quota_factor) """
     quota_factor = get_quota_fixed_factor(asset)
-    avg_price_last_n_days = th.get_avg_price_n_days(asset, ds['quota_factor_average_days'])
-    current_price = th.get_market_price(asset)
-    quota_factor *= avg_price_last_n_days / current_price
-    quota_factor = min(quota_factor, ds['quota_factor_max'])
     daily_qty = round(quota_asset * quota_factor)
     return (daily_qty,quota_factor)
 
