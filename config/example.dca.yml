@@ -7,12 +7,6 @@ asset_exchg:
   solana:             ftx
   AAPL:               ftx
   
-
-# list of assets to be accumulated when using --add with no additional parameters
-auto_accumulate_list:
-  - bitcoin
-  - ethereum
-
 # asset grouping as shown in portfolio structure
 categories:
   hedge_crypto:
@@ -22,6 +16,13 @@ categories:
     - solana
   stocks:
     - AAPL
+
+
+# list of asset categories to be accumulated when using --add with no additional parameters
+auto_accumulate_categories:
+  - hedge_crypto
+  - stocks
+
 
 # additional asset categories not managed by DCA, only for portfolio structure accounting
 # 'currency' can be 'USD' or any id supported by MarketDataProvider
@@ -40,11 +41,12 @@ quota_usd: 10
 # to ensure that sum of their usd value is not exceeding this parameter
 total_quota_usd: 100
 
-# applied unconditinally to quota_usd. The final factor is a product of all active factors.
-# Default is 1.0 if not specified
+# multiplicative with quota_usd. Category or asset names can be specified.
+# Asset factor overrides category factor the asset is in, if both are specified.
+# Optional.
 quota_fixed_factor:
-  bitcoin:            1.2
-  ethereum:           1.2
+  hedge_crypto:     1
+  altcoins:         0.5
 
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False

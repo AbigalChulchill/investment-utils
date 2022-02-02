@@ -41,11 +41,13 @@ def create_trader(coin: str) -> Trader:
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_dummy(coin)
 
-def get_quota_fixed_factor(coin: str):
+def get_quota_fixed_factor(category: str, asset: str):
     param = 'quota_fixed_factor'
     if param in ds.keys():
-        if coin in ds[param].keys():
-            return ds[param][coin]
+        if asset in ds[param].keys():
+            return ds[param][asset]
+        if category in ds[param].keys():
+            return ds[param][category]
     return 1
 
 def get_asset_category(asset: str) -> str:
@@ -174,9 +176,9 @@ def print_account_balances():
     rprint(df_balances.to_string(index=False))
 
 
-def calc_daily_qty(asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
+def calc_daily_qty(category: str, asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
     """ return (daily_qty, quota_factor) """
-    quota_factor = get_quota_fixed_factor(asset)
+    quota_factor = get_quota_fixed_factor(category, asset)
     daily_qty = round(quota_asset * quota_factor)
     return (daily_qty,quota_factor)
 
@@ -185,7 +187,7 @@ def accumulate_one(asset: str, quota: float, dry: bool):
     db = Db()
     th = TradeHelper()
 
-    daily_quota,quota_factor = (quota,1) if quota else calc_daily_qty(asset, th, ds['quota_usd'])
+    daily_quota,quota_factor = (quota,1)
     msg_buying(asset, daily_quota)
 
     trader: Trader = create_trader(asset)
@@ -235,24 +237,25 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
     return True, ""
 
 
-def accumulate_pre_pass(assets: List[str]) -> Tuple[float, Dict[str,float]]:
+def accumulate_pre_pass() -> Tuple[float, Dict[str,float]]:
     th = TradeHelper()
     total_value = 0
     enabled = {}
-    for asset in simple_progress_track(assets,with_item_text=False):
-        filter_result, filter_reason = passes_acc_filter(asset, th)
-        if not filter_result:
-            rprint(f"[bold]{asset}[/] {filter_reason}, skipping")
-            continue
-        daily_qty,quota_factor = calc_daily_qty(asset, th, ds['quota_usd'])
-        if isclose(quota_factor,0):
-            rprint(f"[bold]{asset}[/] quota = 0, skipping")
-            continue
-        price = th.get_market_price(asset)
-        coin_qty = daily_qty / price
-        value = coin_qty * price
-        total_value += value
-        enabled[asset] = quota_factor
+    for category in ds['auto_accumulate_categories']:
+        for asset in simple_progress_track(ds['categories'][category],with_item_text=False):
+            filter_result, filter_reason = passes_acc_filter(asset, th)
+            if not filter_result:
+                rprint(f"[bold]{asset}[/] {filter_reason}, skipping")
+                continue
+            daily_qty,quota_factor = calc_daily_qty(category, asset, th, ds['quota_usd'])
+            if isclose(quota_factor,0):
+                rprint(f"[bold]{asset}[/] quota = 0, skipping")
+                continue
+            price = th.get_market_price(asset)
+            coin_qty = daily_qty / price
+            value = coin_qty * price
+            total_value += value
+            enabled[asset] = quota_factor
     print()
     return total_value,enabled
 
@@ -305,10 +308,10 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     print_account_balances()
 
 
-def accumulate(assets: List[str], dry: bool):
+def accumulate(dry: bool):
     quota_asset = ds['quota_usd']
     print("estimating value of assets to be bought...")
-    total_value, assets_quota_factors = accumulate_pre_pass(assets)
+    total_value, assets_quota_factors = accumulate_pre_pass()
     rprint(f"estimated total value before limiting: {total_value} USD")
     if total_value > ds['total_quota_usd']:
         quota_asset *= ds['total_quota_usd'] / total_value
@@ -617,9 +620,9 @@ def main():
         if args.coin:
             accumulate_one(asset=args.coin, quota=float(args.qty), dry=args.dry)
         else:
-            accumulate(assets=ds['auto_accumulate_list'], dry=args.dry)
+            accumulate(dry=args.dry)
     elif args.add_btc_limit:
-        accumulate_btc_limit(args.add_btc_limit, lambda : accumulate(assets=ds['auto_accumulate_list'], dry=args.dry) )
+        accumulate_btc_limit(args.add_btc_limit, lambda : accumulate(dry=args.dry) )
     elif args.remove:
         assert args.coin
         assert args.qty
