@@ -1,4 +1,4 @@
-import requests
+import requests, time
 from typing import Optional, Any
 
 API_URI = 'https://public-api.solscan.io'
@@ -28,4 +28,11 @@ class Solscan:
         if len(matching_items) > 0:
             return matching_items[0]['tokenAmount']['uiAmount']
         else:
-            raise ValueError("token not found")
+            raise ValueError(f"token {ticker} not found in the account {self._account}")
+
+    def get_blockchain_transaction_rate(self) -> int:
+        sampling_duration = 10
+        count1 = self._get("/chaininfo")['transactionCount']
+        time.sleep(sampling_duration)
+        count2 = self._get("/chaininfo")['transactionCount']
+        return (count2 - count1) / sampling_duration

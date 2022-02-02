@@ -1,13 +1,14 @@
 ---
 
+# delay between status updates
+update_delay: 60
+
 # maximum skew of debt ratio before alerts will begin
 debt_skew_threshold_percent: 10
+
+# allowed kill buffer value range before alerts wiill begin
+kill_buffer_range: [17.8, 19.2]
 
 # wallet for LYF farm
 lyf_account: <wallet>
 
-# entry value of position for pnl calculation
-# If multiple positions of same LP this value should be total value of all positions.
-lyf_position_entry_value: {}
-#  ATLAS-USDC LP:   100
-#  RAY-USDT LP:     100

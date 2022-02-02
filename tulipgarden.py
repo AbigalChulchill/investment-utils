@@ -67,13 +67,14 @@ class TulipClient:
             data_cols = e.find_elements_by_class_name("your-positions-table__row-item__cell")
             lp_name = e.find_element_by_class_name("your-positions-table__row-item__asset__text-name").text
             debt_value_container = data_cols[1].find_elements_by_class_name("position-breakup__item")
-            #print("debt_value_container", debt_value_container)
             debt_value_token = debt_value_container[0].find_element_by_class_name("position-breakup__item-value").text
-            #print("debt_value_token", debt_value_token)
             debt_value_stable = debt_value_container[1].find_element_by_class_name("position-breakup__item-value").text
-            #print("debt_value_stable", debt_value_stable)
             equity_value = data_cols[2].find_element_by_xpath("./div").text
             kill_buffer = data_cols[3].find_element_by_xpath("./div").text
+
+            equity_value_container = data_cols[2].find_elements_by_class_name("position-breakup__item")
+            equity_value_pnl = equity_value_container[0].find_element_by_class_name("position-breakup__item-value").text
+
             
             d.append({
                 'LP': lp_name,
@@ -81,6 +82,7 @@ class TulipClient:
                 'tulip_kill_buffer': float(kill_buffer.replace("%","").replace(",","").strip()),
                 'tulip_debt_value_token': float(debt_value_token.replace(",","").strip()),
                 'tulip_debt_value_stable': float(debt_value_stable.replace(",","").strip()),
+                'tulip_position_pnl': float(equity_value_pnl.replace("$","").replace(",","").strip()),
             })
         #print(DataFrame.from_dict(d).to_string())
         return d
@@ -111,6 +113,10 @@ class CmdListPositions:
         tulip = self.tulip
         ftx = self.ftx
         solscan = self.solscan
+
+        print(f"solana transaction rate: {solscan.get_blockchain_transaction_rate()} tx/s")
+
+
         market_price = MarketPriceClient()
 
         tulip_lyf_positions = tulip.get_lyf_positions()
@@ -144,7 +150,7 @@ class CmdListPositions:
             df_tulip_long_lyf_positions['ftx_hedged_short_pnl'] = [ ftx_hedged_short_positions_pnl[ get_main_token_of_liquidity_pair(x) ]  for x in df_tulip_long_lyf_positions['LP']]
             df_tulip_long_lyf_positions['ftx_kill_buffer'] = (ftx.account['marginFraction'] - ftx.account['maintenanceMarginRequirement'])*100 
             df_tulip_long_lyf_positions['tulip_equity_value'] = df_tulip_long_lyf_positions['tulip_equity_value'] + df_tulip_long_lyf_positions['ftx_hedged_short_pnl']
-            df_tulip_long_lyf_positions['pnl'] = df_tulip_long_lyf_positions['tulip_equity_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
+            df_tulip_long_lyf_positions['calculated_pnl'] = df_tulip_long_lyf_positions['tulip_equity_value'] -  [ conf['lyf_position_entry_value'][x] for x in df_tulip_long_lyf_positions['LP'] ]
             print(df_tulip_long_lyf_positions.sort_values('LP').to_string(index=False))
             print()
 
@@ -156,12 +162,18 @@ class CmdListPositions:
         df_tulip_neutral_lyf_positions = DataFrame.from_dict(tulip_lyf_positions_self_hedged)
         if df_tulip_neutral_lyf_positions.size > 0:
             df_tulip_neutral_lyf_positions['debt_skew'] =round( df_tulip_neutral_lyf_positions['tulip_debt_value_token'] / 3 * df_tulip_neutral_lyf_positions['current_price'] /  df_tulip_neutral_lyf_positions['tulip_debt_value_stable'], 2)
-            df_tulip_neutral_lyf_positions['pnl'] = df_tulip_neutral_lyf_positions['tulip_equity_value'] - [ conf['lyf_position_entry_value'][x] for x in df_tulip_neutral_lyf_positions['LP'] ]
-            print(df_tulip_neutral_lyf_positions.sort_values('LP').to_string(index=False))
+            df_tulip_neutral_lyf_positions['add_token'] = df_tulip_neutral_lyf_positions['tulip_debt_value_stable'] / df_tulip_neutral_lyf_positions['current_price'] - df_tulip_neutral_lyf_positions['tulip_debt_value_token'] / 3
+            df_tulip_neutral_lyf_positions['add_stable'] = round(df_tulip_neutral_lyf_positions['tulip_debt_value_token'] / 3 * df_tulip_neutral_lyf_positions['current_price']  - df_tulip_neutral_lyf_positions['tulip_debt_value_stable'], 2)
+            #df_tulip_neutral_lyf_positions['calculated_pnl'] = df_tulip_neutral_lyf_positions['tulip_equity_value'] - [ conf['lyf_position_entry_value'][x] for x in df_tulip_neutral_lyf_positions['LP'] ]
+            print(df_tulip_neutral_lyf_positions.sort_values('LP').to_string(index=False, columns=['LP','tulip_equity_value', 'tulip_position_pnl', 'tulip_kill_buffer', 'debt_skew', 'add_stable', 'add_token', 'current_price']))
 
             skew_thr = conf['debt_skew_threshold_percent']
             unbalanced_list =[]
+            checkleverage_list =[]
             for i,x in df_tulip_neutral_lyf_positions.iterrows():
+                if x['tulip_kill_buffer'] < conf['kill_buffer_range'][0] or  x['tulip_kill_buffer'] > conf['kill_buffer_range'][1]:
+                    checkleverage_list.append(x['LP'])
+
                 if x['debt_skew'] > 1+(skew_thr*0.01) or x['debt_skew'] < 1-(skew_thr*0.01):
                     if x['debt_skew']  > 1: # need to borrow more stable
                         need_borrow_stable = x['tulip_debt_value_token'] / 3 * x['current_price']  - x['tulip_debt_value_stable']
@@ -175,6 +187,9 @@ class CmdListPositions:
                             unbalanced_list.append(x['LP'])
             if len(unbalanced_list) > 0:
                 VoiceNotification().say(f"tulip {', '.join(unbalanced_list)} debt is unbalanced")
+            elif len(checkleverage_list) > 0:
+                VoiceNotification().say(f"tulip {', '.join(checkleverage_list)} leverage is out of range")
+                  
        
 
         lyf_account_stablecoins_balance = solscan.get_token_qty('USDC') + solscan.get_token_qty('USDT')
@@ -203,13 +218,15 @@ def main():
     if args.list:
         cmd = CmdListPositions()
 
+        t_next_update = 0
         while True:
-            try:
-                cmd.do_action()
-                time.sleep(60)
-            except Exception as e:
-                print(f"unexpected: {e}")
-                time.sleep(1)
+            if time.time() > t_next_update:
+                try:
+                    cmd.do_action()
+                    t_next_update = time.time() + conf['update_delay']
+                except Exception as e:
+                    print(f"unexpected: {e}")
+            time.sleep(60)
 
 
 if __name__ == '__main__':
