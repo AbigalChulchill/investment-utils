@@ -1,7 +1,7 @@
 import datetime, argparse, re, yaml, time, traceback, logging, functools
 from collections import defaultdict
 from collections.abc import Callable
-from pandas.core.frame import DataFrame
+from pandas.core.frame import DataFrame, Series
 from math import nan, isclose
 from typing import List, NamedTuple, Tuple, Dict, Any
 
@@ -17,7 +17,7 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import *
-from lib.common.misc import is_stock
+from lib.common.misc import calc_raise_percent, is_stock
 from lib.common.widgets import simple_progress_track
 from lib.common.metrics import calc_discount_score
 
@@ -423,13 +423,28 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
         asset_group_pnl_df[asset_group] = df_pnl
 
     df_pnl_one_table = functools.reduce(DataFrame.append, asset_group_pnl_df.values())
+    df_pnl_one_table_nonzero = df_pnl_one_table.loc[df_pnl_one_table['value'] >= 1]
+    df_pnl_one_table_zero = df_pnl_one_table.loc[df_pnl_one_table['value'] < 1]
     # split by is_stock
-    df_pnl_one_table_stocks = df_pnl_one_table.loc[ lambda df: map(is_stock,                  df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
-    df_pnl_one_table_others = df_pnl_one_table.loc[ lambda df: map(lambda x: not is_stock(x), df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    df_pnl_one_table_stocks = df_pnl_one_table_nonzero.loc[ lambda df: map(is_stock,                  df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    df_pnl_one_table_cc = df_pnl_one_table_nonzero.loc[ lambda df: map(lambda x: not is_stock(x), df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
 
-    if df_pnl_one_table_stocks.size > 0 or df_pnl_one_table_others.size > 0 :
+    if df_pnl_one_table_stocks.size > 0 or df_pnl_one_table_cc.size > 0 :
         columns = ["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
-        print_hi_negatives(df_pnl_one_table_others.append(df_pnl_one_table_stocks).to_string(index=False,formatters={'qty':  lambda x: f'{x:8.8f}', },columns=columns,na_rep="~"))
+        d_totals = {'value': df_pnl_one_table['value'].sum(), 'u pnl': df_pnl_one_table['u pnl'].sum()}
+        d_totals['u pnl %'] = round( calc_raise_percent( d_totals['value'] - d_totals['u pnl'], d_totals['value'] ), 2)
+        df = DataFrame()\
+            .append(Series("cryptocurrency"),ignore_index=True)\
+            .append(df_pnl_one_table_cc)\
+            .append(Series("stocks"),ignore_index=True)\
+            .append(df_pnl_one_table_stocks)\
+            .append(Series("closed"),ignore_index=True)\
+            .append(df_pnl_one_table_zero)
+        if not hide_totals:
+            df = df\
+            .append(Series("total"),ignore_index=True)\
+            .append(d_totals, ignore_index=True)
+        print_hi_negatives(df.to_string(index=False,formatters={'qty':  lambda x: f'{x:8.8f}', },columns=columns,na_rep="~"))
     else:
         print("No assets")
     print()
@@ -609,7 +624,7 @@ def main():
     parser.add_argument('--list-positions', action='store_const', const='True', help='Print position stats such as size, break even price, pnl and more')
     parser.add_argument('--sort-by', type=str, default='u pnl %', help='Label of the column to sort position table by')
     parser.add_argument('--hide-private-data', action='store_const', const='True', help='Do not include private data in the --stats output')
-    parser.add_argument('--calc-portfolio-value', action='store_const', const='True', help='Include equivalent sell value of the portfolio in --stats output')
+    parser.add_argument('--show-totals', action='store_const', const='True', help='Calculate total equity in --stats output')
     parser.add_argument('--order-replay', action='store_const', const='True', help='Replay orders PnL. Requires --coin')
     parser.add_argument('--coalesce', action='store_const', const='True', help='For --order-replay, merge sequential orders of same side')
     parser.add_argument('--balances', action='store_const', const='True', help='Print USD or USDT balance on each exchange account')
@@ -640,7 +655,7 @@ def main():
         assert args.timestamp
         add_ext_order(asset=args.coin, qty=float(args.qty), price=float(args.price), timestamp=datetime.datetime.fromisoformat(args.timestamp))
     elif args.list_positions:
-        list_positions(hide_private_data=args.hide_private_data, hide_totals=not args.calc_portfolio_value, sort_by=args.sort_by)
+        list_positions(hide_private_data=args.hide_private_data, hide_totals=not args.show_totals, sort_by=args.sort_by)
     elif args.order_replay:
         order_replay(args.coin, args.coalesce)
     elif args.balances:
