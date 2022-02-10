@@ -1,6 +1,6 @@
 import os, talib, json, datetime, pathlib
 import pandas as pd
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, NamedTuple
 from .. market_data_providers.flyweight import MarketDataProviderFlyweight
 from lib.common.msg import warn
 from lib.common.misc import calc_raise_percent
@@ -35,13 +35,41 @@ class HistoricalBarCache:
         else:
             return None
 
+class MarketPriceCache:
+    """
+        optimizes multiple recent accesses to market price of same asset.  
+    """
+    class MarketPrice(NamedTuple):
+        value:      float
+        timestamp:  datetime.datetime
+
+    def __init__(self):
+        self._cache = {}
+
+    def put(self, key: str, value: float):
+        self._cache[key] = MarketPriceCache.MarketPrice(value=value, timestamp=datetime.datetime.now())
+
+    def get(self, key: str) -> float:
+        if key in self._cache:
+            # only valid if not older than one minute from now
+            if (datetime.datetime.now() - self._cache[key].timestamp) < datetime.timedelta(minutes=1):
+                return self._cache[key].value
+        return None
+
 class MarketData:
     def __init__(self):
         self._provider_flyweight = MarketDataProviderFlyweight()
         self._historical_bars_cache = HistoricalBarCache()
+        self._marketprice_cache = MarketPriceCache()
 
     def get_market_price(self, asset: str) -> float:
-        return self._provider_flyweight.get(asset, "get_market_price").get_market_price(asset)
+        cached_market_price = self._marketprice_cache.get(asset)
+        if cached_market_price is not None:
+            return cached_market_price
+        else:
+            market_price = self._provider_flyweight.get(asset, "get_market_price").get_market_price(asset)
+            self._marketprice_cache.put(asset, market_price)
+            return market_price
 
     def is_tradeable(self, asset: str) -> bool:
         return True
