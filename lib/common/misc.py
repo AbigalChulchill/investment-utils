@@ -1,9 +1,12 @@
 import re
 from math import isclose
 
-def is_stock(asset: str):
-    # stock tickers are all uppercase
-    return asset.upper() == asset
+from lib.common.yaml_id_maps import get_id_map_by_key
+cg_known_coins = get_id_map_by_key("cg_known_coins")
+
+
+def is_crypto(id_asset: str):
+    return id_asset in cg_known_coins
 
 def get_decimal_count(n: float) -> int:
     """

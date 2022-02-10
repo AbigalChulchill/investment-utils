@@ -17,9 +17,10 @@ from lib.common.market_data import MarketData
 from lib.common import accounts_balance
 from lib.common import pnl
 from lib.common.msg import *
-from lib.common.misc import calc_raise_percent, is_stock
+from lib.common.misc import calc_raise_percent, is_crypto
 from lib.common.widgets import simple_progress_track
 from lib.common.metrics import calc_discount_score
+from lib.common.id_ticker_map import get_id_sym, get_id_name
 
 ds = dict()
 
@@ -427,7 +428,9 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
             pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(coin), market_price)
 
             d={
-                'asset': coin,
+                'id': coin,
+                'ticker': get_id_sym(coin),
+                'name': get_id_name(coin),
                 'break even price': pnl_data.break_even_price,
                 'current price': market_price,
                 'qty': qty,
@@ -445,12 +448,12 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     df_pnl_one_table = functools.reduce(DataFrame.append, asset_group_pnl_df.values())
     df_pnl_one_table_nonzero = df_pnl_one_table.loc[df_pnl_one_table['value'] >= 1]
     df_pnl_one_table_zero = df_pnl_one_table.loc[df_pnl_one_table['value'] < 1]
-    # split by is_stock
-    df_pnl_one_table_stocks = df_pnl_one_table_nonzero.loc[ lambda df: map(is_stock,                  df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
-    df_pnl_one_table_cc = df_pnl_one_table_nonzero.loc[ lambda df: map(lambda x: not is_stock(x), df['asset']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    # split by is_crypto
+    df_pnl_one_table_cc     = df_pnl_one_table_nonzero.loc[ lambda df: map(is_crypto,                  df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    df_pnl_one_table_stocks = df_pnl_one_table_nonzero.loc[ lambda df: map(lambda x: not is_crypto(x), df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
 
     if df_pnl_one_table_stocks.size > 0 or df_pnl_one_table_cc.size > 0 :
-        columns = ["asset", "break even price", "current price", "u pnl %"] if hide_private_data else None
+        columns = ["ticker","name", "break even price", "current price", "u pnl %"] if hide_private_data else [ "ticker", "name", "break even price", "current price", "qty", "value", "r pnl", "r pnl %", "u pnl", "u pnl %" ]
         d_totals = {'value': df_pnl_one_table['value'].sum(), 'u pnl': df_pnl_one_table['u pnl'].sum()}
         d_totals['u pnl %'] = round( calc_raise_percent( d_totals['value'] - d_totals['u pnl'], d_totals['value'] ), 2)
         df = DataFrame()\
@@ -464,7 +467,13 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
             df = df\
             .append(Series("total"),ignore_index=True)\
             .append(d_totals, ignore_index=True)
-        print_hi_negatives(df.to_string(index=False,formatters={'qty':  lambda x: f'{x:8.8f}', },columns=columns,na_rep="~"))
+    
+        formatters = {}
+        for col in df.select_dtypes("object"):
+            len_max = int(df[col].str.len().max())
+            formatters[col] = lambda _,len_max=len_max: f"{_:<{len_max}s}"
+        formatters["qty"] = lambda _: f"{_:.8f}"
+        print_hi_negatives(df.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
     else:
         print("No assets")
     print()
@@ -520,9 +529,9 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
             df = asset_group_pnl_df[asset_group]
             if df.size > 0:
                 if hide_private_data or hide_totals:
-                    df_str = df.to_string(index=False, header=False, columns=['asset', '%'])
+                    df_str = df.to_string(index=False, header=False, columns=['ticker', '%'])
                 else:
-                    df_str = df.to_string(index=False, columns=['asset', '%', 'USD', 'BTC'])
+                    df_str = df.to_string(index=False, columns=['ticker', '%', 'USD', 'BTC'])
             else:
                 df_str = "(none)"
             table = Table(box=box.SIMPLE_HEAD)

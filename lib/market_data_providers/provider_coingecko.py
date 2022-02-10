@@ -1,8 +1,9 @@
 from typing import List
 from math import nan
 from .interface import MarketDataProvider
-from lib.common.id_ticker_map import id_to_ticker
-from lib.common.misc import is_stock
+from lib.common.misc import is_crypto
+from lib.common.yaml_id_maps import get_id_map_by_key
+cg_known_coins = get_id_map_by_key("cg_known_coins")
 
 import pycoingecko
 import pandas as pd
@@ -13,7 +14,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
         self._cached = None
 
     def get_supported_methods(self, asset: str) -> List[str]:
-        if not is_stock(asset):
+        if is_crypto(asset):
             return [
                 "get_market_price",
                 "get_historical_bars",
@@ -60,7 +61,7 @@ class MarketDataProviderCoingecko(MarketDataProvider):
 
     def _get_cached(self, asset: str):
         if self._cached is None:
-            market_cap_list = self._cg.get_coins_markets(ids=list(id_to_ticker.keys()), vs_currency="usd")
+            market_cap_list = self._cg.get_coins_markets(ids=cg_known_coins, vs_currency="usd")
             self._cached = {}
             for entry in market_cap_list:
                 self._cached [entry['id']] = entry

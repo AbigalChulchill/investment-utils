@@ -1,5 +1,79 @@
 ---
 
+cg_known_coins:
+  - 0x
+  - aave
+  - aleph
+  - algorand
+  - alien-worlds
+  - allbridge
+  - amp-token
+  - arweave
+  - aurory
+  - avalanche-2
+  - axie-infinity
+  - basic-attention-token
+  - basis-markets
+  - binancecoin
+  - bitcoin
+  - cardano
+  - cave
+  - chiliz
+  - chromaway
+  - cope
+  - cosmos
+  - curve-dao-token
+  - decentraland
+  - defi-land
+  - dogecoin
+  - dydx
+  - enjincoin
+  - ethereum-classic
+  - ethereum
+  - fantom
+  - flow
+  - ftx-token
+  - gala
+  - genesysgo-shadow
+  - genopets
+  - gitcoin
+  - harmony
+  - havven
+  - hedera-hashgraph
+  - hoge-finance
+  - illuvium
+  - matic-network
+  - media-network
+  - monkeyball
+  - my-neighbor-alice
+  - near
+  - nexo
+  - only1
+  - orca
+  - pancakeswap-token
+  - polkadot
+  - raydium
+  - realy-metaverse
+  - ripple
+  - samoyedcoin
+  - serum
+  - shiba-inu
+  - solana
+  - solfarm
+  - star-atlas-dao
+  - star-atlas
+  - starlaunch
+  - sushi
+  - terra-luna
+  - tezos
+  - the-open-network
+  - the-sandbox
+  - theta-token
+  - tron
+  - uniswap
+  - verasity
+  - yield-guild-games
+
 id_to_bitrue:
   gitcoin:                GTCUSDT
 
@@ -83,7 +157,7 @@ id_to_ftx:
   solfarm:                TULIP/USD
   star-atlas-dao:         POLIS/USD
   star-atlas:             ATLAS/USD
-  starlaunch:             STARS/USD  
+  starlaunch:             STARS/USD
   the-open-network:       TONCOIN/USD
   the-sandbox:            SAND/USD
   #stocks
@@ -112,8 +186,9 @@ id_to_ftx:
   NIO:                    NIO/USD
   NVDA:                   NVDA/USD
   PAXG:                   PAXG/USD
+  PFE:                    PFE/USD
   PYPL:                   PYPL/USD
-  SLV:                    SLV/USD  
+  SLV:                    SLV/USD
   SPY:                    SPY/USD
   SQ:                     SQ/USD
   TLRY:                   TLRY/USD
@@ -167,77 +242,3 @@ id_to_poloniex:
   ripple:                 USDT_XRP
   shiba-inu:              USDT_SHIB
 
-
-id_to_ticker:
-  0x:                     ZRX
-  aave:                   AAVE
-  aleph:                  ALEPH
-  algorand:               ALGO
-  alien-worlds:           TLM
-  allbridge:              ABR
-  amp-token:              AMP
-  arweave:                AR
-  aurory:                 AURY
-  avalanche-2:            AVAX
-  axie-infinity:          AXS
-  basic-attention-token:  BAT
-  basis-markets:          BASIS
-  binancecoin:            BNB
-  bitcoin:                BTC
-  cardano:                ADA
-  cave:                   CAVE
-  chiliz:                 CHZ
-  chromaway:              CHR
-  cope:                   COPE
-  cosmos:                 ATOM
-  curve-dao-token:        CRV
-  decentraland:           MANA
-  defi-land:              DFL
-  dogecoin:               DOGE
-  dydx:                   DYDX
-  enjincoin:              ENJ
-  ethereum-classic:       ETC
-  ethereum:               ETH
-  fantom:                 FTM
-  flow:                   FLOW
-  ftx-token:              FTT
-  gala:                   GALA
-  genesysgo-shadow:       SHDW
-  genopets:               GENE
-  gitcoin:                GTC
-  harmony:                ONE
-  havven:                 SNX
-  hedera-hashgraph:       HBAR
-  hoge-finance:           HOGE
-  illuvium:               ILV
-  matic-network:          MATIC
-  media-network:          MEDIA
-  monkeyball:             MBS
-  my-neighbor-alice:      ALICE
-  near:                   NEAR
-  nexo:                   NEXO
-  only1:                  LIKE
-  orca:                   ORCA
-  pancakeswap-token:      CAKE
-  polkadot:               DOT
-  raydium:                RAY
-  realy-metaverse:        REAL
-  ripple:                 XRP
-  samoyedcoin:            SAMO
-  serum:                  SRM
-  shiba-inu:              SHIB
-  solana:                 SOL
-  solfarm:                TULIP
-  star-atlas-dao:         POLIS
-  star-atlas:             ATLAS
-  starlaunch:             STARS
-  sushi:                  SUSHI
-  terra-luna:             LUNA
-  tezos:                  XTZ
-  the-open-network:       TONCOIN
-  the-sandbox:            SAND
-  theta-token:            THETA
-  tron:                   TRX
-  uniswap:                UNI
-  verasity:               VRA
-  yield-guild-games:      YGG

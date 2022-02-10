@@ -3,8 +3,9 @@ from math import nan
 from pandas.core.frame import DataFrame
 from lib.common.market_data import MarketData
 from lib.common.widgets import simple_progress_track
-from lib.common.misc import is_stock, calc_raise_percent
+from lib.common.misc import is_crypto, calc_raise_percent
 from lib.common.metrics import calc_discount_score, calc_heat_score
+from lib.common.id_ticker_map import get_id_sym, get_id_name
 
 screener_conf = yaml.safe_load(open('config/screener.yml', 'r'))
 
@@ -15,7 +16,7 @@ def get_list_of_assets():
    return sorted([*{*list(dca_conf["asset_exchg"].keys()) + screener_conf['additional_assets']}])
 
 
-def table(sort_by: str):
+def show_overview(sort_by: str):
     assets =get_list_of_assets()
     m = MarketData()
     data_stocks = []
@@ -37,7 +38,8 @@ def table(sort_by: str):
         vol_mcap = vol / (mcap if mcap > 0 else nan)
 
         d ={
-        "asset": asset,
+        "ticker": get_id_sym(asset),
+        "name": get_id_name(asset),
         'supply,M': round(supply * 0.000001,1),
         'cap,M': round(mcap * 0.000001,1),
         'vol,M': round(vol * 0.000001,1),
@@ -54,7 +56,7 @@ def table(sort_by: str):
         'discount_factor': round(discount_factor,1),
         
         }
-        if is_stock(asset):
+        if not is_crypto(asset):
             fundamental_data = m.get_fundamentals(asset)
             for k,v in fundamental_data.items():
                 d[k] = v
@@ -63,8 +65,13 @@ def table(sort_by: str):
             data_others.append(d)
     df_others = DataFrame.from_dict(data_others).sort_values(by=sort_by, ascending=False)
     df_stocks = DataFrame.from_dict(data_stocks).sort_values(by=sort_by, ascending=False)
-    print(df_others.append(df_stocks).to_string(index=False, na_rep="~"))
 
+    df = df_others.append(df_stocks)
+    formatters = {}
+    for col in df.select_dtypes("object"):
+        len_max = int(df[col].str.len().max())
+        formatters[col] = lambda _,len_max=len_max: f"{_:<{len_max}s}"
+    print(df.to_string(index=False, formatters=formatters, na_rep="~"))
 
 def main():
     parser = argparse.ArgumentParser()
