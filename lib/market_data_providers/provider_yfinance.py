@@ -97,4 +97,9 @@ class MarketDataProviderYF(MarketDataProvider):
             d['P/B'] = round(info['priceToBook'],1)
         # if "priceToSalesTrailing12Months" in info and info['priceToSalesTrailing12Months'] is not None:
         #     d['P/S'] = round(info['priceToSalesTrailing12Months'],1)
+        if "trailingAnnualDividendRate" in info and info['trailingAnnualDividendRate'] is not None:
+            d['div rate'] = round(info['trailingAnnualDividendRate'],2)
+        if "trailingAnnualDividendYield" in info and info['trailingAnnualDividendYield'] is not None:
+            d['div yield, %'] = round(info['trailingAnnualDividendYield']*100,1)
+
         return d
