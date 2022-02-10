@@ -1,54 +1,42 @@
 
-import re, os, datetime, pathlib, json
+import datetime, pathlib, pickledb
 from math import nan
-from typing import List, Dict, Any
+from typing import List, Any
 import pandas as pd
-import yfinance as yf
 import yahoo_fin.stock_info
 import logging
 from .interface import MarketDataProvider
-from lib.common.misc import is_stock
-from lib.common.msg import warn
+from lib.common.misc import is_crypto
 
 yf_exclude_stocks =[ 
     "PAXG"
 ]
 
 
-class YFInfoCache:
-    _cache_dir = f"cache/yf/info/{datetime.datetime.utcnow().strftime('%Y-%m-%d')}"
-
+class StockInfoDb:
     def __init__(self):
-        self._cache = {}
-
-    @staticmethod
-    def _get_cache_file_name(asset: str):
-        return f"{YFInfoCache._cache_dir}/{asset}.json"
-
-    def put(self, asset: str, d: Dict[Any,Any]):
-        self._cache[asset] = d
-        if not os.path.exists(YFInfoCache._cache_dir):
-            pathlib.Path(YFInfoCache._cache_dir).mkdir(parents=True, exist_ok=True)
-        cache_file = YFInfoCache._get_cache_file_name(asset)
-        with open(cache_file, "w") as f:
-            json.dump(d, f)
-
-    def get(self, asset: str) -> Dict[Any,Any]:
-        if asset in self._cache.keys():
-            return self._cache[asset]
-        cache_file = YFInfoCache._get_cache_file_name(asset)
-        if os.path.exists(cache_file):
-            return json.load(open(cache_file))
+        pathlib.Path("cache/yf").mkdir(parents=True, exist_ok=True)
+        self.db = pickledb.load(f"cache/yf/info_{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.db", auto_dump=True)
+    def get_info(self, ticker: str) -> str:
+        existing_name = self.db.get(ticker)
+        if existing_name:
+            return existing_name
         else:
-            return None
+            try:
+                name = yahoo_fin.stock_info.get_quote_data(ticker)
+            except:
+                name = ticker
+            self.db.set(ticker, name)
+            return name
+
+
 
 class MarketDataProviderYF(MarketDataProvider):
     def __init__(self):
-        self._ticker_cache = {}
-        self._info_cache = YFInfoCache()
+        self._stock_info_db = StockInfoDb()
 
     def get_supported_methods(self, asset: str) -> List[str]:
-        if is_stock(asset) and asset not in yf_exclude_stocks:
+        if not is_crypto(asset) and asset not in yf_exclude_stocks:
             return [
                 "get_market_price",
                 "get_historical_bars",
@@ -59,19 +47,12 @@ class MarketDataProviderYF(MarketDataProvider):
         else:
             return []
 
-    def _get_ticker(self, asset: str):
-        if asset not in self._ticker_cache.keys():
-            self._ticker_cache[asset] = yf.Ticker(asset)
-        return self._ticker_cache[asset]
+    def _get_history(self, asset: str, days: int, interval: str) -> Any:
+        d_start = datetime.datetime.utcnow().timestamp() - days*60*60*24
+        return yahoo_fin.stock_info.get_data(ticker=asset,start_date=d_start, end_date=None, interval=interval)
 
-    def _get_history(self, asset: str, period: str, interval: str) -> Any:
-        return self._get_ticker(asset).history(period=period, interval=interval)
     def _get_info(self, asset: str) -> Any:
-        data = self._info_cache.get(asset)
-        if data is None:
-            data = self._get_ticker(asset).info
-            self._info_cache.put(asset, data)
-        return data
+        return self._stock_info_db.get_info(asset)
 
     def _get(self, asset: str, op: Any, **kwargs) -> Any:
         retries = 3
@@ -98,19 +79,8 @@ class MarketDataProviderYF(MarketDataProvider):
         return info ['sharesOutstanding'] if ('sharesOutstanding' in info and info['sharesOutstanding'] is not None ) else nan
 
     def get_historical_bars(self, asset: str, days_before: int)->pd.DataFrame:
-        if days_before <= 1:
-            period = "1d"
-        elif days_before <= 5:
-            period = "5d"
-        elif days_before <= 30:
-            period = "1mo"
-        elif days_before <= 90:
-            period = "3mo"
-        elif days_before <= 182:
-            period = "6mo"
-        elif days_before <= 365:
-            period = "1y"
-        df = self._get(asset, self._get_history, period=period, interval="1d")
+
+        df = self._get(asset, self._get_history, days=days_before, interval="1d")
         df.rename(columns={ "Open": "open", "Close": "close", "High": "high", "Low": "low", }, inplace=True)
         return df
 
@@ -121,10 +91,10 @@ class MarketDataProviderYF(MarketDataProvider):
             d['P/E trailing'] = round(info['trailingPE'],1)
         if "forwardPE" in info and info['forwardPE'] is not None:
             d['P/E forward'] = round(info['forwardPE'],1)
-        if "pegRatio" in info and info['pegRatio'] is not None:
-            d['PEG'] = round(info['pegRatio'],1)
+        # if "pegRatio" in info and info['pegRatio'] is not None:
+        #     d['PEG'] = round(info['pegRatio'],1)
         if "priceToBook" in info and info['priceToBook'] is not None:
             d['P/B'] = round(info['priceToBook'],1)
-        if "priceToSalesTrailing12Months" in info and info['priceToSalesTrailing12Months'] is not None:
-            d['P/S'] = round(info['priceToSalesTrailing12Months'],1)
+        # if "priceToSalesTrailing12Months" in info and info['priceToSalesTrailing12Months'] is not None:
+        #     d['P/S'] = round(info['priceToSalesTrailing12Months'],1)
         return d
