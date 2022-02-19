@@ -1,4 +1,43 @@
 ---
+
+# columns to include in overview. If not specified, all available columns are added
+columns:
+- ticker
+- name
+- sector
+- industry
+- supply,M
+- cap,M
+- vol,M
+- vol/cap,%
+- price
+- chg
+- chg%
+- w.chg
+- w.chg%
+- mean
+- bottom
+- top
+- down,%
+- up mean,%
+- heat score
+- discount f.
+- tr P/E
+- fw P/E
+- P/B
+- d/e
+- div rate
+- div yield,%
+- expense,%
+
+# additional filter for overview. Can be none
+filter:
+  min_cap                       : 1000
+  max_price_to_earnings_ratio   : 17
+  max_price_to_book_ratio       : 2.5
+  max_debt_to_equity_ratio      : 100
+  min_div_yield_percent         : 1
+
 # By default screener uses list of assets from dca.yml -> asset_exchg
 # More assets can be added to this list. The two lists are then merged together.
 additional_assets: []

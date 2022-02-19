@@ -1,9 +1,11 @@
-import re
+import re, json
 from math import isclose
 
 from lib.common.yaml_id_maps import get_id_map_by_key
 cg_known_coins = get_id_map_by_key("cg_known_coins")
 
+def print_pretty_json(s):
+    print(json.dumps(s, indent=4, sort_keys=True))
 
 def is_crypto(id_asset: str):
     return id_asset in cg_known_coins
