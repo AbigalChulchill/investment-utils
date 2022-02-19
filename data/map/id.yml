@@ -1,5 +1,8 @@
 ---
 
+# This list should be populated with all cryptocurrencies used in the portfolio or by screener.
+# If not listed here CoinGecko will not fetcn info on that cc.
+# This is because interface is designed in a way that one API call returns data on every cc together.
 cg_known_coins:
   - 0x
   - aave
@@ -28,8 +31,8 @@ cg_known_coins:
   - dogecoin
   - dydx
   - enjincoin
-  - ethereum-classic
   - ethereum
+  - ethereum-classic
   - fantom
   - flow
   - ftx-token
@@ -42,6 +45,7 @@ cg_known_coins:
   - hedera-hashgraph
   - hoge-finance
   - illuvium
+  - juno-network
   - matic-network
   - media-network
   - monkeyball
@@ -50,6 +54,7 @@ cg_known_coins:
   - nexo
   - only1
   - orca
+  - osmosis
   - pancakeswap-token
   - polkadot
   - raydium
@@ -60,8 +65,8 @@ cg_known_coins:
   - shiba-inu
   - solana
   - solfarm
-  - star-atlas-dao
   - star-atlas
+  - star-atlas-dao
   - starlaunch
   - sushi
   - terra-luna
@@ -185,7 +190,6 @@ id_to_ftx:
   NFLX:                   NFLX/USD
   NIO:                    NIO/USD
   NVDA:                   NVDA/USD
-  PAXG:                   PAXG/USD
   PFE:                    PFE/USD
   PYPL:                   PYPL/USD
   SLV:                    SLV/USD
