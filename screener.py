@@ -204,6 +204,43 @@ def show_rsi_filter():
     print("oversold")
     print(DataFrame.from_dict(data_oversold).sort_values(by="asset", ascending=False).to_string(index=False, na_rep="~"))
 
+
+
+def show_dir():
+    assets = get_list_of_assets()
+    m = MarketData()
+
+    total = 0
+    ups = 0
+    downs = 0
+
+    thr_p = 0.5
+
+    # processing is conservatively sequential here, to prevent triggering various order rate limits
+    for asset in simple_progress_track(assets):
+        if is_crypto(asset):
+            chg,chg_p = m.get_daily_change(asset)
+            if chg_p > thr_p:
+                ups += 1
+            elif chg_p < -thr_p:
+                downs += 1
+            total += 1
+
+    ups_p = ups / total
+    downs_p = downs / total
+    
+    if ups_p > 0.9:
+        direction = "strong bullish"
+    elif ups_p > 0.7:
+        direction = "bullish"
+    elif downs_p > 0.9:
+        direction = "strong bearish"
+    elif downs_p > 0.7:
+        direction = "bearish"
+    else:
+        direction = "sideways"    
+    print(f"today's crypto market direction is {direction} ({ups_p*100:.0f}% up, {downs_p*100:.0f}% down)")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--overview',action='store_const', const='True', help='show overview')
@@ -213,6 +250,8 @@ def main():
     parser.add_argument('--sort-by', type=str, default=None, help='overview: sort by column name')
 
     parser.add_argument('--rsi',action='store_const', const='True', help='list oversold/overbought')
+    parser.add_argument('--dir',action='store_const', const='True', help='detect common market direction')
+    
     args = parser.parse_args()
 
     if args.overview:
@@ -220,6 +259,10 @@ def main():
             show_overview(sort_by=args.sort_by, with_crypto=args.crypto, with_stocks=args.stocks, include_owned=args.owned, columns=screener_conf['columns'])
         else:
             print("must specify --crypto and/or --stocks to filter by")
+    elif args.rsi:
+        show_rsi_filter()
+    elif args.dir:
+        show_dir()
 
 
 if __name__ == '__main__':
