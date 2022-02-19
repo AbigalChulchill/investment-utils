@@ -175,6 +175,35 @@ def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_ow
     if df.size > 0:
         print(df.to_string(index=False, columns=columns, formatters=formatters, na_rep="~"))
 
+def show_rsi_filter():
+    assets =get_list_of_assets()
+    m = MarketData()
+    data_oversold = []
+    data_overbought = []
+
+    min_rsi = 30
+    max_rsi = 70
+
+    # processing is conservatively sequential here, to prevent triggering various order rate limits
+    for asset in simple_progress_track(assets):
+
+        rsi = m.get_rsi(asset)
+
+        d ={
+        "ticker": get_id_sym(asset),
+        "name": get_id_name(asset),
+        'rsi': round(rsi,1),
+        }
+        if rsi < min_rsi:
+            data_oversold.append(d)
+        elif rsi > max_rsi:
+            data_overbought.append(d)
+    print("overbought")
+    print(DataFrame.from_dict(data_overbought).sort_values(by="asset", ascending=False).to_string(index=False, na_rep="~"))
+    print()
+    print("oversold")
+    print(DataFrame.from_dict(data_oversold).sort_values(by="asset", ascending=False).to_string(index=False, na_rep="~"))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--overview',action='store_const', const='True', help='show overview')
@@ -182,6 +211,8 @@ def main():
     parser.add_argument('--stocks',action='store_const', const='True', help='overview: include stocks')
     parser.add_argument('--owned',action='store_const', const='True', help='overview: include existing nonzero asset positions from DCA database')
     parser.add_argument('--sort-by', type=str, default=None, help='overview: sort by column name')
+
+    parser.add_argument('--rsi',action='store_const', const='True', help='list oversold/overbought')
     args = parser.parse_args()
 
     if args.overview:
