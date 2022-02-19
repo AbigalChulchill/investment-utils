@@ -454,42 +454,55 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     })
 
 
-    df_cats = DataFrame.from_dict(stats_data)
-    df_cats['%'] = round(df_cats['USD'] / sum(df_cats['USD']) * 100,1)
-    df_cats['BTC'] = df_cats['USD'] / th.get_market_price("bitcoin")
-    df_cats = df_cats.sort_values('%', ascending=False)
+    df_assets = DataFrame.from_dict(stats_data)
+    df_assets = df_assets.loc[df_assets['USD'] >= 0]
+    df_assets['%'] = round(df_assets['USD'] / sum(df_assets['USD']) * 100,1)
+    df_assets['BTC'] = df_assets['USD'] / th.get_market_price("bitcoin")
+    df_assets = df_assets.sort_values('%', ascending=False)
 
+    df_liabilities = DataFrame.from_dict(stats_data)
+    df_liabilities = df_liabilities.loc[df_liabilities['USD'] < 0]
+    df_liabilities['%'] = round(df_liabilities['USD'] / sum(df_assets['USD']) * 100,1) # % is calculated respective to size of assets
+    df_liabilities['BTC'] = df_liabilities['USD'] / th.get_market_price("bitcoin")
+    df_liabilities = df_liabilities.sort_values('%', ascending=True)
 
     # for every caategory print a table
+    table = Table(box=box.SIMPLE_HEAD)
     col_list = []
-    for asset_group in df_cats['asset_group']:
+    for asset_group in df_assets['asset_group']:
         if asset_group in asset_group_pnl_df.keys():
             df = asset_group_pnl_df[asset_group]
             if df.size > 0:
                 if hide_private_data or hide_totals:
                     df_str = df.to_string(index=False, header=False, columns=['ticker', '%'])
                 else:
-                    df_str = df.to_string(index=False, columns=['ticker', '%', 'USD', 'BTC'])
+                    df_str = df.to_string(index=False, columns=['ticker', '%', 'USD'])
             else:
                 df_str = "(none)"
-            table = Table(box=box.SIMPLE_HEAD)
             table.add_column(f"[bold white]{asset_group}[/]", justify="center")
-            table.add_row(df_str)
-            col_list.append(table)
-    rprint(Columns(col_list, equal=True, expand=False, padding=(0, 1)))
-
-    # print categories table
-    if hide_private_data or hide_totals:
-        df_str = df_cats.to_string(index=False, header=False, columns=['asset_group', '%'])
-    else:
-        df_str = df_cats.to_string(index=False)
-    table = Table(box=box.SIMPLE_HEAD)
-    table.add_column("[bold green]by asset category[/]", justify="center")
-    table.add_row(df_str)
+            col_list.append(df_str)
+    table.add_row(*col_list)
     rprint(table)
-    #rprint(Panel(df_str, title="[bold underline green]by asset category[/]", expand=False, box=box.MINIMAL))
+
+    # print assets and liabilities tables
+    if hide_private_data or hide_totals:
+        df_assets_str = df_assets.to_string(index=False, header=False, columns=['asset_group', '%'])
+        df_liabilities_str = df_liabilities.to_string(index=False, header=False, columns=['asset_group', '%'])
+    else:
+        df_assets_str = df_assets.to_string(index=False)
+        df_liabilities_str = df_liabilities.to_string(index=False)
+    table = Table(box=box.SIMPLE_HEAD)
+    table.add_column(f"[bold green]assets[/]", justify="center")
+    table.add_column(f"[bold yellow]liabilities[/]", justify="center")
+    table.add_row(df_assets_str,df_liabilities_str)
+    rprint(table)
+    rprint("  **  % liabilities is calculated respective to size of assets")
+    rprint()
+
+
     if not (hide_private_data or hide_totals):
-        rprint(f"total value across all assets: {sum(df_cats['USD']):.2f} USD ({sum(df_cats['BTC']):.6f} BTC)")
+        rprint(f"total value across all assets: {sum(df_assets['USD']):.2f} USD ({sum(df_assets['BTC']):.6f} BTC)")
+        rprint()
 
 
 def _coalesce_bucket(orders: List[HistoricalOrder]):
