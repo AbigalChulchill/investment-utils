@@ -391,19 +391,19 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     df_pnl_one_table_stocks = df_pnl_one_table_nonzero.loc[ lambda df: map(lambda x: not is_crypto(x), df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
 
     if df_pnl_one_table_stocks.size > 0 or df_pnl_one_table_cc.size > 0 :
-        columns = ["ticker","name", "break even price", "current price", "u pnl %"] if hide_private_data else [ "ticker", "name", "break even price", "current price", "qty", "value", "r pnl", "r pnl %", "u pnl", "u pnl %" ]
+        columns = ["category", "ticker","name", "break even price", "current price", "u pnl %"] if hide_private_data else ["category", "ticker", "name", "break even price", "current price", "qty", "value", "r pnl", "r pnl %", "u pnl", "u pnl %" ]
         d_totals = {'value': df_pnl_one_table['value'].sum(), 'u pnl': df_pnl_one_table['u pnl'].sum()}
         d_totals['u pnl %'] = round( calc_raise_percent( d_totals['value'] - d_totals['u pnl'], d_totals['value'] ), 2)
-        df = DataFrame()\
-            .append(Series("cryptocurrency"),ignore_index=True)\
+        df = DataFrame(columns=["category"])\
+            .append({"category": "crypto"},ignore_index=True)\
             .append(df_pnl_one_table_cc)\
-            .append(Series("stocks"),ignore_index=True)\
+            .append({"category": "stocks"},ignore_index=True)\
             .append(df_pnl_one_table_stocks)\
-            .append(Series("closed"),ignore_index=True)\
+            .append({"category": "closed positions"},ignore_index=True)\
             .append(df_pnl_one_table_zero)
         if not hide_totals:
             df = df\
-            .append(Series("total"),ignore_index=True)\
+            .append({"category": "total"},ignore_index=True)\
             .append(d_totals, ignore_index=True)
     
         formatters = {}
