@@ -39,7 +39,10 @@ def msg_selling(coin: str, qty: float):
     rprint(f"[bold red]selling[/] {qty} {coin}")
 
 def create_trader(coin: str) -> Trader:
-    return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
+    if coin in ds['asset_exchg']:
+        return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
+    else:
+        return None
 
 def create_dummy_trader(coin: str) -> Trader:
     return TraderFactory.create_dummy(coin)
@@ -203,33 +206,35 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
             daily_qty = quota_asset * quota_factor
             msg_buying(asset, daily_qty)
             trader: Trader = create_trader(asset)
-            assert trader
-            retries = 3
-            while True:
-                try:
-                    if dry:
-                        actual_price = th.get_market_price(asset)
-                        coin_qty = daily_qty / actual_price
-                    else:
-                        actual_price, coin_qty = trader.buy_market(daily_qty,True)
-                        db.add(asset, coin_qty, actual_price)
-                    a.append({
-                        'asset': asset,
-                        'price': actual_price,
-                        'quota_factor': round(quota_factor,2),
-                        'value': round(coin_qty*actual_price,2),
-                        'qty': coin_qty,
-                    })
-                    break
-                except Exception as e:
-                    if retries > 0:
-                        warn(f"{asset} buy failed ({e}), {retries} retries remaining")
-                        retries -= 1
-                        time.sleep(5)
-                    else:
-                        err(f"{asset} buy failed ({e})")
-                        traceback.print_exc()
+            if trader:
+                retries = 3
+                while True:
+                    try:
+                        if dry:
+                            actual_price = th.get_market_price(asset)
+                            coin_qty = daily_qty / actual_price
+                        else:
+                            actual_price, coin_qty = trader.buy_market(daily_qty,True)
+                            db.add(asset, coin_qty, actual_price)
+                        a.append({
+                            'asset': asset,
+                            'price': actual_price,
+                            'quota_factor': round(quota_factor,2),
+                            'value': round(coin_qty*actual_price,2),
+                            'qty': coin_qty,
+                        })
                         break
+                    except Exception as e:
+                        if retries > 0:
+                            warn(f"{asset} buy failed ({e}), {retries} retries remaining")
+                            retries -= 1
+                            time.sleep(5)
+                        else:
+                            err(f"{asset} buy failed ({e})")
+                            traceback.print_exc()
+                            break
+            else:
+                info(f"{asset} not tradeable ")
              
 
     if len(a):
