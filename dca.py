@@ -109,8 +109,8 @@ class TradeHelper:
 
 def print_account_balances():
     title("Account balances")
-    df_balances = DataFrame.from_dict(accounts_balance.get_available_usd_balances_dca())
-    rprint(df_balances.to_string(index=False))
+    df_balances = accounts_balance.get_available_usd_balances_dca()
+    rprint(df_balances.to_string(index=False, na_rep=0))
 
 
 def calc_daily_qty(category: str, asset: str, th: TradeHelper, quota_asset: float) -> Tuple[float,float]:
@@ -450,7 +450,13 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     # create custom asset category for fiat money on CEXes
     stats_data.append({
         'asset_group': "fiat_cex",
-        'USD': round(sum( DataFrame.from_dict( accounts_balance.get_available_usd_balances_dca() )['USD'] ),2),
+
+         # borrowed should be with "-" already so can just add together
+        'USD': round(
+                  accounts_balance.get_available_usd_balances_dca()['available'].sum() \
+                +
+                  accounts_balance.get_available_usd_balances_dca()['borrowed'].sum() 
+                ,2),
     })
 
 

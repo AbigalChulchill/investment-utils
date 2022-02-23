@@ -1,3 +1,4 @@
+from pandas.core.frame import DataFrame
 from ..trader.poloniex_api import Poloniex
 from ..trader.ftx_api import Ftx
 from ..trader.okex_api import Okex
@@ -5,7 +6,6 @@ from ..trader.bitrue_api import Bitrue
 from ..trader.mexc_api import Mexc
 
 from ..trader.api_keys_config import ApiKeysConfig
-from typing import Dict
 
 def roundx(x: float):
     return round(x, 2)
@@ -17,13 +17,14 @@ def get_poloniex(api: Poloniex) -> float:
     bal = api.returnCompleteBalances()['USDT']
     return roundx(float(bal['available']) + float(bal['onOrders'])  )
 
-def get_poloniex_fee_token(api: Poloniex) -> float:
-    return round_qty(float(api.returnBalances()['TRX']))
-
 def get_ftx(api: Ftx) -> float:
     balances = api.get_balances()
-    free = [float(x['usdValue']) for x in balances if x['coin'] in ["USD","USDT"] ]
+    free = [float(x['free']) for x in balances if x['coin'] in ["USD"] ]
     return roundx(sum(free))
+def get_ftx_borrowed(api: Ftx) -> float:
+    balances = api.get_balances()
+    borrowed = [float(x['spotBorrow']) for x in balances if x['coin'] in ["USD","USDT"] ]
+    return -roundx(sum(borrowed))
 
 def get_okex(api: Okex) -> float:
     balances = api.get_balances()
@@ -39,20 +40,19 @@ def get_mexc(api: Mexc) -> float:
     balances = api.get_balances()
     return roundx(float(balances['USDT']['available'])) if 'USDT' in balances.keys() else 0
 
-def get_mexc_fee_token(api: Mexc) -> float:
-    balances = api.get_balances()
-    return round_qty(float(balances['MX']['available'])) if 'MX' in balances.keys() else 0
-
-def get_available_usd_balances_dca() -> Dict[str,float]:
+def get_available_usd_balances_dca() -> DataFrame:
     cfg = ApiKeysConfig()
     poloniex_api = Poloniex(cfg.get_poloniex_ks()[0], cfg.get_poloniex_ks()[1])
     ftx_api = Ftx(cfg.get_ftx_ks()[0], cfg.get_ftx_ks()[1], cfg.get_ftx_subaccount_dca())
     okex_api = Okex(cfg.get_okex_ksp()[0], cfg.get_okex_ksp()[1], cfg.get_okex_ksp()[2])
     mexc_api = Mexc(cfg.get_mexc_ks()[0], cfg.get_mexc_ks()[1])
-    return [
-        {'exchange': 'Poloniex',  'USD': get_poloniex(poloniex_api),  'fee token qty': get_poloniex_fee_token(poloniex_api)},
-        {'exchange': 'FTX',       'USD': get_ftx(ftx_api), 'fee token qty': 0},
-        {'exchange': 'Okex',      'USD': get_okex(okex_api), 'fee token qty': 0},
-        {'exchange': 'MEXC',      'USD': get_mexc(mexc_api), 'fee token qty': get_mexc_fee_token(mexc_api)},
-    ]
+    df = DataFrame.from_dict(
+        [
+            {'cex_name': 'Poloniex',  'available': get_poloniex(poloniex_api)},
+            {'cex_name': 'FTX',       'available': get_ftx(ftx_api), 'borrowed': get_ftx_borrowed(ftx_api)},
+            {'cex_name': 'OKX',       'available': get_okex(okex_api)},
+            {'cex_name': 'MEXC',      'available': get_mexc(mexc_api)},
+        ]
+    )
+    return df
 
