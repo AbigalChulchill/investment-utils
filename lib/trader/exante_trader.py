@@ -77,7 +77,7 @@ class ExanteTrader(Trader):
 
         exchs =[
             "NYSE",
-            "NASDAQ"
+            "NASDAQ",
             "ARCA",
             "BATS"
         ]
