@@ -22,3 +22,17 @@ poloniex:
 mexc:
   API_KEY: <your_key>
   SECRET: <your_secret>
+
+exante:
+  live: False
+  accounts:
+    demo:
+      APPID:      xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      CLIENTID:   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      SHAREDKEY:  <your_shared_key>
+      ACCOUNTID:  <your_account_id>
+    live:
+      APPID:      xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      CLIENTID:   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      SHAREDKEY:  <your_shared_key>
+      ACCOUNTID:  <your_account_id>

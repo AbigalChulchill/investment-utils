@@ -34,3 +34,12 @@ class ApiKeysConfig:
 
     def get_ftx_subaccount_tuliphedgedshorts(self) -> str:
         return self._cfg['ftx']['SUBACCOUNT_TULIPHEDGEDSHORTS']
+
+    def get_exante(self) -> Tuple[str,str,str,bool]:
+        is_live = self._cfg['exante']['live']
+        acc = 'live' if is_live else 'demo'
+        return self._cfg['exante']['accounts'][acc]['APPID'],\
+               self._cfg['exante']['accounts'][acc]['CLIENTID'],\
+               self._cfg['exante']['accounts'][acc]['SHAREDKEY'],\
+               self._cfg['exante']['accounts'][acc]['ACCOUNTID'],\
+               not is_live

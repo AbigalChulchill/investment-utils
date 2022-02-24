@@ -4,6 +4,7 @@ from ..trader.ftx_api import Ftx
 from ..trader.okex_api import Okex
 from ..trader.bitrue_api import Bitrue
 from ..trader.mexc_api import Mexc
+from ..trader.exante_api import Exante
 
 from ..trader.api_keys_config import ApiKeysConfig
 
@@ -40,18 +41,26 @@ def get_mexc(api: Mexc) -> float:
     balances = api.get_balances()
     return roundx(float(balances['USDT']['available'])) if 'USDT' in balances.keys() else 0
 
+def get_exante(api: Exante) -> float:
+    account_summary = api.get_account_summary()
+    value = [float(x.converted_value) for x in account_summary.currencies if x.code in ["USD","EUR"] ]   
+    return roundx(float(value[0]))
+
+
 def get_available_usd_balances_dca() -> DataFrame:
     cfg = ApiKeysConfig()
     poloniex_api = Poloniex(cfg.get_poloniex_ks()[0], cfg.get_poloniex_ks()[1])
     ftx_api = Ftx(cfg.get_ftx_ks()[0], cfg.get_ftx_ks()[1], cfg.get_ftx_subaccount_dca())
     okex_api = Okex(cfg.get_okex_ksp()[0], cfg.get_okex_ksp()[1], cfg.get_okex_ksp()[2])
     mexc_api = Mexc(cfg.get_mexc_ks()[0], cfg.get_mexc_ks()[1])
+    exante_api = Exante(*cfg.get_exante())
     df = DataFrame.from_dict(
         [
             {'cex_name': 'Poloniex',  'available': get_poloniex(poloniex_api)},
             {'cex_name': 'FTX',       'available': get_ftx(ftx_api), 'borrowed': get_ftx_borrowed(ftx_api)},
             {'cex_name': 'OKX',       'available': get_okex(okex_api)},
             {'cex_name': 'MEXC',      'available': get_mexc(mexc_api)},
+            {'cex_name': 'Exante',    'available': get_exante(exante_api)},
         ]
     )
     return df
