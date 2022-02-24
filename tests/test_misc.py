@@ -9,6 +9,7 @@ def test_get_decimal_count():
     assert isclose(get_decimal_count(0.123), 3)
 
 def test_get_first_decimal_place():
+    assert isclose(get_first_decimal_place(1), 0)
     assert isclose(get_first_decimal_place(0.1), 1)
     assert isclose(get_first_decimal_place(0.02), 2)
     assert isclose(get_first_decimal_place(0.003), 3)

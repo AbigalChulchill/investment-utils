@@ -26,11 +26,14 @@ def get_decimal_count(n: float) -> int:
 def get_first_decimal_place(n: float) -> int:
     """
     Get position index of the first nonzero digit after decimal point
+    n = 1 -> 0
     n = 0.1 -> 1
     n = 0.02 -> 2
     n = 0.003 -> 3
     n = 0.01234 -> 2
     """
+    if "." not in str(n):
+        return 0
     fraction = str(n).split(".")[1]
     m = re.match(r"(0+)[1-9]+", fraction)
     if m:
