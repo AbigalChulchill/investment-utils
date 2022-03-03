@@ -72,14 +72,15 @@ class ExanteTrader(Trader):
     #     raise NotImplementedError()
 
     def _resolve_symbol_by_ticker(self,ticker: str) -> str:
-        if "." in ticker:
-            return ticker
+        if ".HK" in ticker:
+            return ticker.replace(".HK",".HKEX")
 
         exchs =[
             "NYSE",
             "NASDAQ",
             "ARCA",
-            "BATS"
+            "BATS",
+            "AMEX",
         ]
         v_symbol_exists = [ 1 if self._api.is_valid_symbol(ticker + "." + ex) else 0 for ex in exchs]
         num_symbol_instances = sum(v_symbol_exists)
@@ -90,5 +91,3 @@ class ExanteTrader(Trader):
         for i in range(len(exchs)):
             if v_symbol_exists[i]:
                 return ticker + "." + exchs[i]
-
-    
