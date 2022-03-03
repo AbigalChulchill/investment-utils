@@ -2,6 +2,7 @@ import datetime, argparse, re, yaml, time, traceback, logging, functools
 from collections import defaultdict
 from collections.abc import Callable
 from pandas.core.frame import DataFrame, Series
+from pandas import concat
 from math import nan, isclose
 from typing import List, NamedTuple, Tuple, Dict, Any
 
@@ -385,7 +386,7 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
         df_pnl.sort_values(sort_by, inplace=True, ascending=False, key=pnl_sort_key)
         asset_group_pnl_df[asset_group] = df_pnl
 
-    df_pnl_one_table = functools.reduce(DataFrame.append, asset_group_pnl_df.values())
+    df_pnl_one_table = concat(asset_group_pnl_df.values())
     df_pnl_one_table_nonzero = df_pnl_one_table.loc[df_pnl_one_table['value'] >= 1]
     df_pnl_one_table_zero = df_pnl_one_table.loc[df_pnl_one_table['value'] < 1]
     # split by is_crypto
@@ -396,17 +397,21 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
         columns = ["category", "ticker","name", "break even price", "current price", "u pnl %"] if hide_private_data else ["category", "ticker", "name", "break even price", "current price", "qty", "value", "r pnl", "r pnl %", "u pnl", "u pnl %" ]
         d_totals = {'value': df_pnl_one_table['value'].sum(), 'u pnl': df_pnl_one_table['u pnl'].sum()}
         d_totals['u pnl %'] = round( calc_raise_percent( d_totals['value'] - d_totals['u pnl'], d_totals['value'] ), 2)
-        df = DataFrame(columns=["category"])\
-            .append({"category": "crypto"},ignore_index=True)\
-            .append(df_pnl_one_table_cc)\
-            .append({"category": "stocks"},ignore_index=True)\
-            .append(df_pnl_one_table_stocks)\
-            .append({"category": "closed positions"},ignore_index=True)\
-            .append(df_pnl_one_table_zero)
+
+        dfparts = [
+            DataFrame([ {"category": "crypto"} ]),
+            df_pnl_one_table_cc,
+            DataFrame([ {"category": "stocks"} ]),
+            df_pnl_one_table_stocks,
+            DataFrame([ {"category": "closed positions"} ]),
+            df_pnl_one_table_zero,
+        ]
         if not hide_totals:
-            df = df\
-            .append({"category": "total"},ignore_index=True)\
-            .append(d_totals, ignore_index=True)
+            dfparts  +=  [
+                DataFrame([ {"category": "total"} ]),
+                DataFrame([ d_totals ]),
+            ]
+        df = concat(dfparts, ignore_index=True)
     
         formatters = {}
         for col in df.select_dtypes("object"):
@@ -450,14 +455,19 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
                 'USD': round(um_category_dict['qty'] * th.get_market_price(um_category_dict['currency']),2),
             })
     # create custom asset category for fiat money on CEXes
+    df_cex_balances = accounts_balance.get_available_usd_balances_dca()
+    df_cex_balances_liquid = df_cex_balances.loc[ df_cex_balances['liquid'] == True ]
+    df_cex_balances_illiquid = df_cex_balances.loc[ df_cex_balances['liquid'] == False ]
     stats_data.append({
-        'asset_group': "fiat_cex",
-
-         # borrowed should be with "-" already so can just add together
+        'asset_group': "fiat_liquid_cex",
         'USD': round(
-                  accounts_balance.get_available_usd_balances_dca()['available'].sum() \
-                +
-                  accounts_balance.get_available_usd_balances_dca()['borrowed'].sum() 
+                  df_cex_balances_liquid['available_without_borrow'].sum() + df_cex_balances_liquid['borrow'].sum()#borrow has "-" sign
+                ,2),
+    })
+    stats_data.append({
+        'asset_group': "fiat_illiquid_cex",
+        'USD': round(
+                  df_cex_balances_illiquid['available_without_borrow'].sum() + df_cex_balances_illiquid['borrow'].sum()#borrow has "-" sign
                 ,2),
     })
 
