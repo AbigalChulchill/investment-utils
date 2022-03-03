@@ -93,6 +93,7 @@ class MarketData:
 
     def get_daily_change(self, asset: str) -> Tuple[float,float]:
         daily_change = (0,0)
+        daily_change_percent = 0
         df = self._get_historical_bars(asset, 1)
         if df['close'].size > 1:
             previous_close = df['close'].iat[-2]
@@ -103,6 +104,7 @@ class MarketData:
 
     def get_weekly_change(self, asset: str) -> Tuple[float,float]:
         weekly_change = (0,0)
+        weekly_change_percent = 0
         df = self._get_historical_bars(asset, 7)
         if df['close'].size > 1:
             previous_close = df['close'].iat[-8]

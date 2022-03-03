@@ -18,6 +18,7 @@ class StockInfoDb:
         if existing_data:
             return existing_data
         else:
+            data ={}
             try:
                 data = yfsi.get_quote_data(ticker)
                 data |= yfsi.get_quote_table(ticker)

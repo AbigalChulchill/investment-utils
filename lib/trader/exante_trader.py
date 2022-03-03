@@ -32,7 +32,7 @@ class ExanteTrader(Trader):
         return self._wait_for_order(self._api.place_market_order(sym=self._sym, side="buy", size=qty_tokens, duration="day"))
 
     def sell_market(self, qty_tokens: float) -> tuple[float,float]:
-        return self._wait_for_order(self._api.place_market_order(syn=self._sym, side="sell", size=qty_tokens, duration="day"))
+        return self._wait_for_order(self._api.place_market_order(sym=self._sym, side="sell", size=qty_tokens, duration="day"))
 
     def _wait_for_order(self, order_id: str) -> tuple[float,float]:
         if order_id is None:

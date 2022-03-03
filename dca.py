@@ -144,6 +144,8 @@ def accumulate_one(asset: str, quota: float, dry: bool):
         }])
         rprint(df.to_string(index=False))
         print_account_balances()
+    else:
+        err(f"{asset} not tradeable ")
 
 
 def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:

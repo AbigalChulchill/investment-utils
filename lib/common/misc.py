@@ -32,7 +32,7 @@ def get_first_decimal_place(n: float) -> int:
     n = 0.003 -> 3
     n = 0.01234 -> 2
     """
-    if "." not in str(n):
+    if isclose(int(n),n):
         return 0
     fraction = str(n).split(".")[1]
     m = re.match(r"(0+)[1-9]+", fraction)
