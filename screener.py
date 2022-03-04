@@ -7,8 +7,9 @@ from lib.common.misc import is_crypto, calc_raise_percent
 from lib.common.metrics import calc_discount_score, calc_heat_score
 from lib.common.id_ticker_map import get_id_sym, get_id_name
 from lib.portfolio.db import Db as PortfolioDb
+from lib.screener.blacklist import BlacklistDb
 
-screener_conf = yaml.safe_load(open('config/screener.yml', 'r'))
+screener_conf = yaml.safe_load(open("config/screener.yml", "r"))
 
 
 def get_list_of_assets(use_assets_from_dca_db: bool):
@@ -19,8 +20,9 @@ def get_list_of_assets(use_assets_from_dca_db: bool):
         dca_nonzero_syms = [x for x in dca_syms if dca_db.get_sym_available_qty(x) > 0.1]
         r += dca_nonzero_syms
 
-    r += screener_conf['additional_assets']
-    return list(set(r))
+    if "additional_assets" in screener_conf:
+        r += screener_conf['additional_assets']
+    return r
 
 
 class FundamentalFilter:
@@ -55,14 +57,19 @@ class FundamentalFilter:
         return ok
 
 
-def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_owned: bool, columns: list[str]):
-    assets = get_list_of_assets(include_owned)
+def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_owned: bool, columns: list[str], tickers: list[str], csvfile: str):
+    assets = list(set(get_list_of_assets(include_owned) + tickers))
     m = MarketData()
     data = []
     ff = FundamentalFilter()
+    blacklistdb = BlacklistDb()
 
     # processing is conservatively sequential here, to prevent triggering various order rate limits
     for asset in simple_progress_track(assets):
+        if blacklistdb.is_blacklisted(asset):
+            print(f"{asset} is blacklisted")
+            continue
+
         if is_crypto(asset):
             if not with_crypto:
                 continue
@@ -144,36 +151,57 @@ def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_ow
             if should_include_column("vol/cap,%"):
                 vol_mcap = vol / (mcap if mcap > 0 else nan)
                 d['vol/cap,%'] = round(vol_mcap * 100.0 ,1)
-
             if should_include_column("down,%"):
                 d['down,%'] = round(calc_raise_percent(hi200,market_price),1)
-
-            if not is_crypto(asset):
-                fundamental_data = m.get_fundamentals(asset)
         except Exception as e:
-            print(f"{asset} download failed ({e})")
-            raise
+            print(f"{asset} : failed to load technical data: {e}")
+            blacklistdb.add_blacklist(asset)
+            continue
 
-    
         if not is_crypto(asset):
+            fundamental_data = m.get_fundamentals(asset)
             for k,v in fundamental_data.items():
                 d[k] = v
-
-        if not is_crypto(asset):
             if ff.check(d):
                 data.append(d)
         else:
             data.append(d)
 
     df = DataFrame.from_dict(data)
-    if sort_by is not None:
+    if len(df) > 0 and sort_by is not None:
         df = df.sort_values(by=sort_by, ascending=False)
     formatters = {}
     for col in df.select_dtypes("object"):
         len_max = int(df[col].str.len().max())
         formatters[col] = lambda _,len_max=len_max: f"{_:<{len_max}s}"
-    if df.size > 0:
-        print(df.to_string(index=False, columns=columns, formatters=formatters, na_rep="~"))
+    if len(df) > 0:
+        if csvfile:
+            df.to_csv(path_or_buf=csvfile, index=False, columns=columns, na_rep="~")
+        else:
+            print(df.to_string(index=False, columns=columns, formatters=formatters, na_rep="~"))
+    else:
+        print("no data")
+
+
+
+def precache(tickers: list[str]):
+    print("precaching")
+    assets = tickers
+    m = MarketData()
+    blacklistdb = BlacklistDb()
+    for asset in simple_progress_track(assets):
+        try:
+            get_id_sym(asset)
+            get_id_name(asset)
+            m.get_total_supply(asset)
+            m.get_market_cap(asset)
+            if not is_crypto(asset):
+                m.get_fundamentals(asset)
+        except Exception as e:
+            print(f"{asset} download failed ({e})")
+            blacklistdb.add_blacklist(asset)
+            continue
+
 
 def show_rsi_filter():
     assets =get_list_of_assets()
@@ -247,18 +275,34 @@ def main():
     parser.add_argument('--crypto',action='store_const', const='True', help='overview: include cryptocurrencies')
     parser.add_argument('--stocks',action='store_const', const='True', help='overview: include stocks')
     parser.add_argument('--owned',action='store_const', const='True', help='overview: include existing nonzero asset positions from DCA database')
+    parser.add_argument('--tickers', type=str, help='file with list of additional tickers, one at each line (--overview, --precache)')
     parser.add_argument('--sort-by', type=str, default=None, help='overview: sort by column name')
+    parser.add_argument('--csv', type=str, default=None, help='overview: write csv file')
+    parser.add_argument('--precache', action='store_const', const='True', help='populate data cache only')
+    
+
 
     parser.add_argument('--rsi',action='store_const', const='True', help='list oversold/overbought')
     parser.add_argument('--dir',action='store_const', const='True', help='detect common market direction')
     
     args = parser.parse_args()
 
+    tickers = open(args.tickers).read().splitlines() if args.tickers else []
+
     if args.overview:
         if args.crypto or args.stocks:
-            show_overview(sort_by=args.sort_by, with_crypto=args.crypto, with_stocks=args.stocks, include_owned=args.owned, columns=screener_conf['columns'])
+            show_overview(\
+                sort_by=args.sort_by,\
+                with_crypto=args.crypto,\
+                with_stocks=args.stocks,\
+                include_owned=args.owned,\
+                columns=screener_conf['columns'],\
+                tickers=tickers,\
+                csvfile=args.csv)
         else:
             print("must specify --crypto and/or --stocks to filter by")
+    elif args.precache:
+        precache(tickers=tickers)
     elif args.rsi:
         show_rsi_filter()
     elif args.dir:
