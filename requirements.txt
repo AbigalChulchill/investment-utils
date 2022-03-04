@@ -1,5 +1,5 @@
 requests >= 2.26
-pandas >= 1.2.1
+pandas >= 1.4.1
 pycoingecko >= 1.4
 TA_Lib >= 0.4.19
 #mplfinance >= 0.12
