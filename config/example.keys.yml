@@ -15,6 +15,11 @@ okex:
   SECRET: <your_secret>
   PASS: <your_api_password>
 
+kucoin:
+  API_KEY: <your_key>
+  SECRET: <your_secret>
+  PASS: <your_api_password>
+
 poloniex:
   API_KEY: <your_key>
   SECRET: <your_secret>

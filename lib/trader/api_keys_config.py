@@ -19,6 +19,9 @@ class ApiKeysConfig:
 
     def get_okex_ksp(self) -> Tuple[str,str,str]:
         return self._cfg['okex']['API_KEY'], self._cfg['okex']['SECRET'], self._cfg['okex']['PASS']
+    
+    def get_kucoin_ksp(self) -> Tuple[str,str,str]:
+        return self._cfg['kucoin']['API_KEY'], self._cfg['kucoin']['SECRET'], str(self._cfg['kucoin']['PASS'])
 
     def get_ftx_ks(self) -> Tuple[str,str]:
         return self._cfg['ftx']['API_KEY'], self._cfg['ftx']['SECRET']

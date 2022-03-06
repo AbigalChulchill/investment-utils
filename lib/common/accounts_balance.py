@@ -5,8 +5,9 @@ from ..trader.okex_api import Okex
 from ..trader.bitrue_api import Bitrue
 from ..trader.mexc_api import Mexc
 from ..trader.exante_api import Exante
-
+from kucoin.client import Margin as KucoinMargin
 from ..trader.api_keys_config import ApiKeysConfig
+
 
 def roundx(x: float):
     return round(x, 2)
@@ -18,13 +19,21 @@ def get_poloniex(api: Poloniex) -> float:
     bal = api.returnCompleteBalances()['USDT']
     return roundx(float(bal['available']) + float(bal['onOrders'])  )
 
-def get_ftx(api: Ftx) -> float:
+def get_ftx(api: Ftx) -> dict:
     balances = api.get_balances()
     
     return {
        'available_including_borrow':        roundx(sum([float(x['free']) for x in balances if x['coin'] in ["USD"] ])),
        'available_without_borrow':          roundx(sum([float(x['availableWithoutBorrow']) for x in balances if x['coin'] in ["USD"] ])),
        'borrow':                           -roundx(sum([float(x['spotBorrow']) for x in balances if x['coin'] in ["USD","USDT"] ])),   
+    }
+
+def get_kucoin(margin_api: KucoinMargin) -> dict:
+    margin_account = [x for x in margin_api.get_margin_account()['accounts'] if x['currency'] == "USDT"][0]   
+    return {
+       'available_including_borrow':        float(margin_account['availableBalance']),
+       'available_without_borrow':          float(margin_account['holdBalance']),
+       'borrow':                           -float(margin_account['liability']),
     }
 
 def get_okex(api: Okex) -> float:
@@ -49,17 +58,13 @@ def get_exante(api: Exante) -> float:
 
 def get_available_usd_balances_dca() -> DataFrame:
     cfg = ApiKeysConfig()
-    poloniex_api = Poloniex(cfg.get_poloniex_ks()[0], cfg.get_poloniex_ks()[1])
-    ftx_api = Ftx(cfg.get_ftx_ks()[0], cfg.get_ftx_ks()[1], cfg.get_ftx_subaccount_dca())
-    okex_api = Okex(cfg.get_okex_ksp()[0], cfg.get_okex_ksp()[1], cfg.get_okex_ksp()[2])
-    mexc_api = Mexc(cfg.get_mexc_ks()[0], cfg.get_mexc_ks()[1])
-    exante_api = Exante(*cfg.get_exante())
 
-    poloniex_data = get_poloniex(poloniex_api)
-    ftx_data = get_ftx(ftx_api)
-    okex_data = get_okex(okex_api)
-    mexc_data = get_mexc(mexc_api)
-    exante_data = get_exante(exante_api)
+    poloniex_data = get_poloniex(Poloniex(*cfg.get_poloniex_ks()))
+    ftx_data = get_ftx(Ftx(cfg.get_ftx_ks()[0], cfg.get_ftx_ks()[1], cfg.get_ftx_subaccount_dca()))
+    okex_data = get_okex(Okex(*cfg.get_okex_ksp()))
+    kucoin_data = get_kucoin(KucoinMargin(*cfg.get_kucoin_ksp()))
+    mexc_data = get_mexc(Mexc(*cfg.get_mexc_ks()))
+    exante_data = get_exante(Exante(*cfg.get_exante()))
     df = DataFrame.from_dict(
         [
             {
@@ -67,6 +72,13 @@ def get_available_usd_balances_dca() -> DataFrame:
                 'available_including_borrow':   ftx_data['available_including_borrow'],
                 'borrow':                       ftx_data['borrow'],
                 'available_without_borrow':     ftx_data['available_without_borrow'],
+                'liquid':                       True,
+            },
+            {
+                'cex_name':                     'Kucoin',
+                'available_including_borrow':   kucoin_data['available_including_borrow'],
+                'borrow':                       kucoin_data['borrow'],
+                'available_without_borrow':     kucoin_data['available_without_borrow'],
                 'liquid':                       True,
             },
 

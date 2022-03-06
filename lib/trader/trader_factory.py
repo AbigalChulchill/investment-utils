@@ -4,6 +4,7 @@ from .ftx_trader import FtxTrader
 from .okex_trader import OkexTrader
 from .bitrue_trader import BitrueTrader
 from .mexc_trader import MexcTrader
+from .kucoin_trader import KucoinTrader
 from .exante_trader import ExanteTrader
 from .dummy_trader import DummyTrader
 from .api_keys_config import ApiKeysConfig
@@ -33,6 +34,9 @@ class TraderFactory:
             if MexcTrader.handles_sym(sym):
                 api_key, secret = cfg.get_mexc_ks()
                 return MexcTrader(sym, api_key, secret)
+        elif exch == 'kucoin':
+            if KucoinTrader.handles_sym(sym):
+                return KucoinTrader(sym, *cfg.get_kucoin_ksp())
         elif exch == 'exante':
             if ExanteTrader.handles_sym(sym):
                 return ExanteTrader(sym, *cfg.get_exante())
