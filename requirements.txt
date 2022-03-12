@@ -3,7 +3,6 @@ pandas >= 1.4.1
 pycoingecko >= 1.4
 TA_Lib >= 0.4.19
 #mplfinance >= 0.12
-yfinance >= 0.1.63
 yahoo_fin >= 0.8.9
 rich >= 10.12
 pyyaml >= 5.4.1
