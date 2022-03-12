@@ -1,4 +1,10 @@
 
+# FIXME
+# workaround until this is fixed
+# .local/lib/python3.10/site-packages/yahoo_fin/stock_info.py:302: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import datetime, pathlib, pickledb
 from math import nan, isclose
 from typing import Any
