@@ -33,11 +33,11 @@ def title(name: str):
 def title2(name: str):
     rprint(f"[bold white]{name}[/]")
 
-def msg_buying(coin: str, value: float):
-    rprint(f"[bold green]buying[/] {coin} for {value:.2f} USD")
+def msg_buying(asset: str, value: float):
+    rprint(f"[bold green]buying[/] {get_asset_desc(asset)} for {value:.2f} USD")
 
-def msg_selling(coin: str, qty: float):
-    rprint(f"[bold red]selling[/] {qty} {coin}")
+def msg_selling(asset: str, qty: float):
+    rprint(f"[bold red]selling[/] {qty} {get_asset_desc(asset)}")
 
 def create_trader(coin: str) -> Trader:
     if coin in ds['asset_exchg']:
@@ -66,6 +66,8 @@ def get_asset_category(asset: str) -> str:
             return cat
     return default_category
 
+def get_asset_desc(asset: str):
+    return f"{get_id_sym(asset)} ({get_id_name(asset)})"
 
 
 class TradeHelper:
@@ -146,7 +148,7 @@ def accumulate_one(asset: str, quota: float, dry: bool):
         rprint(df.to_string(index=False))
         print_account_balances()
     else:
-        err(f"{asset} not tradeable ")
+        err(f"{get_asset_desc(asset)} not tradeable ")
 
 
 def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
@@ -164,7 +166,7 @@ def passes_acc_filter(asset: str, th: TradeHelper) -> Tuple[bool, str]:
         if ds['check_rsi']:
             rsi = th.get_rsi(asset)
             if rsi is None:
-                warn(f"{asset}: RSI calculation error")
+                warn(f"{get_asset_desc(asset)}: RSI calculation error")
             elif rsi > ds['check_rsi_threshold']:
                 return False, f"RSI {round(rsi,2)} too high"
         if ds['check_discount']:
@@ -185,11 +187,11 @@ def accumulate_pre_pass() -> Tuple[float, Dict[str,float]]:
         for asset in simple_progress_track(ds['categories'][category],with_item_text=False):
             filter_result, filter_reason = passes_acc_filter(asset, th)
             if not filter_result:
-                rprint(f"[bold]{asset}[/] {filter_reason}, skipping")
+                rprint(f"[bold]{get_asset_desc(asset)}[/] {filter_reason}, skipping")
                 continue
             daily_qty,quota_factor = calc_daily_qty(category, asset, th, ds['quota_usd'])
             if isclose(quota_factor,0):
-                rprint(f"[bold]{asset}[/] quota = 0, skipping")
+                rprint(f"[bold]{get_asset_desc(asset)}[/] quota = 0, skipping")
                 continue
             price = th.get_market_price(asset)
             coin_qty = daily_qty / price
@@ -229,15 +231,15 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
                         break
                     except Exception as e:
                         if retries > 0:
-                            warn(f"{asset} buy failed ({e}), {retries} retries remaining")
+                            warn(f"{get_asset_desc(asset)} buy failed ({e}), {retries} retries remaining")
                             retries -= 1
                             time.sleep(5)
                         else:
-                            err(f"{asset} buy failed ({e})")
+                            err(f"{get_asset_desc(asset)} buy failed ({e})")
                             traceback.print_exc()
                             break
             else:
-                info(f"{asset} not tradeable ")
+                info(f"{get_asset_desc(asset)} not tradeable ")
              
 
     if len(a):
