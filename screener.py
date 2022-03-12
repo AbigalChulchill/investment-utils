@@ -12,9 +12,9 @@ from lib.screener.blacklist import BlacklistDb
 screener_conf = yaml.safe_load(open("config/screener.yml", "r"))
 
 
-def get_list_of_assets(use_assets_from_dca_db: bool):
+def get_list_of_assets(include_stocks: bool, include_crypto: bool, include_owned: bool, extra_tickers: list[str]):
     r = []
-    if use_assets_from_dca_db:
+    if include_owned:
         dca_db = PortfolioDb()
         dca_syms = dca_db.get_syms()
         dca_nonzero_syms = [x for x in dca_syms if dca_db.get_sym_available_qty(x) > 0.1]
@@ -22,6 +22,15 @@ def get_list_of_assets(use_assets_from_dca_db: bool):
 
     if "additional_assets" in screener_conf:
         r += screener_conf['additional_assets']
+
+    r = list(set(r + extra_tickers))
+
+    blacklistdb = BlacklistDb()
+    r = [ x for x in r if not blacklistdb.is_blacklisted(x)]
+
+    r = [ x for x in r if not include_crypto or is_crypto(x) ]
+    r = [ x for x in r if not include_stocks or not is_crypto(x) ]
+    
     return r
 
 
@@ -57,8 +66,7 @@ class FundamentalFilter:
         return ok
 
 
-def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_owned: bool, columns: list[str], tickers: list[str], csvfile: str):
-    assets = list(set(get_list_of_assets(include_owned) + tickers))
+def show_overview(assets: list[str], sort_by: str, columns: list[str], csvfile: str):
     m = MarketData()
     data = []
     ff = FundamentalFilter()
@@ -66,16 +74,6 @@ def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_ow
 
     # processing is conservatively sequential here, to prevent triggering various order rate limits
     for asset in simple_progress_track(assets):
-        if blacklistdb.is_blacklisted(asset):
-            print(f"{asset} is blacklisted")
-            continue
-
-        if is_crypto(asset):
-            if not with_crypto:
-                continue
-        else:
-            if not with_stocks:
-                continue
 
         def should_include_column(col):
             return columns is None or col in columns
@@ -184,9 +182,8 @@ def show_overview(sort_by: str, with_crypto: bool, with_stocks: bool, include_ow
 
 
 
-def precache(tickers: list[str]):
+def precache(assets: list[str]):
     print("precaching")
-    assets = tickers
     m = MarketData()
     blacklistdb = BlacklistDb()
     for asset in simple_progress_track(assets):
@@ -203,8 +200,7 @@ def precache(tickers: list[str]):
             continue
 
 
-def show_rsi_filter():
-    assets =get_list_of_assets()
+def show_rsi_filter(assets: list[str]):
     m = MarketData()
     data_oversold = []
     data_overbought = []
@@ -217,6 +213,9 @@ def show_rsi_filter():
 
         rsi = m.get_rsi(asset)
 
+        if rsi is None:
+            continue
+
         d ={
         "ticker": get_id_sym(asset),
         "name": get_id_name(asset),
@@ -226,16 +225,20 @@ def show_rsi_filter():
             data_oversold.append(d)
         elif rsi > max_rsi:
             data_overbought.append(d)
-    print("overbought")
-    print(DataFrame.from_dict(data_overbought).sort_values(by="asset", ascending=False).to_string(index=False, na_rep="~"))
+
     print()
-    print("oversold")
-    print(DataFrame.from_dict(data_oversold).sort_values(by="asset", ascending=False).to_string(index=False, na_rep="~"))
+    if len(data_overbought):
+        print("overbought")
+        print(DataFrame.from_dict(data_overbought).sort_values(by="ticker", ascending=False).to_string(index=False, na_rep="~"))
+        print()
+    if len(data_oversold):
+        print("oversold")
+        print(DataFrame.from_dict(data_oversold).sort_values(by="ticker", ascending=False).to_string(index=False, na_rep="~"))
+        print()
 
 
 
-def show_dir():
-    assets = get_list_of_assets()
+def show_dir(assets: list[str]):
     m = MarketData()
 
     total = 0
@@ -280,33 +283,22 @@ def main():
     parser.add_argument('--csv', type=str, default=None, help='overview: write csv file')
     parser.add_argument('--precache', action='store_const', const='True', help='populate data cache only')
     
-
-
     parser.add_argument('--rsi',action='store_const', const='True', help='list oversold/overbought')
     parser.add_argument('--dir',action='store_const', const='True', help='detect common market direction')
     
     args = parser.parse_args()
 
-    tickers = open(args.tickers).read().splitlines() if args.tickers else []
+    extra_tickers = open(args.tickers).read().splitlines() if args.tickers else []
+    assets = get_list_of_assets(include_stocks=args.stocks,include_crypto=args.crypto,include_owned=args.owned,extra_tickers=extra_tickers)
 
     if args.overview:
-        if args.crypto or args.stocks:
-            show_overview(\
-                sort_by=args.sort_by,\
-                with_crypto=args.crypto,\
-                with_stocks=args.stocks,\
-                include_owned=args.owned,\
-                columns=screener_conf['columns'],\
-                tickers=tickers,\
-                csvfile=args.csv)
-        else:
-            print("must specify --crypto and/or --stocks to filter by")
+        show_overview(assets=assets, sort_by=args.sort_by, columns=screener_conf['columns'], csvfile=args.csv)
     elif args.precache:
-        precache(tickers=tickers)
+        precache(assets=assets)
     elif args.rsi:
-        show_rsi_filter()
+        show_rsi_filter(assets=assets)
     elif args.dir:
-        show_dir()
+        show_dir(assets=assets)
 
 
 if __name__ == '__main__':
