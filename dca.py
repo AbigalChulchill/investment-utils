@@ -1,14 +1,11 @@
-import datetime, argparse, re, yaml, time, traceback, logging, functools
-from collections import defaultdict
+import datetime, argparse, re, yaml, time, traceback, logging, jmespath
 from collections.abc import Callable
-from pandas.core.frame import DataFrame, Series
+from abc import abstractmethod
+from pandas.core.frame import DataFrame
 from pandas import concat
 from math import nan, isclose
-from typing import List, NamedTuple, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any
 
-from rich.columns import Columns
-from rich.table import Table
-from rich import box
 from rich import print as rprint, reconfigure
 reconfigure(highlight=False)
 
@@ -58,13 +55,12 @@ def get_quota_fixed_factor(category: str, asset: str):
     return 1
 
 def get_asset_category(asset: str) -> str:
-    default_category = "other"
-    if "categories" not in ds.keys():
-        return default_category
-    for cat,members in ds['categories'].items():
-        if asset in members:
-            return cat
-    return default_category
+    traverser = AssetsCompositeHierarchy()
+    for x in traverser.flat_list():
+        if x[0] == asset:
+            return x[1]
+    return "/all/uncategorized"
+
 
 def get_asset_desc(asset: str):
     return f"{get_id_sym(asset)} ({get_id_name(asset)})"
@@ -107,6 +103,166 @@ class TradeHelper:
     def get_short_term_trend(self, asset: str, length_days: int) -> str:
         return self.market_data.get_short_term_trend(asset,length_days)
 
+
+class ManagedAssetsHierarchy:
+    def __init__(self):
+        self._h = ds['categories']
+
+    def get_hierarchy(self):
+        return self._h
+
+
+
+class UnmanagedAssetsHierarchy:
+    def __init__(self):
+        self._d = ds['unmanaged_categories']
+
+    def get_list(self):
+        for k,v in self._d.items():
+            subcategory = "/all/" + k
+            for item in v:
+                yield item['name'], subcategory
+
+
+class CexFiatDepositHierarchy:
+    def __init__(self):
+        self._df_cex_balances = accounts_balance.get_available_usd_balances_dca()
+
+    def get_list(self):
+        for _,s in self._df_cex_balances.iterrows():
+            yield s['cex_name'] + "_deposit", "/all/fiat"
+            yield s['cex_name'] + "_borrow", "/all/fiat"
+
+
+
+class AssetsCompositeHierarchy:
+    def __init__(self):
+        managed_assets = ManagedAssetsHierarchy()
+        unmanaged_assets = UnmanagedAssetsHierarchy()
+        cex_fiat_deposit = CexFiatDepositHierarchy()
+
+        self._h =  managed_assets.get_hierarchy()
+
+        def create_path(h: dict, path: str):
+            path = category_path.replace("/all/","")
+            path_chunks = path.split("/")
+            d = h
+            for c in path_chunks:
+                if c not in d.keys():
+                    d[c] = []
+                d = d[c]
+            return d
+
+
+        for asset,category_path in unmanaged_assets.get_list():
+            insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
+            if insertion_point is None:
+                insertion_point = create_path(self._h, category_path)
+            insertion_point.append(asset)
+
+        for asset,category_path in cex_fiat_deposit.get_list():
+            insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
+            if insertion_point is None:
+                insertion_point = create_path(self._h, category_path)
+            insertion_point.append(asset)
+  
+        #print(self._h )
+
+    def flat_list(self):
+        yield from self._flat_list("/all", self._h)
+
+    def _flat_list(self,parent_category: str, branch: dict):
+        for k,v in branch.items():
+            subcategory = parent_category + "/" + k
+            if type(v) is dict:
+                yield from self._flat_list(subcategory, v)
+            else:
+                for asset in v:
+                    yield asset,subcategory
+
+    def structured_list(self):
+        yield "<begin>","/all"
+        yield from self._structured_list("/all", self._h)
+        yield "<end>","/all"
+
+    def _structured_list(self,parent_category: str, branch: dict):
+        for k,v in branch.items():
+            subcategory = parent_category + "/" + k
+            if type(v) is dict:
+                yield "<begin>",subcategory
+                yield from self._structured_list(subcategory, v)
+                yield "<end>",subcategory
+            else:
+                yield "<begin>",subcategory
+                for asset in v:
+                    yield asset,subcategory
+                yield "<end>",subcategory
+
+
+class ValueSource:
+    @abstractmethod
+    def get_value(self, asset: str, category_path: str) -> float:
+        """  get available USD value of asset
+        """
+
+class DcaDbValueSource(ValueSource):
+    def __init__(self, df_pnl:DataFrame):
+        self._df = df_pnl
+    def get_value(self, asset: str, category_path: str) -> float:
+        locations = self._df.loc[ self._df['id'] == asset ]
+        if len(locations):
+            return locations [ 'value'].sum()
+        return None
+
+class UnmanagedAssetsValueSource(ValueSource):
+    def __init__(self):
+        self._data = ds['unmanaged_categories']
+        self._th = TradeHelper()
+
+    def get_value(self, asset: str, category_path: str) -> float:
+        m = re.match('^/all/(.+)', category_path)
+        if m:
+            group = m[1]
+            if group in self._data.keys():
+                entries = self._data[group]
+                entry = [x for x in entries if x['name'] == asset]
+                if len(entry):
+                    entry = entry[0]
+                    return entry['qty'] * self._th.get_market_price(entry['currency'])
+
+        return None
+
+"""
+ fiat money on CEXes
+"""
+class CexFiatValueSource(ValueSource):
+    def __init__(self):
+        df_cex_balances = accounts_balance.get_available_usd_balances_dca()
+        self._map = {}
+        for _,s in df_cex_balances.iterrows():
+            self._map[s['cex_name']+"_deposit"] = s['available_without_borrow']
+            self._map[s['cex_name']+"_borrow"] = s['borrow']
+
+
+    def get_value(self, asset: str, category_path: str) -> float:
+        if asset in self._map.keys():
+            return self._map[asset]
+        return None
+
+class CompositeValueSource(ValueSource):
+    def __init__(self, df_pnl:DataFrame):
+        self._sources = [
+            DcaDbValueSource(df_pnl),
+            UnmanagedAssetsValueSource(),
+            CexFiatValueSource(),
+        ]
+    def get_value(self, asset: str, category_path: str) -> float:
+        for s in self._sources:
+            #print("CompositeValueSource get_value", asset,category_path)
+            v = s.get_value(asset, category_path)
+            if v is not None:
+                return v
+        return 0
 
 
 
@@ -183,8 +339,10 @@ def accumulate_pre_pass() -> Tuple[float, Dict[str,float]]:
     th = TradeHelper()
     total_value = 0
     enabled = {}
+    category_traverser = AssetsCompositeHierarchy()
     for category in ds['auto_accumulate_categories']:
-        for asset in simple_progress_track(ds['categories'][category],with_item_text=False):
+        assets_of_category = [x[0] for x in  category_traverser.flat_list() if x[1] == category]
+        for asset in simple_progress_track(assets_of_category,with_item_text=False):
             filter_result, filter_reason = passes_acc_filter(asset, th)
             if not filter_result:
                 rprint(f"[bold]{get_asset_desc(asset)}[/] {filter_reason}, skipping")
@@ -352,61 +510,63 @@ def add_ext_order(asset: str, qty: float, price: float, timestamp: str):
 
 
 def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
+
+    def create_left_align_str_formatters(df: DataFrame) -> dict:
+        formatters = {}
+        for col in df.select_dtypes("object"):
+            len_max = int(df[col].str.len().max())
+            formatters[col] = lambda _,len_max=len_max: f"{_:<{len_max}s}"
+        return formatters
+
+
     title("Positions")
     db = Db()
     th = TradeHelper()
     assets = db.get_syms()
-    asset_groups = defaultdict(list)
-    for a in assets:
-        asset_groups[get_asset_category(a)].append(a)
+    
 
-    asset_group_pnl_df={}
+    d_pnl = []
     pnl_sort_key = lambda x: [-101 if a == "~" else a for a in x]
-    for asset_group in asset_groups.keys():
-        stats_data = []
-        for coin in asset_groups[asset_group]:
+    for asset in assets:
 
-            market_price = th.get_market_price(coin)
-            qty = db.get_sym_available_qty(coin)
-            pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(coin), market_price)
+        market_price = th.get_market_price(asset)
+        qty = db.get_sym_available_qty(asset)
+        pnl_data = pnl.calculate_inc_pnl(db.get_sym_orders(asset), market_price)
 
-            d={
-                'id': coin,
-                'ticker': get_id_sym(coin),
-                'name': get_id_name(coin),
-                'break even price': pnl_data.break_even_price,
-                'current price': market_price,
-                'qty': qty,
-                'value': round(pnl_data.unrealized_sell_value,2),
-                'r pnl': round(pnl_data.realized_pnl,2),
-                'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
-                'u pnl': round(pnl_data.unrealized_pnl,2),
-                'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
-            }
-            stats_data.append(d)
-        df_pnl = DataFrame.from_dict(stats_data)
-        df_pnl.sort_values(sort_by, inplace=True, ascending=False, key=pnl_sort_key)
-        asset_group_pnl_df[asset_group] = df_pnl
+        d={
+            'id': asset,
+            'ticker': get_id_sym(asset),
+            'name': get_id_name(asset),
+            'break even price': pnl_data.break_even_price,
+            'current price': market_price,
+            'qty': qty,
+            'value': round(pnl_data.unrealized_sell_value,2),
+            'r pnl': round(pnl_data.realized_pnl,2),
+            'r pnl %': round(pnl_data.realized_pnl_percent,1) if pnl_data.realized_pnl_percent != pnl.INVALID_PERCENT else nan,
+            'u pnl': round(pnl_data.unrealized_pnl,2),
+            'u pnl %': round(pnl_data.unrealized_pnl_percent,1) if pnl_data.unrealized_pnl_percent != pnl.INVALID_PERCENT else nan,
+        }
+        d_pnl.append(d)
 
-    df_pnl_one_table = concat(asset_group_pnl_df.values())
-    df_pnl_one_table_nonzero = df_pnl_one_table.loc[df_pnl_one_table['value'] >= 1]
-    df_pnl_one_table_zero = df_pnl_one_table.loc[df_pnl_one_table['value'] < 1]
+    df_pnl = DataFrame.from_dict(d_pnl)
+    df_pnl_nonzero = df_pnl.loc[df_pnl['value'] >= 1]
+    df_pnl_zero = df_pnl.loc[df_pnl['value'] < 1]
     # split by is_crypto
-    df_pnl_one_table_cc     = df_pnl_one_table_nonzero.loc[ lambda df: map(is_crypto,                  df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
-    df_pnl_one_table_stocks = df_pnl_one_table_nonzero.loc[ lambda df: map(lambda x: not is_crypto(x), df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    df_pnl_cc     = df_pnl_nonzero.loc[ lambda df: map(is_crypto,                  df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
+    df_pnl_stocks = df_pnl_nonzero.loc[ lambda df: map(lambda x: not is_crypto(x), df['id']) ].sort_values(sort_by, ascending=False, key=pnl_sort_key)
 
-    if df_pnl_one_table_stocks.size > 0 or df_pnl_one_table_cc.size > 0 :
+    if df_pnl_stocks.size > 0 or df_pnl_cc.size > 0 :
         columns = ["category", "ticker","name", "break even price", "current price", "u pnl %"] if hide_private_data else ["category", "ticker", "name", "break even price", "current price", "qty", "value", "r pnl", "r pnl %", "u pnl", "u pnl %" ]
-        d_totals = {'value': df_pnl_one_table['value'].sum(), 'u pnl': df_pnl_one_table['u pnl'].sum()}
+        d_totals = {'value': df_pnl['value'].sum(), 'u pnl': df_pnl['u pnl'].sum()}
         d_totals['u pnl %'] = round( calc_raise_percent( d_totals['value'] - d_totals['u pnl'], d_totals['value'] ), 2)
 
         dfparts = [
             DataFrame([ {"category": "crypto"} ]),
-            df_pnl_one_table_cc,
+            df_pnl_cc,
             DataFrame([ {"category": "stocks"} ]),
-            df_pnl_one_table_stocks,
+            df_pnl_stocks,
             DataFrame([ {"category": "closed positions"} ]),
-            df_pnl_one_table_zero,
+            df_pnl_zero,
         ]
         if not hide_totals:
             dfparts  +=  [
@@ -415,114 +575,82 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
             ]
         df = concat(dfparts, ignore_index=True)
     
-        formatters = {}
-        for col in df.select_dtypes("object"):
-            len_max = int(df[col].str.len().max())
-            formatters[col] = lambda _,len_max=len_max: f"{_:<{len_max}s}"
+        formatters = create_left_align_str_formatters(df)
         formatters["qty"] = lambda _: f"{_:.8f}"
         print_hi_negatives(df.to_string(index=False,formatters=formatters,columns=columns,na_rep="~"))
     else:
         print("No assets")
     print()
 
+
     title("Portfolio Structure")
 
-    # % of each asset in a category to sum of all assets in category
-    for asset_group in asset_groups.keys():
-        df = asset_group_pnl_df[asset_group]
-        if df.size > 0:
-            df['%'] = round(df['value'] / sum(df['value']) * 100, 1)
-            df['USD'] = df['value']
-            df['BTC'] = round(df['USD'] / th.get_market_price("bitcoin"),6)
-            df.sort_values('%', ascending=False, inplace=True)
+    category_traverser = AssetsCompositeHierarchy()
+    assets_value_source = CompositeValueSource(df_pnl)
+    df_ps = DataFrame()
+    category_stack = [] # list of list( cat_path, DF() )
+    assets_in_managed_portfolio = set()
+
+    btcusd = th.get_market_price("bitcoin")
+
+    
+    for asset,cat_path in category_traverser.structured_list():
+        #print("xxx", asset, cat_path)
+        if asset == '<begin>':
+            category_stack.append( [cat_path, DataFrame()] )
+        elif asset == '<end>':
+
+            top = category_stack.pop()
+            df = top[1]
+
+            assert top[0] == cat_path
+
+            df['BTC'] = round(df['USD'] / btcusd,6)
+            df['%'] = df['USD'] / df['USD'].sum() * 100
+            #df.sort_values('%', ascending=False, inplace=True)
 
 
-    # % of each group to all portfolio
-    stats_data = []
-    for asset_group in asset_groups.keys():
-        if asset_group_pnl_df[asset_group].size > 0:
-            stats_data.append({
-                'asset_group': asset_group,
-                'USD': round(sum(asset_group_pnl_df[asset_group]['value']),2),
-            })
+            # print("-"*100)
+            # print(df.to_string(index=False))
+            # print("-"*100)
+
+            df_category = DataFrame.from_dict([{
+                    'cat': cat_path,
+                    'USD': df['USD'].sum(),
+                }])
+
+            df_ps = concat([df_ps, df, df_category ],ignore_index=True)
+
+            if len(category_stack):
+                category_stack[-1][1] = concat( [category_stack[-1][1], df_category],ignore_index=True )
+
         else:
-            stats_data.append({
-                'asset_group': asset_group,
-                'USD' : 0,
-            })
-    if 'unmanaged_categories' in ds.keys():
-        for um_category_name,um_category_dict in ds['unmanaged_categories'].items():
-            stats_data.append({
-                'asset_group': um_category_name,
-                'USD': round(um_category_dict['qty'] * th.get_market_price(um_category_dict['currency']),2),
-            })
-    # create custom asset category for fiat money on CEXes
-    df_cex_balances = accounts_balance.get_available_usd_balances_dca()
-    df_cex_balances_liquid = df_cex_balances.loc[ df_cex_balances['liquid'] == True ]
-    df_cex_balances_illiquid = df_cex_balances.loc[ df_cex_balances['liquid'] == False ]
-    stats_data.append({
-        'asset_group': "fiat_liquid_cex",
-        'USD': round(
-                  df_cex_balances_liquid['available_without_borrow'].sum() + df_cex_balances_liquid['borrow'].sum()#borrow has "-" sign
-                ,2),
-    })
-    stats_data.append({
-        'asset_group': "fiat_illiquid_cex",
-        'USD': round(
-                  df_cex_balances_illiquid['available_without_borrow'].sum() + df_cex_balances_illiquid['borrow'].sum()#borrow has "-" sign
-                ,2),
-    })
+            category_stack[-1][1] = concat(
+                    [
+                        category_stack[-1][1],
+                        DataFrame.from_dict([{
+                            #'cat': cat_path,
+                            'id': asset,
+                            'ticker': get_id_sym(asset),
+                            'name': get_id_name(asset),
+                            'USD': assets_value_source.get_value(asset,cat_path),
+                        }])
+                    ],ignore_index=True)
+            assets_in_managed_portfolio.add(asset)
+                
+    columns = ["cat", "ticker","name","%","USD","BTC"]
+    formatters = create_left_align_str_formatters(df_ps)
+    formatters["BTC"]   = lambda _: f"{_:.8f}"
+    formatters["%"]     = lambda _: f"{_:.1f}"
+    formatters["USD"]   = lambda _: f"{_:.2f}"
+    print(df_ps.to_string(index=False, na_rep="~", columns=columns, formatters=formatters))
+
+    df_orphaned_assets_in_portfolio = df_pnl_nonzero.loc[ [x not in assets_in_managed_portfolio for x in df_pnl_nonzero['id'] ] ]
+    if len(df_orphaned_assets_in_portfolio):
+        warn("orphaned non-zero position assets exist :")
+        print(df_orphaned_assets_in_portfolio.to_string(index=False, na_rep="~", columns=["ticker","name"]))
 
 
-    df_assets = DataFrame.from_dict(stats_data)
-    df_assets = df_assets.loc[df_assets['USD'] >= 0]
-    df_assets['%'] = round(df_assets['USD'] / sum(df_assets['USD']) * 100,1)
-    df_assets['BTC'] = df_assets['USD'] / th.get_market_price("bitcoin")
-    df_assets = df_assets.sort_values('%', ascending=False)
-
-    df_liabilities = DataFrame.from_dict(stats_data)
-    df_liabilities = df_liabilities.loc[df_liabilities['USD'] < 0]
-    df_liabilities['%'] = round(df_liabilities['USD'] / sum(df_assets['USD']) * 100,1) # % is calculated respective to size of assets
-    df_liabilities['BTC'] = df_liabilities['USD'] / th.get_market_price("bitcoin")
-    df_liabilities = df_liabilities.sort_values('%', ascending=True)
-
-    # for every caategory print a table
-    table = Table(box=box.SIMPLE_HEAD)
-    col_list = []
-    for asset_group in df_assets['asset_group']:
-        if asset_group in asset_group_pnl_df.keys():
-            df = asset_group_pnl_df[asset_group]
-            if df.size > 0:
-                if hide_private_data or hide_totals:
-                    df_str = df.to_string(index=False, header=False, columns=['ticker', '%'])
-                else:
-                    df_str = df.to_string(index=False, columns=['ticker', '%', 'USD'])
-            else:
-                df_str = "(none)"
-            table.add_column(f"[bold white]{asset_group}[/]", justify="center")
-            col_list.append(df_str)
-    table.add_row(*col_list)
-    rprint(table)
-
-    # print assets and liabilities tables
-    if hide_private_data or hide_totals:
-        df_assets_str = df_assets.to_string(index=False, header=False, columns=['asset_group', '%'])
-        df_liabilities_str = df_liabilities.to_string(index=False, header=False, columns=['asset_group', '%'])
-    else:
-        df_assets_str = df_assets.to_string(index=False)
-        df_liabilities_str = df_liabilities.to_string(index=False)
-    table = Table(box=box.SIMPLE_HEAD)
-    table.add_column(f"[bold green]assets[/]", justify="center")
-    table.add_column(f"[bold yellow]liabilities[/]", justify="center")
-    table.add_row(df_assets_str,df_liabilities_str)
-    rprint(table)
-    rprint("  **  % liabilities is calculated respective to size of assets")
-    rprint()
-
-
-    if not (hide_private_data or hide_totals):
-        rprint(f"total value across all assets: {sum(df_assets['USD']):.2f} USD ({sum(df_assets['BTC']):.6f} BTC)")
-        rprint()
 
 
 def _coalesce_bucket(orders: List[HistoricalOrder]):
