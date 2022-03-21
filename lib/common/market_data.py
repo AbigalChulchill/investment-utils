@@ -5,6 +5,8 @@ from .. market_data_providers.flyweight import MarketDataProviderFlyweight
 from lib.common.msg import warn
 from lib.common.misc import calc_raise_percent
 from math import nan
+import pickledb
+import yaml
 
 
 class HistoricalBarCache:
@@ -41,19 +43,24 @@ class MarketPriceCache:
     """
     class MarketPrice(NamedTuple):
         value:      float
-        timestamp:  datetime.datetime
+        timestamp:  float
 
     def __init__(self):
-        self._cache = {}
+        self._ttl_s = yaml.safe_load(open("config/common.yml", "r"))["market_price_cache_ttl_s"]
+        cache_d = "cache/market_data"
+        if not os.path.exists(cache_d):
+            pathlib.Path(cache_d).mkdir(parents=True, exist_ok=True)
+        self._cache = pickledb.load(cache_d+"/marketprice.db", auto_dump=True)
 
     def put(self, key: str, value: float):
-        self._cache[key] = MarketPriceCache.MarketPrice(value=value, timestamp=datetime.datetime.now())
+        self._cache.set(key, MarketPriceCache.MarketPrice(value=value, timestamp=datetime.datetime.now().timestamp()))
 
     def get(self, key: str) -> float:
-        if key in self._cache:
-            # only valid if not older than one minute from now
-            if (datetime.datetime.now() - self._cache[key].timestamp) < datetime.timedelta(minutes=1):
-                return self._cache[key].value
+        v = self._cache.get(key)
+        if v:
+            # only valid if not older than 10 minutes
+            if (datetime.datetime.now() - datetime.datetime.fromtimestamp(self._cache[key][1])) < datetime.timedelta(seconds=self._ttl_s):
+                return v[0]
         return None
 
 class MarketData:
@@ -75,7 +82,7 @@ class MarketData:
         return True
 
     def _get_historical_bars(self, asset, days_before):
-        max_cache_days = 200
+        max_cache_days = 365
         assert days_before <= max_cache_days
         bar_data = self._historical_bars_cache.get(asset)
         if bar_data is None:
@@ -112,6 +119,17 @@ class MarketData:
             weekly_change = (current_price - previous_close)
             weekly_change_percent = (current_price - previous_close) / previous_close * 100
         return weekly_change,weekly_change_percent
+
+    def get_annual_change(self, asset: str) -> Tuple[float,float]:
+        annual_change = (0,0)
+        annual_change_percent = 0
+        df = self._get_historical_bars(asset, 364)
+        if df['close'].size > 1:
+            previous_close = df['close'].iat[-365 if df['close'].size >= 365 else 0]
+            current_price = df['close'].iat[-1]
+            annual_change = (current_price - previous_close)
+            annual_change_percent = (current_price - previous_close) / previous_close * 100
+        return annual_change,annual_change_percent
 
     def get_short_term_trend(self, asset: str, length_days: int) -> str:
         df = self._get_historical_bars(asset, length_days)

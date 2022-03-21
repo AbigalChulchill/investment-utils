@@ -93,6 +93,8 @@ def show_overview(assets: list[str], sort_by: str, columns: list[str], csvfile: 
             'chg%':         nan,
             'w.chg':        nan,
             'w.chg%':       nan,
+            'an.chg':       nan,
+            'an.chg%':      nan,
             'mean':         nan,
             'bottom':       nan,
             'top':          nan,
@@ -131,6 +133,10 @@ def show_overview(assets: list[str], sort_by: str, columns: list[str], csvfile: 
                 wchg,wchg_p = m.get_weekly_change(asset)
                 d['w.chg'] = round(wchg,2)
                 d['w.chg%'] = round(wchg_p,1)
+            if should_include_column("an.chg")  or should_include_column("an.chg%"):
+                anchg,anchg_p = m.get_annual_change(asset)
+                d['an.chg'] = round(anchg,2)
+                d['an.chg%'] = round(anchg_p,1)
             if should_include_column("heat score"):
                 heat_score = calc_heat_score(market_price=market_price, ma200=ma200_price, hi200=hi200, rsi=rsi)
                 d['heat score'] = round(heat_score,1)
