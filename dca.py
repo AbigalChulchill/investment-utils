@@ -55,7 +55,7 @@ def get_quota_fixed_factor(category: str, asset: str):
     return 1
 
 def get_asset_category(asset: str) -> str:
-    traverser = AssetsCompositeHierarchy()
+    traverser = AssetsCompositeHierarchy(managed_only=True)
     for x in traverser.flat_list():
         if x[0] == asset:
             return x[1]
@@ -136,37 +136,39 @@ class CexFiatDepositHierarchy:
 
 
 class AssetsCompositeHierarchy:
-    def __init__(self):
+    def __init__(self, managed_only: bool):
         managed_assets = ManagedAssetsHierarchy()
-        unmanaged_assets = UnmanagedAssetsHierarchy()
-        cex_fiat_deposit = CexFiatDepositHierarchy()
+        if not managed_only:
+            unmanaged_assets = UnmanagedAssetsHierarchy()
+            cex_fiat_deposit = CexFiatDepositHierarchy()
 
         self._h =  managed_assets.get_hierarchy()
 
-        def create_path(h: dict, path: str):
-            path = category_path.replace("/all/","")
-            path_chunks = path.split("/")
-            d = h
-            for c in path_chunks:
-                if c not in d.keys():
-                    d[c] = []
-                d = d[c]
-            return d
+        if not managed_only:
+            def create_path(h: dict, path: str):
+                path = category_path.replace("/all/","")
+                path_chunks = path.split("/")
+                d = h
+                for c in path_chunks:
+                    if c not in d.keys():
+                        d[c] = []
+                    d = d[c]
+                return d
 
 
-        for asset,category_path in unmanaged_assets.get_list():
-            insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
-            if insertion_point is None:
-                insertion_point = create_path(self._h, category_path)
-            insertion_point.append(asset)
+            for asset,category_path in unmanaged_assets.get_list():
+                insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
+                if insertion_point is None:
+                    insertion_point = create_path(self._h, category_path)
+                insertion_point.append(asset)
 
-        for asset,category_path in cex_fiat_deposit.get_list():
-            insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
-            if insertion_point is None:
-                insertion_point = create_path(self._h, category_path)
-            insertion_point.append(asset)
-  
-        #print(self._h )
+            for asset,category_path in cex_fiat_deposit.get_list():
+                insertion_point = jmespath.search(category_path.replace("/all/","").replace("/","."), self._h)
+                if insertion_point is None:
+                    insertion_point = create_path(self._h, category_path)
+                insertion_point.append(asset)
+    
+            #print(self._h )
 
     def flat_list(self):
         yield from self._flat_list("/all", self._h)
@@ -339,10 +341,9 @@ def accumulate_pre_pass() -> Tuple[float, Dict[str,float]]:
     th = TradeHelper()
     total_value = 0
     enabled = {}
-    category_traverser = AssetsCompositeHierarchy()
-    for category in ds['auto_accumulate_categories']:
-        assets_of_category = [x[0] for x in  category_traverser.flat_list() if x[1] == category]
-        for asset in simple_progress_track(assets_of_category,with_item_text=False):
+    category_traverser = AssetsCompositeHierarchy(managed_only=True)
+    for base_category in ds['auto_accumulate_categories']:
+        for asset,category in simple_progress_track([x for x in  category_traverser.flat_list() if re.match(f"^{base_category}.*", x[1] ) ],with_item_text=False):
             filter_result, filter_reason = passes_acc_filter(asset, th)
             if not filter_result:
                 rprint(f"[bold]{get_asset_desc(asset)}[/] {filter_reason}, skipping")
@@ -585,7 +586,7 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
 
     title("Portfolio Structure")
 
-    category_traverser = AssetsCompositeHierarchy()
+    category_traverser = AssetsCompositeHierarchy(managed_only=False)
     assets_value_source = CompositeValueSource(df_pnl)
     df_ps = DataFrame()
     category_stack = [] # list of list( cat_path, DF() )
