@@ -284,7 +284,7 @@ def main():
     parser.add_argument('--crypto',action='store_const', const='True', help='overview: include cryptocurrencies')
     parser.add_argument('--stocks',action='store_const', const='True', help='overview: include stocks')
     parser.add_argument('--owned',action='store_const', const='True', help='overview: include existing nonzero asset positions from DCA database')
-    parser.add_argument('--tickers', type=str, help='file with list of additional tickers, one at each line (--overview, --precache)')
+    parser.add_argument('--group', type=str, help='ticker set to select (--overview, --precache)')
     parser.add_argument('--sort-by', type=str, default=None, help='overview: sort by column name')
     parser.add_argument('--csv', type=str, default=None, help='overview: write csv file')
     parser.add_argument('--precache', action='store_const', const='True', help='populate data cache only')
@@ -294,7 +294,7 @@ def main():
     
     args = parser.parse_args()
 
-    extra_tickers = open(args.tickers).read().splitlines() if args.tickers else []
+    extra_tickers = screener_conf['asset_groups'][args.group]  if args.group else []
     assets = get_list_of_assets(include_stocks=args.stocks,include_crypto=args.crypto,include_owned=args.owned,extra_tickers=extra_tickers)
 
     if args.overview:

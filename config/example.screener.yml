@@ -38,7 +38,9 @@ filter:
   max_debt_to_equity_ratio      : 100
   min_div_yield_percent         : 1
 
-# By default screener uses list of assets from dca.yml -> asset_exchg
-# More assets can be added to this list. The two lists are then merged together.
-additional_assets: []
-
+# screener groups. Selected with --group parameter
+asset_groups:
+  core_stocks:
+    - AAPL
+    - GOOGL
+    - MSFT
