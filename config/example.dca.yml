@@ -6,33 +6,39 @@ asset_exchg:
   ethereum:           poloniex
   solana:             ftx
   AAPL:               exante
-  
+
 # asset grouping as shown in portfolio structure
 categories:
-  hedge_crypto:
-    - bitcoin
-    - ethereum
-  altcoins:
-    - solana
+  crypto:
+    core:
+      - bitcoin
+      - ethereum
+    alts:
+      - solana
   stocks:
     - AAPL
 
 
 # list of asset categories to be accumulated when using --add with no additional parameters
 auto_accumulate_categories:
-  - hedge_crypto
-  - stocks
+  - /all/crypto/core
+  - /all/stocks
 
 
 # additional asset categories not managed by DCA, only for portfolio structure accounting
 # 'currency' can be 'USD' or any id supported by MarketDataProvider
 unmanaged_categories:
-  paper:
-    currency: USD
-    qty: 1000
-  deposits:
-    currency: UAH
-    qty: 10000
+  fiat:
+    - name: USD_cash
+      currency: USD
+      qty: 1000
+    - name: borrow
+      currency: USD
+      qty: -100
+  bonds:
+    - name: ua_gov_bond
+      currency: UAH
+      qty: 10000
 
 # default quota for --add per asset if --qty is not specified
 quota_usd: 10
@@ -45,8 +51,9 @@ total_quota_usd: 100
 # Asset factor overrides category factor the asset is in, if both are specified.
 # Optional.
 quota_fixed_factor:
-  hedge_crypto:     1
-  altcoins:         0.5
+  bitcoin: 2
+  /all/crypto/alts:     0.5
+
 
 # is True, asset from auto_accumulate_list is only processed if market is open at the moment
 check_market_open: False
