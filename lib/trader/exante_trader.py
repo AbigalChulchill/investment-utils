@@ -74,6 +74,8 @@ class ExanteTrader(Trader):
     def _resolve_symbol_by_ticker(self,ticker: str) -> str:
         if ".HK" in ticker:
             return ticker.replace(".HK",".HKEX")
+        elif ".TO" in ticker:
+            return ticker.replace(".TO",".TMX")
 
         exchs =[
             "NYSE",
