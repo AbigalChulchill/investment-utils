@@ -19,9 +19,10 @@ categories:
     - AAPL
 
 
-# list of asset categories to be accumulated when using --add with no additional parameters
-auto_accumulate_categories:
-  - /all/crypto/core
+# list of assets or categories to be accumulated when using --add with no additional parameters
+auto_accumulate:
+  - bitcoin
+  - /all/crypto/alts
   - /all/stocks
 
 

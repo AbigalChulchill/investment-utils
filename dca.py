@@ -1,5 +1,5 @@
-import datetime, argparse, re, yaml, time, traceback, logging, jmespath
-from collections.abc import Callable
+import datetime, argparse, re, yaml, time, traceback, logging, jmespath, os.path
+from collections.abc import Callable, Iterable
 from abc import abstractmethod
 from pandas.core.frame import DataFrame
 from pandas import concat
@@ -342,21 +342,32 @@ def accumulate_pre_pass() -> Tuple[float, Dict[str,float]]:
     total_value = 0
     enabled = {}
     category_traverser = AssetsCompositeHierarchy(managed_only=True)
-    for base_category in ds['auto_accumulate_categories']:
-        for asset,category in simple_progress_track([x for x in  category_traverser.flat_list() if re.match(f"^{base_category}.*", x[1] ) ],with_item_text=False):
-            filter_result, filter_reason = passes_acc_filter(asset, th)
-            if not filter_result:
-                rprint(f"[bold]{get_asset_desc(asset)}[/] {filter_reason}, skipping")
-                continue
-            daily_qty,quota_factor = calc_daily_qty(category, asset, th, ds['quota_usd'])
-            if isclose(quota_factor,0):
-                rprint(f"[bold]{get_asset_desc(asset)}[/] quota = 0, skipping")
-                continue
-            price = th.get_market_price(asset)
-            coin_qty = daily_qty / price
-            value = coin_qty * price
-            total_value += value
-            enabled[asset] = quota_factor
+
+    def matching_asset_iterator() -> Iterable[tuple[str,str]]:
+        for asset_or_base_category in ds['auto_accumulate']:
+            # is a category
+            if "/all" in asset_or_base_category:
+                for asset,category in [x for x in  category_traverser.flat_list() if re.match(f"^{asset_or_base_category}.*", x[1] ) ]:
+                    yield asset,category
+            # is a standalone asset
+            else:
+                yield asset_or_base_category,get_asset_category(asset_or_base_category)
+
+    
+    for asset,category in matching_asset_iterator():
+        filter_result, filter_reason = passes_acc_filter(asset, th)
+        if not filter_result:
+            rprint(f"[bold]{get_asset_desc(asset)}[/] {filter_reason}, skipping")
+            continue
+        daily_qty,quota_factor = calc_daily_qty(category, asset, th, ds['quota_usd'])
+        if isclose(quota_factor,0):
+            rprint(f"[bold]{get_asset_desc(asset)}[/] quota = 0, skipping")
+            continue
+        price = th.get_market_price(asset)
+        coin_qty = daily_qty / price
+        value = coin_qty * price
+        total_value += value
+        enabled[asset] = quota_factor
     print()
     return total_value,enabled
 
