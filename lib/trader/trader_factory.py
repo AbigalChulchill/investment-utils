@@ -48,5 +48,5 @@ class TraderFactory:
         subaccount = cfg.get_ftx_subaccount_trade()
         return FtxTrader(sym, api_key, secret, subaccount)
 
-    def create_dummy(sym: str) -> Trader:
-        return DummyTrader(sym)
+    def create_dummy(sym: str, allow_fractional_share_size: bool) -> Trader:
+        return DummyTrader(sym, allow_fractional_share_size)

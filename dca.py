@@ -36,14 +36,7 @@ def msg_buying(asset: str, value: float):
 def msg_selling(asset: str, qty: float):
     rprint(f"[bold red]selling[/] {qty} {get_asset_desc(asset)}")
 
-def create_trader(coin: str) -> Trader:
-    if coin in ds['asset_exchg']:
-        return TraderFactory.create_dca(coin, ds['asset_exchg'][coin])
-    else:
-        return None
 
-def create_dummy_trader(coin: str) -> Trader:
-    return TraderFactory.create_dummy(coin)
 
 def get_quota_fixed_factor(category: str, asset: str):
     param = 'quota_fixed_factor'
@@ -64,6 +57,35 @@ def get_asset_category(asset: str) -> str:
 
 def get_asset_desc(asset: str):
     return f"{get_id_sym(asset)} ({get_id_name(asset)})"
+
+class TraderDecorator(Trader):
+    def __init__(self, asset: str, base_trader: Trader, dcadb: Db):
+        self._asset = asset
+        self._base_trader= base_trader
+        self._dcadb = dcadb
+
+    def buy_market(self, qty: float, qty_in_usd: bool) -> tuple[float,float]:
+        fill_price, fill_qty = self._base_trader.buy_market(qty, qty_in_usd)
+        if self._dcadb:
+            self._dcadb.add(self._asset, fill_qty, fill_price)
+        return fill_price, fill_qty
+
+    def sell_market(self, qty_sym: float) -> tuple[float,float]:
+        fill_price, fill_qty = self._base_trader.sell_market(qty_sym)
+        if self._dcadb:
+            self._dcadb.remove(self._asset, fill_qty, fill_price)
+        return fill_price, fill_qty 
+    
+
+def create_trader(asset: str, dcadb: Db, is_dummy: bool) -> Trader:
+    if asset in ds['asset_exchg']:
+        exch = ds['asset_exchg'][asset]
+        if is_dummy:
+            return TraderDecorator(asset,TraderFactory.create_dummy(asset, is_crypto(asset) or exch == "ftx"), dcadb=None)
+        else:
+            return TraderDecorator(asset,TraderFactory.create_dca(asset, exch), dcadb)
+    else:
+        return None
 
 
 class TradeHelper:
@@ -288,14 +310,9 @@ def accumulate_one(asset: str, quota: float, dry: bool):
     daily_quota,quota_factor = (quota,1)
     msg_buying(asset, daily_quota)
 
-    trader: Trader = create_trader(asset)
+    trader: Trader = create_trader(asset, db, dry)
     if trader:
-        if dry:
-            price = th.get_market_price(asset)
-            qty = daily_quota / price
-        else:
-            price, qty = trader.buy_market(daily_quota,True)
-            db.add(asset, qty, price)
+        price, qty = trader.buy_market(daily_quota,True)
         df = DataFrame.from_dict([{
             'asset': asset,
             'price': price,
@@ -380,17 +397,12 @@ def accumulate_main_pass(assets_quota_factors: Dict[str,float], dry: bool, quota
     for asset,quota_factor in simple_progress_track(assets_quota_factors.items(),with_item_text=False):
             daily_qty = quota_asset * quota_factor
             msg_buying(asset, daily_qty)
-            trader: Trader = create_trader(asset)
+            trader: Trader = create_trader(asset, db, dry)
             if trader:
                 retries = 3
                 while True:
                     try:
-                        if dry:
-                            actual_price = th.get_market_price(asset)
-                            coin_qty = daily_qty / actual_price
-                        else:
-                            actual_price, coin_qty = trader.buy_market(daily_qty,True)
-                            db.add(asset, coin_qty, actual_price)
+                        actual_price, coin_qty = trader.buy_market(daily_qty,True)
                         a.append({
                             'asset': asset,
                             'price': actual_price,
@@ -480,14 +492,9 @@ def remove(asset: str, qty: str, dry: bool):
     else:
         sell_qty = min(available_sell_qty, float(qty))
 
-    trader: Trader = create_trader(asset)
+    trader: Trader = create_trader(asset, db, dry)
     if trader:
-        if dry:
-            actual_price = th.get_market_price(asset)
-            actual_qty = sell_qty
-        else:
-            actual_price, actual_qty = trader.sell_market(sell_qty)
-            db.remove(asset, actual_qty, actual_price)
+        actual_price, actual_qty = trader.sell_market(sell_qty)
         df = DataFrame.from_dict([{
             'price': actual_price,
             'qty': actual_qty,
