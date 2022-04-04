@@ -21,6 +21,7 @@ from lib.common.metrics import calc_discount_score
 from lib.common.id_ticker_map import get_id_sym, get_id_name
 from lib.portfolio.db import Db
 from lib.portfolio.historical_order import HistoricalOrder
+from lib.portfolio.visualize import visualize_portfolio_tree_structure
 
 ds = dict()
 
@@ -189,8 +190,18 @@ class AssetsCompositeHierarchy:
                 if insertion_point is None:
                     insertion_point = create_path(self._h, category_path)
                 insertion_point.append(asset)
-    
-            #print(self._h )
+
+    def is_managed_asset(self, asset: str) -> bool:
+        def inner(branch:dict):
+            for k,v in branch.items():
+                if type(v) is dict:
+                    yield from inner(v)
+                else:
+                    for a in v:
+                        if a == asset:
+                            yield a
+        return asset in inner(ManagedAssetsHierarchy().get_hierarchy())
+
 
     def flat_list(self):
         yield from self._flat_list("/all", self._h)
@@ -204,35 +215,40 @@ class AssetsCompositeHierarchy:
                 for asset in v:
                     yield asset,subcategory
 
-    def structured_list(self):
-        yield "<begin>","/all"
-        yield from self._structured_list("/all", self._h)
-        yield "<end>","/all"
+   
+    def nodes(self):
+        def _nodes_process(branch: dict):
+            local_nodes = []
+            for k,v in branch.items():
+                if type(v) is dict:
+                    local_nodes.append( {'name': k, 'children': _nodes_process(v)} )
+                else:
+                    local_nodes.append( {'name': k, 'children': [ {'name': asset, 'children': []}  for asset in v]} )
+            return local_nodes
 
-    def _structured_list(self,parent_category: str, branch: dict):
-        for k,v in branch.items():
-            subcategory = parent_category + "/" + k
-            if type(v) is dict:
-                yield "<begin>",subcategory
-                yield from self._structured_list(subcategory, v)
-                yield "<end>",subcategory
-            else:
-                yield "<begin>",subcategory
-                for asset in v:
-                    yield asset,subcategory
-                yield "<end>",subcategory
+        return {
+            'name': 'all',
+            'children': _nodes_process(self._h)
+            }
+
+
 
 
 class ValueSource:
     @abstractmethod
-    def get_value(self, asset: str, category_path: str) -> float:
+    def get_value(self, asset_path: str) -> float:
         """  get available USD value of asset
         """
+    def _category_component(asset_path:str) -> str:
+        return os.path.dirname(asset_path)
+    def _asset_component(asset_path:str) -> str:
+        return os.path.basename(asset_path)
 
 class DcaDbValueSource(ValueSource):
     def __init__(self, df_pnl:DataFrame):
         self._df = df_pnl
-    def get_value(self, asset: str, category_path: str) -> float:
+    def get_value(self, asset_path: str) -> float:
+        asset = ValueSource._asset_component(asset_path)
         locations = self._df.loc[ self._df['id'] == asset ]
         if len(locations):
             return locations [ 'value'].sum()
@@ -243,7 +259,9 @@ class UnmanagedAssetsValueSource(ValueSource):
         self._data = ds['unmanaged_categories']
         self._th = TradeHelper()
 
-    def get_value(self, asset: str, category_path: str) -> float:
+    def get_value(self, asset_path: str) -> float:
+        category_path = ValueSource._category_component(asset_path)
+        asset = ValueSource._asset_component(asset_path)
         m = re.match('^/all/(.+)', category_path)
         if m:
             group = m[1]
@@ -268,7 +286,8 @@ class CexFiatValueSource(ValueSource):
             self._map[s['cex_name']+"_borrow"] = s['borrow']
 
 
-    def get_value(self, asset: str, category_path: str) -> float:
+    def get_value(self, asset_path: str) -> float:
+        asset = ValueSource._asset_component(asset_path)
         if asset in self._map.keys():
             return self._map[asset]
         return None
@@ -280,10 +299,9 @@ class CompositeValueSource(ValueSource):
             UnmanagedAssetsValueSource(),
             CexFiatValueSource(),
         ]
-    def get_value(self, asset: str, category_path: str) -> float:
+    def get_value(self, asset_path: str) -> float:
         for s in self._sources:
-            #print("CompositeValueSource get_value", asset,category_path)
-            v = s.get_value(asset, category_path)
+            v = s.get_value(asset_path)
             if v is not None:
                 return v
         return 0
@@ -542,7 +560,7 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
     db = Db()
     th = TradeHelper()
     assets = db.get_syms()
-    
+    category_traverser = AssetsCompositeHierarchy(managed_only=False)
 
     d_pnl = []
     pnl_sort_key = lambda x: [-101 if a == "~" else a for a in x]
@@ -604,67 +622,34 @@ def list_positions(hide_private_data: bool, hide_totals: bool, sort_by: str):
 
     title("Portfolio Structure")
 
-    category_traverser = AssetsCompositeHierarchy(managed_only=False)
     assets_value_source = CompositeValueSource(df_pnl)
-    df_ps = DataFrame()
-    category_stack = [] # list of list( cat_path, DF() )
-    assets_in_managed_portfolio = set()
 
-    btcusd = th.get_market_price("bitcoin")
-
-    
-    for asset,cat_path in category_traverser.structured_list():
-        #print("xxx", asset, cat_path)
-        if asset == '<begin>':
-            category_stack.append( [cat_path, DataFrame()] )
-        elif asset == '<end>':
-
-            top = category_stack.pop()
-            df = top[1]
-
-            assert top[0] == cat_path
-
-            df['BTC'] = round(df['USD'] / btcusd,6)
-            df['%'] = df['USD'] / df['USD'].sum() * 100
-            #df.sort_values('%', ascending=False, inplace=True)
+    #btcusd = th.get_market_price("bitcoin")
 
 
-            # print("-"*100)
-            # print(df.to_string(index=False))
-            # print("-"*100)
+    ps_nodes = category_traverser.nodes()
 
-            df_category = DataFrame.from_dict([{
-                    'cat': cat_path,
-                    'USD': df['USD'].sum(),
-                }])
-
-            df_ps = concat([df_ps, df, df_category ],ignore_index=True)
-
-            if len(category_stack):
-                category_stack[-1][1] = concat( [category_stack[-1][1], df_category],ignore_index=True )
-
+    def _nodes_set_value(node: dict, parent_category:str):
+        value = 0
+        
+        asset_path = parent_category + "/" + node['name']
+        
+        if len(node['children']):
+            for ch in node['children']:
+                value+= _nodes_set_value(ch, asset_path)
         else:
-            category_stack[-1][1] = concat(
-                    [
-                        category_stack[-1][1],
-                        DataFrame.from_dict([{
-                            #'cat': cat_path,
-                            'id': asset,
-                            'ticker': get_id_sym(asset),
-                            'name': get_id_name(asset),
-                            'USD': assets_value_source.get_value(asset,cat_path),
-                        }])
-                    ],ignore_index=True)
-            assets_in_managed_portfolio.add(asset)
-                
-    columns = ["cat", "ticker","name","%","USD","BTC"]
-    formatters = create_left_align_str_formatters(df_ps)
-    formatters["BTC"]   = lambda _: f"{_:.8f}"
-    formatters["%"]     = lambda _: f"{_:.1f}"
-    formatters["USD"]   = lambda _: f"{_:.2f}"
-    print(df_ps.to_string(index=False, na_rep="~", columns=columns, formatters=formatters))
+            value = assets_value_source.get_value(asset_path)
 
-    df_orphaned_assets_in_portfolio = df_pnl_nonzero.loc[ [x not in assets_in_managed_portfolio for x in df_pnl_nonzero['id'] ] ]
+        node['value'] = value
+        return value
+
+
+    _nodes_set_value(ps_nodes,"")
+
+
+    visualize_portfolio_tree_structure(ps_nodes)
+
+    df_orphaned_assets_in_portfolio = df_pnl_nonzero.loc[ [not category_traverser.is_managed_asset(x) for x in df_pnl_nonzero['id'] ] ]
     if len(df_orphaned_assets_in_portfolio):
         warn("orphaned non-zero position assets exist :")
         print(df_orphaned_assets_in_portfolio.to_string(index=False, na_rep="~", columns=["ticker","name"]))

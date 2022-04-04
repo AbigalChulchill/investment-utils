@@ -70,5 +70,31 @@ def get_id_name(asset_id: str) -> str:
         name = _stock_name_db.get_name(asset_id)
     return name
 
+def get_id_name_shorter(asset_id: str) -> str:
+    removes = [
+        'ETF',
+        ', Inc.',
+        'Inc.',
+        'Corp.',
+        'Corporation',
+        'N.V.',
+        'Company',
+        'Limited',
+        'PLC',
+        'plc',
+    ]
+    replaces = [
+        # ('VanEck Vectors', 'VanEck'),
+        ('International', 'Intl'),
+        # ('Standard', 'Std'),
+        # ('Physical', 'Phys'),
+    ]
+    s = get_id_name(asset_id)
+    for x in removes:
+        s = s.replace(x,'')
+    for x,y in replaces:
+        s = s.replace(x,y)
+    return s.strip()
+
 # def get_id_sym_name_concat(id: str) -> str:
 #     return f"{get_id_sym(id)}: {get_id_name(id)}"
